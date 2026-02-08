@@ -91,7 +91,7 @@ This research phase consolidates technical decisions already established in the 
 **Rationale**:
 - **No Data Migration**: Fresh schema optimized for v1.0 (per Constitution Constraint 2)
 - **Code-First**: Migrations enable iterative schema evolution during development
-- **Azure SQL**: Managed service (automated backups, scaling, monitoring)
+- **Azure SQL**: Managed service (scaling, monitoring)
 - **EF Core Abstractions**: Repository pattern enables v2.0 multi-tenancy filtering
 
 **Schema Approach**:
@@ -218,14 +218,13 @@ src/Innoventity.API/Features/
 
 **Rationale**:
 - **Managed Platform**: No infrastructure management (focus on code)
-- **Azure Ecosystem**: Integrated with Application Insights, Key Vault, Service Bus
+- **Azure Ecosystem**: Integrated with Application Insights, Service Bus
 - **Staging Slots**: Blue/green deployment for zero-downtime releases
 - **Auto-Scaling**: Horizontal scaling based on load (future optimization)
 - **Linux Containers**: Cost-effective, .NET 8 runs natively on Linux
 
 **Supporting Services**:
 - **Azure SQL Database**: Managed relational database
-- **Azure Key Vault**: Secret management (connection strings, JWT signing key)
 - **Azure Application Insights**: Monitoring, telemetry, logging
 - **Azure Service Bus**: Async messaging (email notifications, future event-driven features)
 - **Azure Blob Storage**: Document storage (future v1.0 feature)
@@ -316,7 +315,6 @@ src/Innoventity.API/Features/
 | **API Docs** | OpenAPI + Scalar** | - | Auto-generated, interactive, modern UI |
 | **Hosting** | Azure App Service | Linux | Managed, integrated with Azure services |
 | **Monitoring** | Azure Application Insights | - | Telemetry, logging, alerting |
-| **Secrets** | Azure Key Vault | - | Secure secret storage |
 | **Messaging** | Azure Service Bus | - | Async patterns, email notifications |
 
 ---

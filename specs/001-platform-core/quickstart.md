@@ -464,10 +464,8 @@ azd up
 2. Provisions Azure SQL Database
 3. Provisions Azure App Service (Linux)
 4. Provisions Azure Application Insights
-5. Provisions Azure Key Vault
-6. Stores connection strings in Key Vault
-7. Builds and deploys API to App Service
-8. Builds and deploys Angular app to Azure Static Web Apps or App Service
+5. Builds and deploys API to App Service
+6. Builds and deploys Angular app to Azure Static Web Apps or App Service
 
 **Expected output**:
 ```
@@ -542,7 +540,7 @@ az webapp deploy --resource-group innoventity-rg-dev --name innoventity-api-dev 
 
 2. **Configure Application Insights**:
    - Copy instrumentation key from Azure Portal
-   - Add to `appsettings.json` or Key Vault
+   - Add to `appsettings.json` or App Service Configuration
 
 3. **Seed initial data** (industries, test actors if needed)
 

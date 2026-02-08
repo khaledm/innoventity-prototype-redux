@@ -18,7 +18,7 @@
 
 **Prohibited Patterns**:
 - ❌ Manual Azure Portal configuration (except initial service principal setup)
-- ❌ Shared mutable resources across environments (e.g., shared Key Vault)
+- ❌ Shared mutable resources across environments
 - ❌ Long-lived secrets without rotation strategy
 - ❌ Environment-specific code branches (use configuration instead)
 
@@ -33,7 +33,6 @@ infrastructure/
 │   ├── app-service/       # Azure App Service + deployment slots
 │   ├── sql-database/      # Azure SQL Database + firewall rules
 │   ├── monitoring/        # Application Insights + Log Analytics
-│   ├── secrets/           # Key Vault (if needed) or managed secrets
 │   └── networking/        # Virtual Network (Phase 1+, currently public endpoints)
 ├── environments/
 │   ├── dev/
@@ -46,7 +45,7 @@ infrastructure/
 │   │   └── backend.tf
 │   └── prod/
 │       ├── main.tf        # Prod environment composition (same modules)
-│       ├── terraform.tfvars  # Prod-specific config (higher SKU, backup retention)
+│       ├── terraform.tfvars  # Prod-specific config (higher SKU, scale settings)
 │       └── backend.tf
 └── README.md              # Provisioning instructions
 ```
@@ -57,13 +56,13 @@ infrastructure/
 environment         = "dev"
 app_service_sku     = "B1"        # Basic tier for dev
 sql_database_sku    = "Basic"     # 2GB DTU for dev
-retention_days      = 7           # Short backup retention
+retention_days      = 7
 
 # environments/prod/terraform.tfvars
 environment         = "prod"
 app_service_sku     = "P1v3"      # Premium tier for prod
 sql_database_sku    = "S2"        # Standard 50 DTU for 100 concurrent users
-retention_days      = 35          # Max automated backup retention
+retention_days      = 35
 ```
 
 ### Terraform State Management
@@ -148,13 +147,8 @@ variable "max_size_gb" {
   type        = number
   default     = 2
 }
-variable "backup_retention_days" {
-  description = "Point-in-time restore retention (7-35 days)"
-  type        = number
-  default     = 7
-}
 variable "admin_password" {
-  description = "SQL admin password (from Key Vault or Terraform variables)"
+  description = "SQL admin password (from Terraform variables or CI/CD secrets)"
   type        = string
   sensitive   = true
 }
@@ -179,10 +173,6 @@ resource "azurerm_mssql_database" "main" {
   server_id      = azurerm_mssql_server.main.id
   sku_name       = var.sku_name
   max_size_gb    = var.max_size_gb
-  
-  short_term_retention_policy {
-    retention_days = var.backup_retention_days
-  }
   
   tags = {
     Environment = var.environment
@@ -219,10 +209,7 @@ output "server_name" {
 ```
 
 **Recreatability**: ⚠️ **Partial** - Database schema recreated via EF Core migrations (see Database State Management below)  
-**Blast Radius**: Data loss if destroyed - mitigated by:
-  - Automated backups (7-35 days retention per SKU)
-  - Manual backup before destruction (export BACPAC to Azure Blob Storage)
-  - Test data seeding scripts (for dev/test environments)  
+**Blast Radius**: Data loss if destroyed - mitigated by test data seeding scripts (for dev/test environments)  
 **Cost**: Dev $5/month (Basic), Prod $30-150/month (S2 Standard)  
 **Validation**: Run EF Core migrations + smoke test queries after creation
 
@@ -413,72 +400,6 @@ output "instrumentation_key" {
 
 ---
 
-### 5. Secret Management Module (Optional Key Vault)
-
-**Purpose**: Centralized secret storage with audit logging (alternative to App Service Configuration)
-
-**Decision**: Phase 0 uses App Service Configuration for simplicity (plan.md §CHK093, line 200-264). Key Vault provisioning **deferred to Phase 1+** unless:
-- Resume showcase requirement (demonstrate Azure best practices)
-- Multiple applications need shared secrets
-- Compliance requires audit logging
-
-**Terraform Module** (`modules/secrets/main.tf`) - **Optional, create only if needed**:
-```hcl
-variable "environment" { type = string }
-variable "resource_group_name" { type = string }
-variable "location" { type = string }
-variable "app_service_principal_id" {
-  description = "Managed Identity ID of App Service (for access policy)"
-  type        = string
-}
-
-resource "azurerm_key_vault" "main" {
-  name                = "innoventity-${var.environment}-kv"
-  resource_group_name = var.resource_group_name
-  location            = var.location
-  tenant_id           = data.azurerm_client_config.current.tenant_id
-  sku_name            = "standard"
-  
-  soft_delete_retention_days = 7
-  purge_protection_enabled   = var.environment == "prod" ? true : false
-  
-  access_policy {
-    tenant_id = data.azurerm_client_config.current.tenant_id
-    object_id = var.app_service_principal_id
-    
-    secret_permissions = [
-      "Get",
-      "List"
-    ]
-  }
-  
-  tags = {
-    Environment = var.environment
-    ManagedBy   = "Terraform"
-  }
-}
-
-# Store secrets (values provided via Terraform variables or external source)
-resource "azurerm_key_vault_secret" "jwt_key" {
-  name         = "JwtSecretKey"
-  value        = var.jwt_secret_key
-  key_vault_id = azurerm_key_vault.main.id
-}
-
-data "azurerm_client_config" "current" {}
-
-output "vault_uri" {
-  value = azurerm_key_vault.main.vault_uri
-}
-```
-
-**Recreatability**: ⚠️ **Partial** - Secret values must be re-injected after recreation (from password manager or CI/CD vault)  
-**Blast Radius**: App Service cannot start without secrets, ~5 minute recovery time  
-**Cost**: ~$1-2/month ($0.03 per 10K operations)  
-**Validation**: Test secret retrieval via App Service Managed Identity before deployment
-
----
-
 ## Database State Management
 
 **Challenge**: Ephemeral database instances conflict with schema evolution and test data needs.
@@ -560,38 +481,6 @@ if (app.Environment.IsDevelopment())
 
 **Reproducibility**: Fixed GUIDs + idempotent seed logic = identical state across recreations
 
-### Production Data Management
-
-**Backup Strategy** (external to ephemeral environment):
-1. **Azure SQL Automated Backups**: 7-35 days point-in-time restore (managed by Azure, survives database deletion if configured)
-2. **Manual BACPAC Export** (before environment destruction):
-   ```bash
-   az sql db export \
-     --resource-group innoventity-prod-rg \
-     --server innoventity-prod-sql \
-     --name Innoventity \
-     --admin-user innoventity-admin \
-     --admin-password $ADMIN_PASSWORD \
-     --storage-key-type StorageAccessKey \
-     --storage-key $STORAGE_KEY \
-     --storage-uri https://innoventitybackups.blob.core.windows.net/backups/prod-$(date +%Y%m%d).bacpac
-   ```
-
-**Restore Strategy** (after environment recreation):
-```bash
-az sql db import \
-  --resource-group innoventity-prod-rg \
-  --server innoventity-prod-sql \
-  --name Innoventity \
-  --admin-user innoventity-admin \
-  --admin-password $ADMIN_PASSWORD \
-  --storage-key-type StorageAccessKey \
-  --storage-key $STORAGE_KEY \
-  --storage-uri https://innoventitybackups.blob.core.windows.net/backups/prod-20260207.bacpac
-```
-
-**Critical**: Production BACPAC backups stored in SEPARATE Azure Storage Account (not part of ephemeral environment)
-
 ---
 
 ## Environment Lifecycle Workflows
@@ -618,7 +507,6 @@ environment          = "dev"
 location             = "East US"
 app_service_sku      = "B1"
 sql_database_sku     = "Basic"
-backup_retention_days = 7
 sql_admin_password   = "$(openssl rand -base64 16)"  # Generate secure password
 jwt_secret_key       = "$(openssl rand -base64 32)"  # Generate JWT key
 EOF
@@ -662,18 +550,14 @@ curl https://$(terraform output -raw app_service_hostname)/health
 ### Destruction Workflow
 
 **Prerequisites**:
-1. **Production only**: Export BACPAC backup to external storage (see Database State Management)
-2. Confirm no active users (production environments)
+1. Confirm no active users (production environments)
 
 **Steps**:
 ```bash
 # 1. Navigate to environment directory
 cd infrastructure/environments/dev
 
-# 2. (Production only) Backup database
-# ./scripts/backup-database.sh prod
-
-# 3. Plan destruction (dry-run)
+# 2. Plan destruction (dry-run)
 terraform plan -destroy -out=tfplan-destroy
 
 # 4. Review resources to be destroyed
@@ -734,7 +618,6 @@ curl https://$(terraform output -raw app_service_hostname)/health
 | **App Service** | ✅ Full | API downtime (2-3 min) | $0.10-0.50, 2 min | `/health` returns 200, AppInsights receives telemetry |
 | **SQL Database** | ⚠️ Schema only | Data loss if not backed up | $0.20-2.00, 3 min | EF Core migration check, test query returns expected rows |
 | **Application Insights** | ✅ Full | Historical telemetry loss (30-90d) | $0, 1 min | Query for requests in last 5 min returns >0 results |
-| **Key Vault** (optional) | ⚠️ Secrets must be re-injected | App Service cannot start | $0.05, 2 min | App Service retrieves test secret successfully |
 | **Service Plan** | ✅ Full | All hosted apps restart | $0, 2 min | Apps return to healthy state after plan recreation |
 
 **Validation Automation** (Terraform post-deployment script):
@@ -792,11 +675,11 @@ echo "=== All validations passed ==="
 
 **Baseline Costs** (per environment, monthly):
 
-| Environment | App Service | SQL Database | Application Insights | Key Vault (optional) | Total/Month |
-|-------------|-------------|--------------|----------------------|----------------------|-------------|
-| **Dev** | $13 (B1) | $5 (Basic) | $2 (5GB free tier) | $0 (not used) | **$20** |
-| **Test** | $13 (B1) | $5 (Basic) | $2 | $0 | **$20** |
-| **Prod** | $100 (P1v3) | $75 (S2) | $5 | $1 (if used) | **$181** |
+| Environment | App Service | SQL Database | Application Insights | Total/Month |
+|-------------|-------------|--------------|----------------------|-------------|
+| **Dev** | $13 (B1) | $5 (Basic) | $2 (5GB free tier) | **$20** |
+| **Test** | $13 (B1) | $5 (Basic) | $2 | **$20** |
+| **Prod** | $100 (P1v3) | $75 (S2) | $5 | **$180** |
 
 **Ephemeral Lifecycle Costs** (assuming 10 recreations per month):
 - **Terraform apply time**: 5 min × 10 = 50 min developer time (~$40/hr = $33)
@@ -934,17 +817,7 @@ resource "azurerm_monitor_metric_alert" "high_error_rate" {
        commandOptions: '-var="jwt_secret_key=$(JWT_SECRET_KEY)" -var="sql_admin_password=$(SQL_ADMIN_PASSWORD)"'
    ```
 
-2. **Terraform Cloud / Azure Key Vault Integration**:
-   - Store secrets in existing Key Vault (outside ephemeral environment)
-   - Reference in Terraform via data source
-   ```hcl
-   data "azurerm_key_vault_secret" "jwt_key" {
-     name         = "jwt-secret-${var.environment}"
-     key_vault_id = "/subscriptions/.../resourceGroups/shared-rg/providers/Microsoft.KeyVault/vaults/shared-kv"
-   }
-   ```
-
-3. **Local Development** (terraform.tfvars NOT committed):
+2. **Local Development** (terraform.tfvars NOT committed):
    ```hcl
    # infrastructure/environments/dev/terraform.tfvars (in .gitignore)
    jwt_secret_key     = "local-dev-key-not-for-production"
@@ -962,12 +835,7 @@ infrastructure/**/terraform.tfstate*
 
 **Terraform Service Principal** (Azure AD):
 - **Role**: Contributor on subscription or resource group (limited to innoventity-* resources)
-- **Secret Permissions**: Only if deploying Key Vault module
 - **Rotation**: Service principal credentials rotated every 90 days
-
-**App Service Managed Identity** (if using Key Vault):
-- **Role**: Key Vault Secrets User (Get/List only, no Set/Delete)
-- **Scope**: Limited to specific Key Vault instance
 
 **Developer Access** (Azure RBAC):
 - **Development**: Contributor on dev resource group, Reader on test/prod
@@ -1021,11 +889,11 @@ func TestDevEnvironmentProvisioning(t *testing.T) {
 func TestDatabaseRecreation(t *testing.T) {
     // 1. Provision environment
     // 2. Seed test data (insert Actor record)
-    // 3. Export database schema (BACPAC)
+    // 3. Capture expected schema (query sys.tables, sys.columns)
     // 4. Destroy SQL Database (terraform destroy -target=module.sql_database)
     // 5. Recreate SQL Database (terraform apply)
     // 6. Apply EF Core migrations
-    // 7. Validate schema matches expected (compare to exported BACPAC)
+    // 7. Validate schema matches expected (compare sys.tables, sys.columns)
     // 8. Assert data loss (Actor record no longer exists - expected behavior)
 }
 ```
@@ -1087,7 +955,6 @@ az webapp show --name innoventity-dev-api --resource-group innoventity-dev-rg --
 
 ### Deferred (Phase 1+):
 - ⏸️ Test/Prod environment compositions (copy dev, adjust SKUs)
-- ⏸️ Key Vault module (unless resume showcase requirement)
 - ⏸️ Terratest infrastructure tests (validate manually first)
 - ⏸️ CI/CD pipeline integration (Azure DevOps YAML)
 - ⏸️ Auto-shutdown scripts for cost optimization
@@ -1105,18 +972,14 @@ az webapp show --name innoventity-dev-api --resource-group innoventity-dev-rg --
 1. **Terraform Backend Bootstrap**: Should state storage account be managed manually or via separate bootstrap Terraform?
    - **Recommendation**: Manual creation (one-time, shared across all environments)
 
-2. **Database Backup Automation**: Should BACPAC exports run on schedule (e.g., nightly) or only manual before destruction?
-   - **Phase 0**: Manual only (add to destruction checklist)
-   - **Phase 1+**: Automated nightly backups to external Azure Blob Storage
-
-3. **Secret Rotation Frequency**: How often should JWT keys and SQL passwords rotate?
+2. **Secret Rotation Frequency**: How often should JWT keys and SQL passwords rotate?
    - **Recommendation**: 90 days for production, manual rotation on security events, automated rotation deferred to v2.0
 
-4. **Infrastructure Testing Scope**: Should Terratest run in CI/CD or only locally during module development?
+3. **Infrastructure Testing Scope**: Should Terratest run in CI/CD or only locally during module development?
    - **Phase 0**: Local only (avoid CI/CD pipeline complexity)
    - **Phase 1+**: Add to PR validation pipeline (gate infrastructure changes)
 
-5. **Shared Resources**: Should Application Insights Log Analytics Workspace be shared across environments or per-environment?
+4. **Shared Resources**: Should Application Insights Log Analytics Workspace be shared across environments or per-environment?
    - **Recommendation**: Per-environment (aligns with ephemeral principle, isolated blast radius)
 
 ---

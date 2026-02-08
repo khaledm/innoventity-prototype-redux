@@ -1421,262 +1421,438 @@ These journeys are important for full platform value but can be tested with inte
 
 ---
 
-## 7. System Constraints & Non-Functional Requirements
+## 7. Infrastructure & Operational Requirements
 
-### Ephemeral Environment Mandate
+### FR7.1: Ephemeral Environment Provisioning
 
-**Constraint**: ALL environments (Development, Test, Production) MUST be ephemeral — created, destroyed, and recreated on demand without data loss risk.
+**Requirement**: The system infrastructure MUST support ephemeral environments that can be created, destroyed, and recreated on demand.
 
-**Requirements**:
-1. **Infrastructure as Code**: Complete environment provisioned from version-controlled templates
-2. **Reproducibility**: Any environment recreatable from scratch with identical behavior
-3. **Destroyability**: Environment deletion must NOT cause unrecoverable data loss
-4. **Environment Parity**: Dev/Test/Prod differ only in scale/SKU configuration, NOT architecture
+**Functional Specifications**:
 
-**Rationale**: 
-- Eliminates environment drift and "works on my machine" issues
-- Enables fearless experimentation during development
-- Reduces operational risk (can always rebuild from known-good state)
-- Forces discipline around data persistence and state management
-- Supports rapid provisioning for feature branches and testing
+1. **Infrastructure Definition**
+   - All infrastructure MUST be defined as version-controlled code templates
+   - Infrastructure provisioning MUST be fully automated (no manual configuration steps except initial authentication setup)
+   - Environment creation MUST complete within 10 minutes from code execution
 
-**Impact on Design**:
-- No manual configuration allowed (except initial service principal setup)
-- All secrets injected via automation, never stored in environment
-- Database schema managed via migrations (code-first, not database-first)
-- Seed data scripts for dev/test environments (fixed identifiers for reproducibility)
-- Production data backed up to EXTERNAL storage (outside ephemeral environment)
+2. **Environment Reproducibility**
+   - Any environment (dev/test/prod) MUST be recreatable to an identical functional state from infrastructure code
+   - Database schema MUST be automatically provisioned via code-based migrations
+   - Application configuration MUST be injected from external sources (not hardcoded in infrastructure)
 
----
+3. **Environment Parity**
+   - Development, test, and production environments MUST use identical infrastructure architecture
+   - Environment differences MUST be limited to scale parameters (compute size, database SKU, instance count)
+   - Environment-specific code branches are prohibited
 
-### Component Validation Criteria
+4. **Data Loss Prevention**
+   - Environment destruction MUST NOT cause unrecoverable loss of critical system state
+   - Database schema MUST be recoverable from migration history
+   - Test data MUST be regenerable from seed scripts with fixed identifiers
 
-**Constraint**: Every system component MUST be evaluated against these four questions before implementation:
+**Acceptance Criteria**:
+```gherkin
+Scenario: Environment is created from infrastructure code
+  Given infrastructure code is committed to version control
+  When provisioning command is executed
+  Then complete environment is created within 10 minutes
+  And all services pass health checks
+  And database schema matches migration history
 
-1. **Recreatability**: Can this component be safely recreated from code/configuration?
-   - ✅ Accept: Stateless services, schema-based databases, configuration-driven resources
-   - ❌ Reject: Manual setup steps, undocumented dependencies, environment-specific patches
+Scenario: Environment can be destroyed and recreated
+  Given a running environment with test data
+  When environment is destroyed
+  And environment is recreated from same infrastructure code
+  Then environment functions identically to original
+  And database schema is identical
+  And seed data is regenerated with same identifiers
 
-2. **Blast Radius**: What breaks if this component is destroyed?
-   - Must document: Downstream dependencies, recovery time, data loss risk
-   - Must provide: Mitigation strategy, backup/restore procedure, validation tests
+Scenario: Production and development use same architecture
+  Given production environment configuration
+  When comparing to development environment configuration
+  Then infrastructure components are identical
+  And only scale parameters differ (compute SKU, database tier)
+```
 
-3. **Cost of Recreation**: What is the time and financial cost to rebuild?
-   - Must quantify: Provisioning time, validation duration, monetary cost
-   - Must optimize: Minimize recreation cost to enable frequent rebuilds
-
-4. **Observability**: How do we prove correctness in short-lived environments?
-   - Must provide: Health checks, validation tests, monitoring instrumentation
-   - Must enable: Rapid verification that recreated component functions correctly
-
-**Application Examples**:
-- **App Service**: ✅ Recreatable (IaC), Blast Radius = 2-3 min downtime, Cost = $0.10-0.50, Health endpoint validates
-- **SQL Database**: ⚠️ Schema recreatable (migrations), Blast Radius = data loss if not backed up, Cost = $0.20-2.00, Migration check validates
-- **Application Insights**: ✅ Recreatable, Blast Radius = historical data loss (30-90d), Cost = $0, Telemetry query validates
-
----
-
-### Testing Discipline & Epistemic Validation
-
-**Constraint**: All testing MUST follow epistemic discipline to ensure meaningful validation.
-
-**Principles**:
-
-1. **Demonstrate Failure Before Success**
-   - Tests MUST fail when feature not implemented (red phase in TDD)
-   - Tests MUST fail when validation condition not met (prove assertion works)
-   - Passing tests without observing failure = no confidence in test correctness
-
-2. **No Tautological Assertions**
-   - ❌ Prohibited: `assert output == input` (test validates nothing)
-   - ❌ Prohibited: `assert terraform.output("name") == terraform.input("name")` (circular validation)
-   - ✅ Required: External validation (query Azure API directly, test independent behavior)
-
-3. **LLM-Generated Code Not Trusted by Default**
-   - All generated code MUST include validation strategy
-   - Passing tests alone are insufficient evidence of correctness
-   - Manual verification checklist required for critical paths
-   - Characterization tests required for complex behavior (capture baseline, detect drift)
-
-4. **Idempotency Testing**
-   - Infrastructure: Second terraform apply MUST show "No changes"
-   - Database migrations: Re-running migrations MUST be safe (no duplicate records, schema conflicts)
-   - Seed data: Multiple executions MUST produce identical state
-
-**Application Examples**:
-- **Infrastructure Test**: Create environment → Health check passes ✅ → Destroy DB secret → Health check fails ❌ → Proves health check detects missing config
-- **API Test**: Submit innovation without title → Expect 400 ❌ → Temporarily remove validation → Expect success → Proves validation works
-- **Migration Test**: Run migration → Check schema → Run migration again → Expect no errors → Proves idempotency
+**Phase 0 Implementation Traceability**:
+- Infrastructure code and environment provisioning for the dev environment are implemented in tasks T068–T070 in specs/001-platform-core/tasks.md.
 
 ---
 
-### Code Generation Principles
+### FR7.2: Component Validation Requirements
 
-**Constraint**: All code generation (manual, AI-assisted, or template-based) MUST adhere to these principles.
+**Requirement**: Every system component MUST provide validation mechanisms to prove correctness.
 
-**Mandatory Practices**:
+**Functional Specifications**:
 
-1. **Minimize Lines of Code**
-   - Prefer built-in framework features over custom implementations
-   - Delete code more than adding code
-   - Measure: Track LOC growth per feature, justify increases
+1. **Health Endpoints**
+   - Every service MUST expose a health check endpoint
+   - Health check MUST validate connectivity to external dependencies (database, secrets storage, monitoring service)
+   - Health check MUST return HTTP 200 for healthy state, non-200 for unhealthy state
+   - Deployment pipeline MUST fail if health check returns non-200 status
 
-2. **Prefer Composition Over Inheritance**
-   - Use dependency injection and interfaces
-   - Avoid deep inheritance hierarchies (max 2 levels)
-   - Composable components enable easier testing and modification
+2. **Component Documentation**
+   - Each component MUST document its recreation process
+   - Each component MUST document blast radius (what breaks if destroyed)
+   - Each component MUST document recovery time and recreation cost
+   - Each component MUST provide automated validation tests
 
-3. **Follow SOLID, KISS, YAGNI Strictly**
-   - **SOLID**: Single responsibility, interface segregation, dependency inversion
-   - **KISS**: Simplest solution that meets requirements (no clever abstractions)
-   - **YAGNI**: Implement only what's needed NOW (defer speculative features)
+3. **Idempotency Requirements**
+   - Infrastructure provisioning MUST be idempotent (re-running produces no changes)
+   - Database migrations MUST be idempotent (safe to re-run without errors)
+   - Seed data scripts MUST be idempotent (multiple executions produce identical state)
 
-4. **Avoid Speculative Abstractions**
-   - ❌ Don't create "framework for future extensibility" without concrete use case
-   - ✅ Refactor to abstraction when SECOND use case emerges (not first)
-   - Cost of wrong abstraction > cost of duplication
+**Acceptance Criteria**:
+```gherkin
+Scenario: Service provides health endpoint
+  Given a deployed service
+  When health endpoint is queried
+  Then response returns HTTP 200 if all dependencies available
+  And response returns HTTP 503 if any dependency unavailable
+  And response includes status of each dependency
 
-5. **Self-Evaluate for Overengineering**
-   - Before committing: "Could this be simpler?"
-   - Before creating abstraction: "Do I have 2+ concrete use cases?"
-   - Before adding dependency: "Can I solve this with existing tools?"
+Scenario: Infrastructure provisioning is idempotent
+  Given an existing environment provisioned from infrastructure code
+  When infrastructure provisioning is executed again
+  Then system reports "No changes needed"
+  And no resources are recreated or modified
 
-**Application Examples**:
-- **Terraform Modules**: 20-40 lines average (composition over duplication), environment-agnostic
-- **API Endpoints**: Minimal APIs pattern (no unnecessary controllers/services for simple CRUD)
-- **Secret Management**: App Service Configuration Phase 0 (simple), Key Vault Phase 1+ (when audit logging proves necessary)
+Scenario: Database migrations are idempotent
+  Given a database with migrations applied
+  When migration command is re-executed
+  Then system completes without errors
+  And schema remains unchanged
+  And no duplicate records are created
+```
 
----
-
-### Secret Management Constraints
-
-**Constraint**: Secrets MUST never be discoverable in source control, logs, or client-side code.
-
-**Requirements**:
-
-1. **Never Committed to Source Control**
-   - Database connection strings, API keys, JWT signing keys excluded via .gitignore
-   - Use secret scanning tools (git-secrets, GitHub secret scanning)
-   - Rotate immediately if secret accidentally committed (assume compromised)
-
-2. **Injected via Automation**
-   - Development: User Secrets or environment variables (NOT appsettings.*.json in repo)
-   - Production: CI/CD pipeline variables or external secret store (NOT environment-specific config files)
-   - No hardcoded secrets in code or infrastructure templates
-
-3. **Encrypted at Rest**
-   - Development: User Secrets (stored outside project directory)
-   - Production: Encrypted storage (App Service Configuration, Key Vault, etc.)
-   - Never plaintext in environment variables or unencrypted files
-
-4. **Masked in Logs**
-   - Never log secret values (connection strings, tokens, passwords)
-   - Use structured logging with [SensitiveData] attributes
-   - Verify logs don't expose secrets during code review
-
-5. **Rotation Strategy Required**
-   - Document how to rotate each secret
-   - Test rotation procedure in dev/test environment
-   - Production rotation must NOT require code changes (config-driven)
-
-**Application Examples**:
-- **JWT Signing Key**: Generated cryptographically (`openssl rand -base64 32`), stored in User Secrets (dev) / App Service Configuration (prod)
-- **SQL Password**: Set via Terraform variables (injected from CI/CD), never in .tf files
-- **API Keys**: Stored in CI/CD secret vault, injected as build variables, never in appsettings.json
+**Phase 0 Implementation Traceability**:
+- Service-level health checks, including database and configuration validation, are implemented in tasks T066–T067 in specs/001-platform-core/tasks.md.
+- Infrastructure idempotency validation for environment provisioning is implemented in tasks T068–T070 in specs/001-platform-core/tasks.md.
 
 ---
 
-### Observability Requirements
+### FR7.3: Testing & Validation Standards
 
-**Constraint**: System behavior MUST be observable in short-lived ephemeral environments.
+**Requirement**: All automated testing MUST follow validation principles that ensure test reliability and meaningful coverage.
 
-**Requirements**:
+**Functional Specifications**:
+
+1. **Test-Driven Development**
+   - Tests MUST be written before implementation code (red-green-refactor cycle)
+   - Tests MUST fail when expected behavior is not implemented
+   - Tests MUST pass only when correct implementation is provided
+   - Test pass without prior failure observation is insufficient validation
+
+2. **External Validation**
+   - Tests MUST validate behavior through external observation (API responses, database state, system logs)
+   - Tests MUST NOT use circular validation (asserting output equals input)
+   - Tests MUST query external systems directly (e.g., Azure API for infrastructure validation)
+   - For LLM-generated code: manual verification checklist MUST supplement automated tests
+
+3. **Idempotency Validation**
+   - Infrastructure tests MUST verify that re-applying configuration produces no changes
+   - Database migration tests MUST verify that re-running produces no errors or duplicate data
+   - Seed data tests MUST verify that multiple executions produce identical state
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Test demonstrates failure before success
+  Given a test for required field validation
+  When test is executed before validation is implemented
+  Then test fails with assertion error
+  When validation is implemented
+  Then test passes
+
+Scenario: Test uses external validation
+  Given an API endpoint that creates a database record
+  When test calls the endpoint
+  Then test queries database directly to verify record exists
+  And test does not compare API response to API request
+
+Scenario: Infrastructure validation detects missing configuration
+  Given environment with database secret configured
+  When health check is executed
+  Then health check passes
+  When database secret is removed
+  And health check is executed again
+  Then health check fails
+```
+
+---
+
+### FR7.4: Code Quality Requirements
+
+**Requirement**: All application code MUST follow design principles that minimize complexity and maximize maintainability.
+
+**Functional Specifications**:
+
+1. **Design Principles**
+   - Code MUST follow single responsibility principle (one reason to change per class/method)
+   - Code MUST use dependency injection for external dependencies
+   - Code MUST prefer composition over inheritance (max 2 levels inheritance depth)
+   - Code MUST implement only current requirements (no speculative features)
+
+2. **Complexity Metrics**
+   - Lines of code per feature MUST be tracked and justified if increasing
+   - Abstraction layers MUST be justified by 2+ concrete use cases
+   - Custom implementations MUST be justified when built-in framework features exist
+
+3. **Simplicity Over Cleverness**
+   - Solutions MUST use simplest approach that meets requirements
+   - Complex abstractions allowed only when multiple concrete use cases exist
+   - Before adding abstraction: confirm 2+ use cases exist or will exist in current phase
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Code follows single responsibility principle
+  Given a class in the codebase
+  When analyzing class responsibilities
+  Then class has one and only one reason to change
+
+Scenario: Abstraction requires multiple use cases
+  Given a proposed abstraction layer
+  When reviewing implementation justification
+  Then at least 2 concrete use cases are documented
+  Or abstraction is rejected
+
+Scenario: Framework features used before custom implementation
+  Given a new feature requirement
+  When implementation is proposed
+  Then built-in framework solution is evaluated first
+  And custom implementation requires justification
+```
+
+---
+
+### FR7.5: Secret Management Requirements
+
+**Requirement**: Application secrets MUST be protected from unauthorized access and exposure throughout the software lifecycle.
+
+**Scope Clarification**:
+- **Phase 0 (Current)**: Simpler secret management acceptable for learning project scope (100 concurrent users). Manual secret rotation with application restart is allowed.
+- **v2.0+ (Future)**: More advanced rotation (no-deploy, multi-key support) MAY be introduced without breaking Phase 0 behavior.
+
+**Functional Specifications**:
+
+1. **Secret Storage**
+  - Secrets MUST NOT be committed to source control (.gitignore enforcement)
+  - Secrets MUST NOT be hardcoded in application code or infrastructure templates
+  - Secrets MUST be encrypted at rest (User Secrets for dev, encrypted storage for prod)
+  - Secrets MUST be injected via automation (CI/CD variables, runtime configuration)
+
+2. **Secret Handling**
+  - Secrets MUST NOT appear in application logs
+  - Secrets MUST be masked in log output using structured logging attributes
+  - Secrets MUST NOT be transmitted to client-side code
+  - Secret values MUST NOT appear in API responses or error messages
+
+3. **Secret Rotation (Phase 0)**
+  - Each secret type MUST have a documented manual rotation procedure
+  - Secret rotation MUST be testable in dev/test environments
+  - Secret rotation in production MAY require an application restart but MUST NOT require code changes
+  - Rotation procedures MUST be configuration-driven (e.g., App Service Configuration, environment variables)
+
+4. **Secret Rotation (v2.0+)**
+  - Rotation SHOULD NOT require application downtime
+  - Multi-key validation SHOULD be supported for JWT signing keys
+
+**Acceptance Criteria**:
+```gherkin
+Scenario: Secrets are not in source control
+  Given application source repository
+  When repository is scanned for secrets
+  Then no database connection strings found
+  And no API keys found
+  And no JWT signing keys found
+  And .gitignore excludes secret configuration files
+
+Scenario: Secrets are masked in logs
+  Given application logs structured events
+  When database connection error occurs
+  Then log entry contains error message
+  But log entry does not contain connection string
+  And connection string is replaced with "[REDACTED]"
+
+Scenario: Secret rotation (Phase 0) is configuration-driven
+  Given a production environment with JWT signing key stored in configuration
+  When JWT signing key is rotated by updating configuration
+  And application is restarted to pick up new configuration
+  Then no code changes are required
+  And new tokens are signed with the new key
+  And existing tokens remain valid until expiration (subject to configured lifetime)
+```
+
+---
+
+### FR7.6: Observability Requirements
+
+**Requirement**: System behavior MUST be observable through logging, monitoring, and health checks in all environments.
+
+**Functional Specifications**:
 
 1. **Structured Logging**
-   - All operations log structured events with correlation IDs
-   - Logs centralized (survive environment destruction)
-   - Retention: 30-90 days minimum (independent of environment lifetime)
+   - All operations MUST log structured events with correlation IDs
+   - Logs MUST be centralized and survive environment destruction
+   - Log retention MUST be minimum 30 days (dev/test) or 90 days (production)
+   - Logs MUST include: timestamp, correlation ID, operation name, actor ID, outcome status
 
-2. **Health Checks**
-   - Every service provides health endpoint
-   - Health check validates external dependencies (database, secrets, monitoring)
-   - Deployment fails if health check returns non-200 status
+2. **Health Monitoring**
+   - Every service MUST provide HTTP health endpoint (e.g., `/health`)
+   - Health endpoint MUST validate all external dependencies (database, secrets, monitoring)
+   - Deployment MUST fail if health check returns non-200 status
+   - Health checks MUST execute within 5 seconds
 
-3. **Metrics & Alerts**
-   - Track: Availability (uptime %), Performance (response time p95), Errors (5xx rate)
-   - Alert on: High error rate, health check failures, unexpected environment recreation
-   - Metrics retained longer than environment lifetime (historical trending)
+3. **Metrics & Performance Tracking**
+   - System MUST track availability (uptime percentage)
+   - System MUST track performance (API response time p95 <200ms, database query p95 <100ms)
+   - System MUST track errors (HTTP 5xx rate)
+   - Metrics MUST be retained longer than environment lifetime (historical trending)
 
-4. **Validation Testing**
-   - Automated post-deployment validation suite
-   - Must complete in <5 minutes (fast feedback for ephemeral environments)
-   - Validates: Health check passes, database migrations applied, test authentication flow succeeds
+4. **Post-Deployment Validation**
+   - Automated validation suite MUST execute after deployment
+   - Validation MUST complete within 5 minutes
+   - Validation MUST verify: health checks passing, database migrations applied, authentication flow successful
 
-**Application Examples**:
-- **App Service**: `/health` endpoint checks database connectivity + monitoring service availability
-- **Database**: EF Core migration check queries `__EFMigrationsHistory` table
-- **Monitoring**: Application Insights telemetry query confirms requests logged in last 5 minutes
+**Acceptance Criteria**:
+```gherkin
+Scenario: Operations log structured events
+  Given a user registration request
+  When registration is processed
+  Then log entry includes correlation ID
+  And log entry includes timestamp
+  And log entry includes actor identifier
+  And log entry includes operation outcome
+
+Scenario: Health check validates dependencies
+  Given a service with database and monitoring dependencies
+  When health endpoint is queried
+  And all dependencies are available
+  Then health check returns HTTP 200
+  When database becomes unavailable
+  And health endpoint is queried again
+  Then health check returns HTTP 503
+  And response indicates which dependency failed
+
+Scenario: Post-deployment validation runs automatically
+  Given a new deployment to environment
+  When deployment completes
+  Then validation suite executes automatically
+  And validation completes within 5 minutes
+  And validation verifies health checks pass
+  And validation verifies test user can authenticate
+```
 
 ---
 
-### Data Persistence Strategy
+### FR7.7: Data Persistence Requirements
 
-**Constraint**: Ephemeral environments require explicit data lifecycle management.
+**Requirement**: Database schema and application state MUST be managed through code to support environment reproducibility.
 
-**Requirements**:
+**Functional Specifications**:
 
 1. **Schema as Code**
-   - Database schema defined via migrations (code-first)
-   - Migrations idempotent (safe to re-run)
-   - Schema recreated automatically on environment provisioning
+   - Database schema MUST be defined via code-based migrations
+   - Migrations MUST be idempotent (safe to re-execute)
+   - Migrations MUST be applied automatically during environment provisioning
+   - Schema history MUST be tracked in `__EFMigrationsHistory` table
 
-1. **Seed Data for Dev/Test**
-   - Seed scripts with fixed identifiers (reproducible test data)
-   - Idempotent seeding (check for existing data before insert)
-   - No seed data in production (only real user-generated data)
+2. **Seed Data Management**
+   - Dev/test environments MUST use seed scripts with fixed identifiers for reproducibility
+   - Seed scripts MUST be idempotent (check for existing data before insert)
+   - Production environments MUST NOT use seed data (only real user-generated data)
+   - Seed data identifiers MUST be predictable (e.g., GUID `11111111-1111-1111-1111-111111111111`)
 
-1. **State Externalization**
-   - Application state: Stateless (derive from database, not memory)
-   - Session state: JWT tokens (client-side, no server-side sessions)
-   - Configuration state: Injected via IaC (not stored in environment)
+3. **Stateless Application Design**
+   - Application state MUST be derived from database, not stored in memory
+   - Session state MUST use client-side tokens (JWT), not server-side sessions
+   - Configuration state MUST be injected via infrastructure code, not stored in environment
+   - Application MUST handle connection failures gracefully (retry with exponential backoff)
 
-**Application Examples**:
-- **Dev Database**: Seed script creates Actor with GUID `11111111-1111-1111-1111-111111111111` (always reproducible)
-- **JWT Tokens**: Client-side storage (localStorage/sessionStorage), server validates without state
+**Acceptance Criteria**:
+```gherkin
+Scenario: Database schema applied via migrations
+  Given an empty database
+  When migration command executes
+  Then database schema matches migration definitions
+  And __EFMigrationsHistory table tracks applied migrations
+
+Scenario: Migrations are idempotent
+  Given a database with migrations already applied
+  When migration command executes again
+  Then command completes without errors
+  And no duplicate tables or columns created
+  And schema remains unchanged
+
+Scenario: Seed data uses fixed identifiers
+  Given an empty dev database
+  When seed script executes
+  Then Actor records created with predicable GUIDs
+  When database is recreated and seed script re-executes
+  Then identical Actor records created with same GUIDs
+
+Scenario: Application is stateless
+  Given a user authenticated via JWT token
+  When application server restarts
+  And user makes request with same JWT token
+  Then request succeeds without re-authentication
+  And user session continues uninterrupted
+```
 
 ---
 
-### Environment Lifecycle Requirements
+### FR7.8: Environment Lifecycle Documentation
 
-**Constraint**: Environment creation and destruction MUST be automated, documented, and validated.
+**Requirement**: Environment creation and destruction workflows MUST be documented and validated.
 
-**Requirements**:
+**Functional Specifications**:
 
-1. **Creation Workflow Documentation**
-   - Step-by-step instructions (developer can follow without prior knowledge)
-   - Estimated time to complete: <10 minutes
-   - Prerequisites clearly listed (tools, credentials, secret values)
-   - Validation checklist (how to verify successful creation)
+1. **Creation Workflow**
+   - Step-by-step instructions MUST be provided for environment creation
+   - Prerequisites MUST be documented (tools, credentials, secret values)
+   - Environment creation MUST complete within 10 minutes
+   - Validation checklist MUST be provided to verify successful creation
 
-2. **Destruction Workflow Documentation**
-   - Destruction steps (automated preferred, manual acceptable)
-   - Blast radius documentation (what breaks, expected downtime)
-   - Validation that all resources cleaned up (no orphaned resources)
+2. **Destruction Workflow**
+   - Destruction steps MUST be documented (automated preferred, manual acceptable)
+   - Blast radius MUST be documented (what breaks, expected downtime)
+   - Destruction MUST include validation that all resources are cleaned up
+   - Destruction MUST complete within 5 minutes
 
-3. **Validation Testing**
-   - Post-creation validation suite (proves environment functional)
-   - Automated tests preferred, manual checklist acceptable for Phase 0
-   - Must validate: Infrastructure provisioned, database schema applied, application deployed, health checks passing
+3. **Validation Requirements**
+   - Post-creation validation MUST verify infrastructure provisioned correctly
+   - Post-creation validation MUST verify database schema applied
+   - Post-creation validation MUST verify application deployed and health checks passing
+   - Post-creation validation MUST complete within 5 minutes
 
-4. **Cost Tracking**
-   - Document monthly cost per environment type (dev/test/prod)
-   - Document recreation cost (time + money)
-   - Justify any cost increases (trade-off analysis required)
+4. **Cost Documentation**
+   - Monthly operational cost MUST be documented per environment type
+   - Recreation cost (time + money) MUST be documented
+   - Cost increases MUST be justified with trade-off analysis
 
-**Application Examples**:
-- **Creation**: `terraform apply` → Database migrations → Seed data → Health check validation → Duration ~5-7 minutes
-- **Destruction**: `terraform destroy` → Verify resources deleted → Duration ~3-5 minutes
-- **Validation**: Health endpoint returns 200 + Database contains expected migrations + Telemetry flowing to monitoring
+**Acceptance Criteria**:
+```gherkin
+Scenario: Environment creation is documented and validated
+  Given environment creation documentation
+  When developer follows instructions
+  Then environment is created within 10 minutes
+  And health checks return HTTP 200
+  And database contains expected migrations
+  And test authentication flow succeeds
+
+Scenario: Environment destruction is documented and validated
+  Given a running environment
+  When destruction workflow is executed
+  Then environment is destroyed within 5 minutes
+  And all resources are deleted from cloud provider
+  And no orphaned resources remain
+
+Scenario: Environment costs are tracked
+  Given cost documentation
+  When reviewing monthly costs
+  Then dev environment cost is documented
+  And test environment cost is documented
+  And prod environment cost is documented
+  And recreation time and cost are documented
+```
 
 ---
 

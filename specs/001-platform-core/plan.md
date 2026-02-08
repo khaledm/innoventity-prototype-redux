@@ -20,7 +20,7 @@ Build an open innovation platform enabling research-based innovation originators
 - Frontend: Angular 18 (standalone components, signals), RxJS, Angular Material (UI components)
 - Testing: xUnit, Playwright (E2E), Stryker.NET (mutation testing)
 
-**Storage**: Azure SQL Database (via EF Core 8), Azure Service Bus (async messaging), Azure Key Vault (secrets), Azure Blob Storage (future document management)
+**Storage**: Azure SQL Database (via EF Core 8), Azure Service Bus (async messaging), Azure Blob Storage (future document management)
 
 **Testing**: 
 - Unit: xUnit with test data builders
@@ -202,7 +202,7 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
   - Store secrets directly in App Service Configuration blade (Azure Portal)
   - Secrets encrypted at rest, accessible only via Azure RBAC
   - **Cost**: $0 additional (included with App Service)
-  - **Complexity**: Low (no Managed Identity, Key Vault setup)
+  - **Complexity**: Low
   
 - **Setup Steps** (Azure Portal):
   1. Navigate to App Service → Configuration → Application settings
@@ -220,22 +220,13 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
   var jwtKey = builder.Configuration["Jwt:SecretKey"];
   ```
 
-- **Trade-offs vs. Key Vault**:
-  - ✅ **Simpler**: No Managed Identity, access policies, or Key Vault resource
-  - ✅ **Cost-effective**: $0 additional (vs. ~$1-2/month for Key Vault)
+- **Trade-offs**:
+  - ✅ **Simple**: No additional infrastructure required
+  - ✅ **Cost-effective**: $0 additional
   - ✅ **Suitable for learning projects with 100 concurrent users**
-  - ❌ **Less granular access control**: Anyone with App Service Contributor role sees secrets (vs. Key Vault Secret User role)
+  - ❌ **Less granular access control**: Anyone with App Service Contributor role can view secrets
   - ❌ **No audit logging**: Can't track who accessed which secret
-  - ❌ **Manual secret rotation**: Must update in portal + restart app (no versioning support)
-
-**Alternative: Azure Key Vault Integration** (if enterprise-grade security needed):
-- **When to use**: 
-  - Resume showcase ("Azure Key Vault integration with Managed Identity")
-  - Production app with compliance requirements (audit logging mandatory)
-  - Multiple apps sharing secrets (centralized management)
-- **Cost**: ~$0.03 per 10K operations + $0.03/secret/month (~$1-2/month total)
-- **Setup**: Create Key Vault → Enable System-assigned Managed Identity on App Service → Add access policy → Use Key Vault references in App Service Configuration (`@Microsoft.KeyVault(SecretUri=...)`)
-- **Reference**: See Research §Decision 8 for Key Vault architecture details
+  - ❌ **Manual secret rotation**: Must update in portal + restart app
 
 **Development Pattern** (Local Environment):
 - **User Secrets** (recommended for sensitive values):
@@ -276,14 +267,6 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
 - ✅ **ALWAYS** use App Service Configuration for production secrets (NOT appsettings.json or plaintext environment variables)
 - ✅ **ALWAYS** enable "Deployment slot setting" to prevent secret leakage during slot swaps
 - ✅ **ALWAYS** review Azure Activity Log for Configuration changes (who modified secrets, when)
-
-**Upgrade Path to Key Vault** (Phase 1+ if needed):
-- If project grows beyond learning scope (real users, compliance requirements), migrate to Key Vault:
-  1. Create Key Vault resource
-  2. Enable System-assigned Managed Identity on App Service
-  3. Add Key Vault access policy (Managed Identity → Get/List secrets)
-  4. Update App Service Configuration values from `<secret>` to `@Microsoft.KeyVault(SecretUri=...)`
-  5. No code changes required (configuration binding stays the same)
 
 ## Frontend/UX Requirements
 
@@ -440,7 +423,7 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
 - **Scenarios**:
   - Database connection timeout (e.g., Azure SQL throttling)
   - Unhandled application exceptions (e.g., null reference in business logic)
-  - Third-party service failures (e.g., Azure Key Vault unavailable)
+  - External service failures
 - **API Response**: `500 Internal Server Error` (Contracts §InternalServerError schema, line 740-757)
   ```json
   {
@@ -746,44 +729,6 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
 
 - **Phase 1 Requirements**: Re-run tests after adding innovation list/search endpoints (higher query complexity)
 
-### CHK101: Backup and Recovery Requirements
-- **Azure SQL Automated Backups** (managed by Azure, Research §Decision 4):
-  - **Full Backups**: Weekly (retained 7-35 days based on tier)
-  - **Differential Backups**: Every 12-24 hours (depends on database activity)
-  - **Transaction Log Backups**: Every 5-10 minutes (point-in-time restore granularity)
-  - **Retention**: Basic tier: 7 days, Standard/Premium: 35 days default (configurable up to 10 years with LTR)
-- **Point-in-Time Restore**:
-  - Restore database to any point within retention window (e.g., "5 minutes before migration failure")
-  - Azure Portal or CLI: `az sql db restore --dest-name Innoventity-Restored --time "2025-01-15T14:30:00Z"`
-- **Disaster Recovery Scenarios**:
-  
-  **Scenario 1: Accidental Data Deletion** (e.g., admin runs DELETE without WHERE clause)
-  - **Detection**: Application Insights logs unexpected data loss, user reports missing innovations
-  - **Recovery**:
-    1. Identify timestamp before deletion (check audit logs)
-    2. Restore database to new instance: `Innoventity-PreDelete`
-    3. Export affected records: `SELECT * INTO TempRecovery FROM Innoventity-PreDelete.dbo.Innovation WHERE Id IN (...)`
-    4. Validate data integrity, re-import to production
-    5. Downtime: ~15-30 minutes
-  
-  **Scenario 2: Corrupted Database** (e.g., failed migration, hardware failure)
-  - **Detection**: Database inaccessible, Azure SQL health check fails
-  - **Recovery**:
-    1. Attempt Azure SQL auto-failover (if geo-replication enabled, Phase 1+ consideration)
-    2. If no geo-replica: Restore from latest backup (max 10-minute data loss)
-    3. Re-run migrations if corruption from partial migration: `dotnet ef database update`
-    4. Downtime: ~10-20 minutes
-  
-  **Scenario 3: Complete Azure Region Outage**
-  - **Phase 0 Strategy**: **Acceptable downtime** (no geo-replication in v1.0 for KISS principle)
-  - **Phase 1+ Strategy**: Configure Azure SQL geo-replication to secondary region, auto-failover groups
-
-- **Application Data Exports** (manual safety net):
-  - **Frequency**: Weekly (automated pipeline, Phase 1+)
-  - **Format**: CSV exports of Actor, Innovation, Bid tables
-  - **Storage**: Azure Blob Storage (separate from SQL server, 30-day retention)
-  - **Purpose**: Additional recovery layer if Azure SQL backups insufficient
-
 ### CHK102: Deployment Rollback Requirements
 - **Azure App Service Deployment Slots** (zero-downtime strategy):
   - **Slots**: Production (active), Staging (pre-validation)
@@ -832,7 +777,6 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
 - **Pre-Migration Validation** (prevent failures):
   - **Local Testing**: Always test migrations against copy of Production data (anonymized)
   - **Staging Environment**: Run `dotnet ef database update` on Staging database first
-  - **Backup Verification**: Confirm latest backup exists before Production migration
   - **Review Checklist**:
     - [ ] Migration adds only nullable columns OR provides default values
     - [ ] No `DROP COLUMN` operations (use feature flags to hide columns instead)
@@ -870,14 +814,13 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
     1. **Immediate**: Roll back app deployment (slot swap) - restores previous app version
     2. **Assess schema state**:
        - If migration completed: Deploy hotfix app version compatible with new schema
-       - If migration failed midway: Manually fix partial migration OR restore database (CHK101)
+       - If migration failed midway: Manually fix partial migration
     3. **Validate**: Run integration tests against Production database
     4. **Re-deploy**: Fixed app version to Production
   
   **Scenario 5: Complete Database Corruption from Failed Migration**
-  - **Last Resort**: Point-in-time restore to pre-migration state (CHK101)
-  - **Data Loss**: Max 10 minutes (transaction log backup frequency)
-  - **Downtime**: ~20 minutes (restore + re-deploy previous app version)
+  - **Last Resort**: Contact Azure support for database recovery options
+  - **Downtime**: Variable depending on issue severity
 
 ## Constitution Check
 
@@ -906,7 +849,7 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
 - Test-first development mandated (TDD: red → green → refactor)
 - Coverage targets: >80% unit, 100% integration, P0 journeys E2E
 - Mutation testing (>70% score) validates test quality  
-- Security from day one: JWT authentication, bcrypt passwords, Azure Key Vault for secrets
+- Security from day one: JWT authentication, bcrypt passwords, App Service Configuration for secrets
 - Production-ready from Phase 0 (no "prototype" mindset)
 
 **Architecture Alignment**:
@@ -915,6 +858,41 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
 - Playwright for E2E testing of critical user journeys
 - Stryker.NET for mutation testing
 - Azure Application Insights for monitoring and observability
+
+---
+
+### Phase 0 Production-Ready Checklist (CHK031)
+
+For Phase 0 to be considered "production-ready" (even as a constrained first slice), all of the following MUST be true:
+
+1. **Security & Secrets**
+  - All secrets (JWT signing key, DB connection string) are provided via App Service Configuration or equivalent external configuration
+  - No secrets are committed to source control, configuration files, or container images
+  - HTTPS is enforced end-to-end for all public endpoints
+
+2. **Testing & Quality**
+  - Unit test coverage for core authentication and innovation read paths is at least 80%
+  - Integration tests cover all Phase 0 API endpoints (registration, activation, login, refresh, view innovation, health)
+  - At least one Playwright E2E test exercises the full Phase 0 journey via the Angular client
+  - Mutation score for core authentication domain and token generation is at least 70%
+
+3. **Infrastructure & Operations**
+  - Dev environment can be created and destroyed from infrastructure code within 10 minutes (FR7.1)
+  - Infrastructure provisioning is idempotent (re-applying configuration produces no changes) (FR7.2)
+  - `/health` endpoint validates connectivity to database and critical configuration values (FR7.2)
+  - Application emits request logs, dependency telemetry, and basic custom events to Application Insights
+
+4. **Deployment Pipeline**
+  - CI/CD pipeline builds, tests, and deploys the Phase 0 slice to the dev environment with no manual steps other than approvals
+  - Pipeline fails on test failures, failed health checks, or infrastructure drift requiring manual intervention
+  - A tagged release artifact (image or build output) is produced for each successful deployment
+
+5. **Documentation & Runbooks**
+  - README contains clear instructions for local development, running tests, and deploying to the dev environment
+  - A short runbook describes how to rotate secrets (Phase 0: config change + restart), recover from failed deployments, and validate system health
+  - Known limitations of Phase 0 (e.g., no multi-tenant isolation, simplified authorization) are explicitly listed
+
+These checklist items provide the concrete interpretation of "production-ready from Phase 0" used throughout this plan and should be re-validated before cutting any Phase 0 release.
 
 ---
 
