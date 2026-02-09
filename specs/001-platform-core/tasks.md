@@ -84,22 +84,22 @@
 
 ### Tests for User Story 2 (Write FIRST, verify FAIL)
 
-- [ ] T030 [P] [US2] Unit test: JwtTokenService generates valid HS256 tokens in tests/Unit/Infrastructure/JwtTokenServiceTests.cs
-- [ ] T031 [P] [US2] Unit test: JwtTokenService sets access token expiry to 1 hour in JwtTokenServiceTests.cs
-- [ ] T032 [P] [US2] Unit test: JwtTokenService sets refresh token expiry to 7 days in JwtTokenServiceTests.cs
-- [ ] T033 [US2] Integration test: POST /auth/login returns tokens for valid credentials in tests/Integration/Features/Authentication/LoginTests.cs
-- [ ] T034 [US2] Integration test: POST /auth/login rejects PendingActivation account in LoginTests.cs
-- [ ] T035 [US2] Integration test: POST /auth/login rejects invalid password in LoginTests.cs
-- [ ] T036 [US2] Integration test: POST /auth/refresh-token returns new access token in RefreshTokenTests.cs
-- [ ] T037 [US2] Integration test: POST /auth/refresh-token rejects expired refresh token in RefreshTokenTests.cs
+- [X] T030 [P] [US2] Unit test: JwtTokenService generates valid HS256 tokens in tests/Unit/Infrastructure/JwtTokenServiceTests.cs
+- [X] T031 [P] [US2] Unit test: JwtTokenService sets access token expiry to 1 hour in JwtTokenServiceTests.cs
+- [X] T032 [P] [US2] Unit test: JwtTokenService sets refresh token expiry to 7 days in JwtTokenServiceTests.cs
+- [X] T033 [US2] Integration test: POST /auth/login returns tokens for valid credentials in tests/Integration/Features/Authentication/LoginTests.cs
+- [X] T034 [US2] Integration test: POST /auth/login rejects PendingActivation account in LoginTests.cs
+- [X] T035 [US2] Integration test: POST /auth/login rejects invalid password in LoginTests.cs
+- [X] T036 [US2] Integration test: POST /auth/refresh-token returns new access token in RefreshTokenTests.cs
+- [X] T037 [US2] Integration test: POST /auth/refresh-token rejects expired refresh token in RefreshTokenTests.cs
 
 ### Implementation for User Story 2
 
-- [ ] T038 [US2] Implement POST /auth/login endpoint in Features/Authentication/Login.cs
-- [ ] T039 [US2] Implement password verification using BCrypt in Features/Authentication/Login.cs
-- [ ] T040 [US2] Implement AccountStatus check (only Active can login) in Features/Authentication/Login.cs
-- [ ] T041 [US2] Implement POST /auth/refresh-token endpoint in Features/Authentication/RefreshToken.cs
-- [ ] T042 [US2] Add JWT claims (actorId, actorType, email) in JwtTokenService.cs
+- [X] T038 [US2] Implement POST /auth/login endpoint in Features/Authentication/Login.cs
+- [X] T039 [US2] Implement password verification using BCrypt in Features/Authentication/Login.cs
+- [X] T040 [US2] Implement AccountStatus check (only Active can login) in Features/Authentication/Login.cs
+- [X] T041 [US2] Implement POST /auth/refresh-token endpoint in Features/Authentication/RefreshToken.cs
+- [X] T042 [US2] Add JWT claims (actorId, actorType, email) in JwtTokenService.cs
 
 ---
 

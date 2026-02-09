@@ -82,6 +82,8 @@ app.UseAuthorization();
 app.MapHealthEndpoint();
 app.MapRegisterEndpoint();
 app.MapActivateEndpoint();
+app.MapLoginEndpoint();
+app.MapRefreshTokenEndpoint();
 app.MapGet("/", () => "Hello World!");
 
 app.Run();
