@@ -1367,8 +1367,9 @@ These journeys are important for full platform value but can be tested with inte
 **Goal**: Prove end-to-end functionality with simplest possible workflow.
 
 **Scope**: 
-1. **User Registration & Authentication**: User can register as Idea Generator, activate account, and log in
-2. **View Single Innovation**: Authenticated user can retrieve and view one innovation by its unique identifier
+1. **User Registration & Authentication (Backend)**: User can register as Idea Generator, activate account, and log in via API endpoints
+2. **View Single Innovation (Backend)**: Authenticated user can retrieve and view one innovation by its unique identifier via API endpoint
+3. **Minimal Angular Client (Frontend)**: Angular 18 application exercising Phase 0 API endpoints for end-to-end validation of the complete user journey
 
 **User Story**:
 > As an authenticated Idea Generator,  
@@ -1411,13 +1412,14 @@ These journeys are important for full platform value but can be tested with inte
 - User can successfully complete the registration-to-viewing workflow
 
 **What This Proves**:
-- User registration and activation workflow complete
-- Authentication mechanism working
+- User registration and activation workflow complete (backend + frontend)
+- Authentication mechanism working (JWT tokens, client-side storage)
 - Data persistence and retrieval working
+- Frontend-to-backend integration functional (Angular client consuming API)
 - API documentation accessible
 - Deployment pipeline functional
 - Monitoring and observability operational
-- Testing strategy validated (unit → integration → end-to-end)
+- Testing strategy validated (unit → integration → end-to-end with real frontend)
 
 ---
 

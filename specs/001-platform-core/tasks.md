@@ -8,11 +8,11 @@
 
 ## Phase 1: Setup
 
-- [ ] T001 Create solution structure src/Innoventity.API/, tests/Innoventity.API.Tests/
-- [ ] T002 Initialize ASP.NET Core 8 project with Minimal APIs in src/Innoventity.API/
-- [ ] T003 [P] Configure EF Core 8, BCrypt.Net, IdentityModel.Tokens.Jwt NuGet packages
-- [ ] T004 [P] Initialize xUnit test project in tests/Innoventity.API.Tests/
-- [ ] T005 [P] Configure .editorconfig, .gitignore, appsettings.json structure
+- [X] T001 Create solution structure src/Innoventity.API/, tests/Innoventity.API.Tests/
+- [X] T002 Initialize ASP.NET Core 8 project with Minimal APIs in src/Innoventity.API/
+- [X] T003 [P] Configure EF Core 8, BCrypt.Net, IdentityModel.Tokens.Jwt NuGet packages
+- [X] T004 [P] Initialize xUnit test project in tests/Innoventity.API.Tests/
+- [X] T005 [P] Configure .editorconfig, .gitignore, appsettings.json structure
 
 ---
 
@@ -20,16 +20,16 @@
 
 **⚠️ CRITICAL**: User stories cannot begin until foundation is complete
 
-- [ ] T006 Create AppDbContext in src/Innoventity.API/Infrastructure/Persistence/AppDbContext.cs
-- [ ] T007 Configure EF Core connection string management in src/Innoventity.API/Program.cs
-- [ ] T008 Create initial migration for empty database in Infrastructure/Persistence/Migrations/
-- [ ] T009 [P] Implement JWT token generation service in Infrastructure/Authentication/JwtTokenService.cs
-- [ ] T010 [P] Configure JWT authentication middleware in Program.cs
-- [ ] T011 [P] Implement password hashing service using BCrypt in Infrastructure/Authentication/PasswordHasher.cs
-- [ ] T012 Create base ProblemDetails error handling middleware in Infrastructure/ErrorHandling/
-- [ ] T013 Configure Application Insights telemetry in Program.cs
-- [ ] T066 Implement `/health` endpoint in Features/Health/HealthCheck.cs validating database and configuration dependencies
-- [ ] T067 Add integration tests for `/health` happy-path and failure-path behavior in tests/Integration/Features/Health/HealthCheckTests.cs
+- [X] T006 Create AppDbContext in src/Innoventity.API/Infrastructure/Persistence/AppDbContext.cs
+- [X] T007 Configure EF Core connection string management in src/Innoventity.API/Program.cs
+- [X] T008 Create initial migration for empty database in Infrastructure/Persistence/Migrations/
+- [X] T009 [P] Implement JWT token generation service in Infrastructure/Authentication/JwtTokenService.cs
+- [X] T010 [P] Configure JWT authentication middleware in Program.cs
+- [X] T011 [P] Implement password hashing service using BCrypt in Infrastructure/Authentication/PasswordHasher.cs
+- [X] T012 Create base ProblemDetails error handling middleware in Infrastructure/ErrorHandling/
+- [X] T013 Configure Application Insights telemetry in Program.cs
+- [X] T066 Implement `/health` endpoint in Features/Health/HealthCheck.cs validating database and configuration dependencies
+- [X] T067 Add integration tests for `/health` happy-path and failure-path behavior in tests/Integration/Features/Health/HealthCheckTests.cs
 
 ---
 
@@ -122,6 +122,7 @@
 - [ ] T048 [US3] Integration test: GET /innovations/{id} returns innovation data in tests/Integration/Features/Innovations/GetInnovationTests.cs
 - [ ] T049 [US3] Integration test: GET /innovations/{id} returns 404 for non-existent ID in GetInnovationTests.cs
 - [ ] T050 [US3] Integration test: GET /innovations/{id} returns 401 without auth token in GetInnovationTests.cs
+- [ ] T050a [US3] Integration test: Cross-actor access validation - User of ActorType Manufacturing reads innovation owned by ActorType IdeaGenerator, assert 200 status (validates Phase 0 open-discovery semantics: any authenticated user can view any innovation)
 - [ ] T051 [US3] E2E test: Register → Activate → Login → ViewInnovation journey in tests/E2E/Journeys/Phase0JourneyTests.cs
 
 ### Implementation for User Story 3
@@ -145,6 +146,17 @@
 - [ ] T063 Verify all integration tests pass with clean database
 - [ ] T064 Verify E2E test passes end-to-end journey
 - [ ] T065 Create deployment configuration for Azure App Service in infrastructure/
+- [ ] T079 Run Stryker.NET mutation tests on Infrastructure/Authentication/JwtTokenService.cs and PasswordHasher.cs, verify ≥70% mutation score per CHK031 requirement
+
+---
+
+## Phase 6b: CI/CD Pipeline & Operations (CHK031)
+
+**Goal**: Implement automated deployment pipeline satisfying CHK031 production-ready requirements.
+
+- [ ] T076 Author CI/CD pipeline definition (.github/workflows/deploy.yml or azure-pipelines.yml) with stages: Build → Unit Tests → Integration Tests → Deploy to Dev → Health Check
+- [ ] T077 Configure pipeline gates: (1) Fail on test failures (exit code != 0), (2) Fail on health check returning non-200, (3) Fail on infrastructure drift detection
+- [ ] T078 Validate green pipeline run: Trigger pipeline, verify successful deploy to dev environment, confirm all gates executed and artifact tagged
 
 ---
 
@@ -166,17 +178,20 @@
 
 - **Setup (Phase 1)**: Start immediately
 - **Foundational (Phase 2)**: Depends on Setup → BLOCKS all user stories
+- **Infrastructure Phase 0 (Phase 2b)**: Can run parallel with Phase 2 (after T008 migration)
 - **US1 Registration (Phase 3)**: Depends on Foundational
 - **US2 Authentication (Phase 4)**: Depends on US1 (requires Actor entity)
 - **US3 View Innovation (Phase 5)**: Depends on US2 (requires authentication)
 - **Polish (Phase 6)**: Depends on US1+US2+US3 complete
+- **CI/CD Pipeline (Phase 6b)**: Depends on Phase 6 complete (needs T066-T070)
+- **Frontend Phase 0 (Phase 7)**: Can run parallel with Phase 6b
 
 ### Critical Path for Phase 0 MVP
 
 ```
 T001-T005 (Setup)
   ↓
-T006-T013 (Foundational) [BLOCKING]
+T006-T013, T066-T067 (Foundational + Health) [BLOCKING]
   ↓
 T014-T029 (US1: Registration)
   ↓
@@ -184,7 +199,11 @@ T030-T042 (US2: Authentication) [needs Actor entity from US1]
   ↓
 T043-T057 (US3: View Innovation) [needs auth from US2]
   ↓
-T058-T065 (Polish & Deploy)
+T058-T065, T079 (Polish & Deploy + Mutation Testing)
+  ↓
+T076-T078 (CI/CD Pipeline) [CHK031 requirement]
+  ↓
+(Parallel: T068-T070 IaC + T071-T075 Frontend can run concurrently)
 ```
 
 ### Parallel Opportunities
@@ -195,8 +214,10 @@ T058-T065 (Polish & Deploy)
 **Phase 3 (US1 Tests)**: T017, T018, T019 can run parallel (after T016)
 **Phase 4 (US2 Tests)**: T030, T031, T032 can run parallel
 **Phase 5 (US3 Domain)**: T043, T044, T046 can run parallel
-**Phase 5 (US3 Tests)**: T047, T048 can run parallel (after T045)
-**Phase 6 (Polish)**: T058, T059, T060 can run parallel
+**Phase 5 (US3 Tests)**: T047, T048, T049, T050, T050a can run parallel (after T045)
+**Phase 6 (Polish)**: T058, T059, T060 can run parallel; T079 runs after core auth implementation complete
+**Phase 6b (CI/CD)**: T076, T077 can run parallel (both editing pipeline file)
+**Phase 7 (Frontend)**: T071, T072, T073, T074 can run parallel (different files)
 
 ---
 
@@ -236,9 +257,12 @@ For each user story:
 3. Complete US1 Registration (T014-T029) → ~4 hours
 4. Complete US2 Authentication (T030-T042) → ~3 hours
 5. Complete US3 View Innovation (T043-T057) → ~3 hours
-6. Polish & Deploy (T058-T065) → ~2 hours
+6. Polish & Deploy (T058-T065, T079) → ~3 hours
+7. CI/CD Pipeline (T076-T078) → ~2 hours
+8. (Parallel) IaC (T068-T070) → ~2 hours
+9. (Parallel) Frontend (T071-T075) → ~3 hours
 
-**Total MVP estimate**: ~14 hours (assumes TDD discipline, no debugging needed if tests written correctly)
+**Total MVP estimate**: ~20 hours (assumes TDD discipline, no debugging needed if tests written correctly)
 
 ### Validation Checkpoints
 
@@ -247,6 +271,8 @@ For each user story:
 - After T042: User can login → JWT tokens returned
 - After T057: User can view innovation → E2E journey complete
 - After T065: Deployable to Azure → smoke test in staging
+- After T079: Mutation testing validated → test quality confirmed (CHK031)
+- After T078: CI/CD pipeline operational → automated deploy/test/health validated (CHK031)
 
 ---
 
