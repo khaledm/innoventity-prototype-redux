@@ -44,6 +44,14 @@ public static class HealthCheck
             health.checks["jwt_config"] = "Healthy";
 
             return Results.Ok(health);
+        })
+        .WithName("HealthCheck")
+        .WithTags("Health")
+        .WithOpenApi(operation =>
+        {
+            operation.Summary = "Check API health status";
+            operation.Description = "Returns health status of the API including database connectivity and JWT configuration";
+            return operation;
         });
     }
 }

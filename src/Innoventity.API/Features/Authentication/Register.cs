@@ -84,9 +84,17 @@ public static class Register
                 email = actor.Email,
                 actorType = actor.ActorType.ToString(),
                 accountStatus = actor.AccountStatus.ToString(),
-                activationToken = actor.ActivationToken, // For testing only - remove in production
+                activationToken = actor.ActivationToken, // TODO: Remove in production - send via email service instead
                 message = "Registration successful. Please check your email for the activation link."
             });
+        })
+        .WithName("Register")
+        .WithTags("Authentication")
+        .WithOpenApi(operation =>
+        {
+            operation.Summary = "Register a new actor account";
+            operation.Description = "Creates a new user account with PendingActivation status. Requires email, full name, contact address, actor type, and password.";
+            return operation;
         });
     }
 

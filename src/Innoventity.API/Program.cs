@@ -7,11 +7,24 @@ using Innoventity.API.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure Application Insights
 builder.Services.AddApplicationInsightsTelemetry();
+
+// Configure OpenAPI documentation (T060)
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "Innoventity Platform API",
+        Version = "v1",
+        Description = "Open Innovation Platform - Phase 0 MVP"
+    });
+});
 
 // Configure Entity Framework Core
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -53,6 +66,14 @@ var app = builder.Build();
 
 // Configure error handling
 app.ConfigureExceptionHandler();
+
+// Configure Swagger and Scalar API documentation (T060)
+app.UseSwagger();
+app.MapScalarApiReference(options =>
+{
+    options.Title = "Innoventity Platform API";
+    options.Theme = ScalarTheme.Purple;
+});
 
 app.UseAuthentication();
 app.UseAuthorization();

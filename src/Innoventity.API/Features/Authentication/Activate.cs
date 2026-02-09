@@ -65,6 +65,14 @@ public static class Activate
                 email = actor.Email,
                 accountStatus = actor.AccountStatus.ToString()
             });
+        })
+        .WithName("Activate")
+        .WithTags("Authentication")
+        .WithOpenApi(operation =>
+        {
+            operation.Summary = "Activate user account";
+            operation.Description = "Activates a pending account using email and activation token. Changes account status from PendingActivation to Active.";
+            return operation;
         });
     }
 

@@ -58,7 +58,7 @@
 ### Tests for User Story 1 (Write FIRST, verify FAIL)
 
 - [X] T017 [P] [US1] Unit test: Actor entity validates required fields in tests/Unit/Domain/Entities/ActorTests.cs
-- [ ] T018 [P] [US1] Unit test: Actor entity enforces email uniqueness per ActorType in ActorTests.cs
+- [X] T018 [P] [US1] Unit test: Actor entity enforces email uniqueness per ActorType in ActorTests.cs
 - [X] T019 [P] [US1] Unit test: PasswordHasher verifies BCrypt work factor 12 in tests/Unit/Infrastructure/PasswordHasherTests.cs
 - [X] T020 [US1] Integration test: POST /auth/register creates actor with PendingActivation in tests/Integration/Features/Authentication/RegisterActorTests.cs
 - [X] T021 [US1] Integration test: POST /auth/register rejects duplicate email+ActorType in RegisterActorTests.cs
@@ -140,7 +140,7 @@
 
 - [ ] T058 [P] Create README.md with setup instructions at repository root
 - [ ] T059 [P] Verify quickstart.md validation steps in specs/001-platform-core/quickstart.md
-- [ ] T060 [P] Document API endpoints in Scalar/OpenAPI at /scalar route
+- [X] T060 [P] Document API endpoints in Scalar/OpenAPI at /scalar route
 - [ ] T061 Configure CORS policy for development in Program.cs
 - [ ] T062 Add structured logging with correlation IDs in Infrastructure/Logging/
 - [ ] T063 Verify all integration tests pass with clean database

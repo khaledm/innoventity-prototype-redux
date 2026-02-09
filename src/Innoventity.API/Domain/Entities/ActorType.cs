@@ -22,7 +22,7 @@ public enum ActorType
     Manufacturing = 3,
 
     /// <summary>
-    /// Sales & Marketing partner - provides market access and commercialization
+    /// Sales and Marketing partner - provides market access and commercialization
     /// </summary>
     SalesMarketing = 4,
 
