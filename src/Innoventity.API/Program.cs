@@ -1,4 +1,5 @@
 using System.Text;
+using Innoventity.API.Features.Authentication;
 using Innoventity.API.Features.Health;
 using Innoventity.API.Infrastructure.Authentication;
 using Innoventity.API.Infrastructure.ErrorHandling;
@@ -58,6 +59,8 @@ app.UseAuthorization();
 
 // Map endpoints
 app.MapHealthEndpoint();
+app.MapRegisterEndpoint();
+app.MapActivateEndpoint();
 app.MapGet("/", () => "Hello World!");
 
 app.Run();

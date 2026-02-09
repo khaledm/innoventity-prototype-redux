@@ -51,28 +51,28 @@
 
 ### Domain for User Story 1
 
-- [ ] T014 [P] [US1] Create ActorType enum (IdeaGenerator, RD, Manufacturing, SalesMarketing, Investor) in Domain/Entities/ActorType.cs
-- [ ] T015 [P] [US1] Create AccountStatus enum (PendingActivation, Active, Suspended) in Domain/Entities/AccountStatus.cs
-- [ ] T016 [US1] Create Actor entity in Domain/Entities/Actor.cs with validation rules R1.1-R1.3
+- [X] T014 [P] [US1] Create ActorType enum (IdeaGenerator, RD, Manufacturing, SalesMarketing, Investor) in Domain/Entities/ActorType.cs
+- [X] T015 [P] [US1] Create AccountStatus enum (PendingActivation, Active, Suspended) in Domain/Entities/AccountStatus.cs
+- [X] T016 [US1] Create Actor entity in Domain/Entities/Actor.cs with validation rules R1.1-R1.3
 
 ### Tests for User Story 1 (Write FIRST, verify FAIL)
 
-- [ ] T017 [P] [US1] Unit test: Actor entity validates required fields in tests/Unit/Domain/Entities/ActorTests.cs
+- [X] T017 [P] [US1] Unit test: Actor entity validates required fields in tests/Unit/Domain/Entities/ActorTests.cs
 - [ ] T018 [P] [US1] Unit test: Actor entity enforces email uniqueness per ActorType in ActorTests.cs
-- [ ] T019 [P] [US1] Unit test: PasswordHasher verifies BCrypt work factor 12 in tests/Unit/Infrastructure/PasswordHasherTests.cs
-- [ ] T020 [US1] Integration test: POST /auth/register creates actor with PendingActivation in tests/Integration/Features/Authentication/RegisterActorTests.cs
-- [ ] T021 [US1] Integration test: POST /auth/register rejects duplicate email+ActorType in RegisterActorTests.cs
-- [ ] T022 [US1] Integration test: POST /auth/activate changes status to Active in ActivateAccountTests.cs
-- [ ] T023 [US1] Integration test: POST /auth/activate rejects invalid token in ActivateAccountTests.cs
+- [X] T019 [P] [US1] Unit test: PasswordHasher verifies BCrypt work factor 12 in tests/Unit/Infrastructure/PasswordHasherTests.cs
+- [X] T020 [US1] Integration test: POST /auth/register creates actor with PendingActivation in tests/Integration/Features/Authentication/RegisterActorTests.cs
+- [X] T021 [US1] Integration test: POST /auth/register rejects duplicate email+ActorType in RegisterActorTests.cs
+- [X] T022 [US1] Integration test: POST /auth/activate changes status to Active in ActivateAccountTests.cs
+- [X] T023 [US1] Integration test: POST /auth/activate rejects invalid token in ActivateAccountTests.cs
 
 ### Implementation for User Story 1
 
-- [ ] T024 [US1] Add Actor entity to AppDbContext and create migration in Infrastructure/Persistence/
-- [ ] T025 [US1] Implement POST /auth/register endpoint in Features/Authentication/Register.cs
-- [ ] T026 [US1] Implement activation token generation in Features/Authentication/Register.cs
-- [ ] T027 [US1] Implement POST /auth/activate endpoint in Features/Authentication/Activate.cs
-- [ ] T028 [US1] Add validation for R1.3 (email unique per ActorType) in Features/Authentication/Register.cs
-- [ ] T029 [US1] Add validation for R8.4 (password complexity) in Features/Authentication/Register.cs
+- [X] T024 [US1] Add Actor entity to AppDbContext and create migration in Infrastructure/Persistence/
+- [X] T025 [US1] Implement POST /auth/register endpoint in Features/Authentication/Register.cs
+- [X] T026 [US1] Implement activation token generation in Features/Authentication/Register.cs
+- [X] T027 [US1] Implement POST /auth/activate endpoint in Features/Authentication/Activate.cs
+- [X] T028 [US1] Add validation for R1.3 (email unique per ActorType) in Features/Authentication/Register.cs
+- [X] T029 [US1] Add validation for R8.4 (password complexity) in Features/Authentication/Register.cs
 
 ---
 
