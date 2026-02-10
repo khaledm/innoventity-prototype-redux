@@ -67,13 +67,16 @@ var app = builder.Build();
 // Configure error handling
 app.ConfigureExceptionHandler();
 
-// Configure Swagger and Scalar API documentation (T060)
-app.UseSwagger();
-app.MapScalarApiReference(options =>
+// Configure Swagger and Scalar API documentation (T060) - Development only
+if (app.Environment.IsDevelopment())
 {
-    options.Title = "Innoventity Platform API";
-    options.Theme = ScalarTheme.Purple;
-});
+    app.MapSwagger("/openapi/{documentName}.json");
+    app.MapScalarApiReference(options =>
+    {
+        options.WithTitle("Innoventity Platform API")
+               .WithTheme(ScalarTheme.Purple);
+    });
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
