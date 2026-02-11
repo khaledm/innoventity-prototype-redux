@@ -8,13 +8,12 @@ public class InnovationTests
     [Fact]
     public void Innovation_Should_RequireTitle()
     {
-#pragma warning disable CS9035 // Required member must be set
         // Arrange & Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() =>
         {
             var innovation = new Innovation
             {
-                // Title omitted - should fail
+                Title = null!, // Explicitly set to null to test [Required] validation
                 ProductType = "Energy Storage Device",
                 ResearchBackground = "Test background",
                 IprStatus = "Patent Pending",
@@ -29,21 +28,19 @@ public class InnovationTests
                 AdvantageKeywords = "test"
             };
         });
-#pragma warning restore CS9035
         Assert.Contains("Title", exception.Message);
     }
 
     [Fact]
     public void Innovation_Should_RequireProductType()
     {
-#pragma warning disable CS9035 // Required member must be set
         // Arrange & Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() =>
         {
             var innovation = new Innovation
             {
                 Title = "Test Innovation",
-                // ProductType omitted - should fail
+                ProductType = null!, // Explicitly set to null to test [Required] validation
                 ResearchBackground = "Test background",
                 IprStatus = "Patent Pending",
                 ProductDescription = "Test description",
@@ -57,7 +54,6 @@ public class InnovationTests
                 AdvantageKeywords = "test"
             };
         });
-#pragma warning restore CS9035
 
         Assert.Contains("ProductType", exception.Message);
     }
@@ -65,7 +61,6 @@ public class InnovationTests
     [Fact]
     public void Innovation_Should_RequireResearchBackground()
     {
-#pragma warning disable CS9035 // Required member must be set
         // Arrange & Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() =>
         {
@@ -73,7 +68,7 @@ public class InnovationTests
             {
                 Title = "Test Innovation",
                 ProductType = "Energy Storage Device",
-                // ResearchBackground omitted - should fail
+                ResearchBackground = null!, // Explicitly set to null to test [Required] validation
                 IprStatus = "Patent Pending",
                 ProductDescription = "Test description",
                 ProductAdvantages = "Test advantages",
@@ -95,9 +90,8 @@ public class InnovationTests
     public void Innovation_Should_AllowValidConstruction()
     {
         // Arrange & Act
-        var innovation = new Innovation
+        var innovation = new Innovation(Guid.NewGuid())
         {
-            Id = Guid.NewGuid(),
             IdeaToken = Guid.NewGuid(),
             OwnerId = Guid.NewGuid(),
             Title = "Quantum Battery Prototype",

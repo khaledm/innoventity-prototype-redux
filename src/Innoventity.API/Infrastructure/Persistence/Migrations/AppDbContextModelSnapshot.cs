@@ -55,11 +55,6 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<string>("ContactAddress")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<DateTimeOffset>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetimeoffset")
@@ -70,15 +65,29 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<string>("FullName")
+                    b.Property<string>("FirstName")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("PasswordSalt")
+                        .IsRequired()
+                        .HasMaxLength(44)
+                        .HasColumnType("nvarchar(44)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .ValueGeneratedOnAdd()
@@ -96,7 +105,7 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Innoventity.API.Domain.Entities.Industry", b =>
                 {
-                    b.Property<string>("IndustryId")
+                    b.Property<string>("Id")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
@@ -105,7 +114,7 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.HasKey("IndustryId");
+                    b.HasKey("Id");
 
                     b.ToTable("Industries");
                 });
@@ -121,9 +130,9 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<DateTimeOffset>("CreatedAt")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
+                        .HasColumnType("datetimeoffset")
                         .HasDefaultValueSql("GETUTCDATE()");
 
                     b.Property<string>("DevelopmentPhase")
@@ -180,8 +189,8 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("SubmittedAt")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset?>("SubmittedAt")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<string>("TargetCustomerBase")
                         .IsRequired()
@@ -223,6 +232,54 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         .HasForeignKey("InnovationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Innoventity.API.Domain.Entities.Actor", b =>
+                {
+                    b.OwnsOne("Innoventity.API.Domain.Entities.Address", "ContactAddress", b1 =>
+                        {
+                            b1.Property<Guid>("ActorId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<string>("Address1")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("nvarchar(100)")
+                                .HasColumnName("ContactAddress_Address1");
+
+                            b1.Property<string>("Address2")
+                                .HasMaxLength(100)
+                                .HasColumnType("nvarchar(100)")
+                                .HasColumnName("ContactAddress_Address2");
+
+                            b1.Property<string>("City")
+                                .IsRequired()
+                                .HasMaxLength(50)
+                                .HasColumnType("nvarchar(50)")
+                                .HasColumnName("ContactAddress_City");
+
+                            b1.Property<string>("CountryCode")
+                                .IsRequired()
+                                .HasMaxLength(2)
+                                .HasColumnType("nchar(2)")
+                                .HasColumnName("ContactAddress_CountryCode")
+                                .IsFixedLength();
+
+                            b1.Property<string>("PostCode")
+                                .IsRequired()
+                                .HasMaxLength(20)
+                                .HasColumnType("nvarchar(20)")
+                                .HasColumnName("ContactAddress_PostCode");
+
+                            b1.HasKey("ActorId");
+
+                            b1.ToTable("Actors");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ActorId");
+                        });
+
+                    b.Navigation("ContactAddress");
                 });
 
             modelBuilder.Entity("Innoventity.API.Domain.Entities.Innovation", b =>

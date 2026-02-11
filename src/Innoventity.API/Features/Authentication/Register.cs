@@ -58,15 +58,29 @@ public static class Register
             }
 
             // Create actor with pending activation (R1.1)
-            var actor = new Actor
+            // Generate password salt (R8.5)
+            var saltBytes = new byte[32];
+            RandomNumberGenerator.Fill(saltBytes);
+            var passwordSalt = Convert.ToBase64String(saltBytes);
+
+            var actor = new Actor(Guid.NewGuid())
             {
-                Id = Guid.NewGuid(),
                 Email = request.Email,
-                FullName = request.FullName,
-                ContactAddress = request.ContactAddress,
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                ContactAddress = request.ContactAddress != null ? new Address
+                {
+                    Address1 = request.ContactAddress.Address1,
+                    Address2 = request.ContactAddress.Address2,
+                    City = request.ContactAddress.City,
+                    PostCode = request.ContactAddress.PostCode,
+                    CountryCode = request.ContactAddress.CountryCode
+                } : null,
+                Phone = request.Phone,
                 ActorType = actorType,
                 AccountStatus = AccountStatus.PendingActivation,
                 PasswordHash = passwordHasher.HashPassword(request.Password),
+                PasswordSalt = passwordSalt,
                 ActivationToken = GenerateActivationToken(),
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow
@@ -149,9 +163,19 @@ public static class Register
 
     public record RegisterRequest(
         [EmailAddress] string Email,
-        [Required] string FullName,
-        [Required] string ContactAddress,
+        [Required] string FirstName,
+        [Required] string LastName,
+        AddressRequest? ContactAddress,
+        string? Phone,
         [Required] string ActorType,
         [Required] string Password
+    );
+
+    public record AddressRequest(
+        [Required] string Address1,
+        string? Address2,
+        [Required] string City,
+        [Required] string PostCode,
+        [Required] string CountryCode
     );
 }

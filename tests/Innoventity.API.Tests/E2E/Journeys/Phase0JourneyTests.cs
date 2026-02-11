@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Innoventity.API.Domain.Entities;
 using Innoventity.API.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -69,8 +70,8 @@ public class Phase0JourneyTests : IDisposable
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         // Seed industries
-        var electronicsIndustry = new Industry { IndustryId = "ELEC-001", Name = "Electronics" };
-        var energyIndustry = new Industry { IndustryId = "ENRG-001", Name = "Renewable Energy" };
+        var electronicsIndustry = new Industry("ELEC-001") { Name = "Electronics" };
+        var energyIndustry = new Industry("ENRG-001") { Name = "Renewable Energy" };
         context.Set<Industry>().AddRange(electronicsIndustry, energyIndustry);
 
         // Note: Actor will be created during registration step
@@ -87,31 +88,52 @@ public class Phase0JourneyTests : IDisposable
         // Step 1: Register
         var registerRequest = new
         {
-            FullName = "Journey Test User",
-            Email = testEmail,
-            ActorType = "IdeaGenerator",
-            Password = "Journey123!@#",
-            ContactAddress = "123 Journey Lane"
+            firstName = "Journey",
+            lastName = "TestUser",
+            email = testEmail,
+            actorType = "IdeaGenerator",
+            password = "Journey123!@#",
+            contactAddress = new
+            {
+                address1 = "123 Journey Lane",
+                city = "London",
+                postCode = "SW1A 1AA",
+                countryCode = "GB"
+            }
         };
 
         var registerResponse = await _client.PostAsJsonAsync("/auth/register", registerRequest);
-        Assert.Equal(HttpStatusCode.OK, registerResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, registerResponse.StatusCode);
 
-        var registerData = await registerResponse.Content.ReadFromJsonAsync<dynamic>();
-        var activationToken = registerData?.activationToken?.ToString();
-        var actorId = Guid.Parse(registerData?.actorId?.ToString() ?? throw new InvalidOperationException("ActorId missing"));
+        var registerData = await registerResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var activationToken = registerData.GetProperty("activationToken").GetString();
+        var actorId = Guid.Parse(registerData.GetProperty("actorId").GetString() ?? throw new InvalidOperationException("ActorId missing"));
         Assert.NotNull(activationToken);
 
         // Seed innovation owned by this actor
         using (var scope = _factory.Services.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var electronics = await context.Set<Industry>().FindAsync("ELEC-001");
-            var energy = await context.Set<Industry>().FindAsync("ENRG-001");
 
-            var testInnovation = new Innovation
+            // Ensure industries exist (they may not have been seeded in this test's database instance)
+            var electronics = await context.Set<Industry>().FindAsync("ELEC-001");
+            if (electronics == null)
             {
-                Id = _testInnovationId,
+                electronics = new Industry("ELEC-001") { Name = "Electronics" };
+                context.Set<Industry>().Add(electronics);
+            }
+
+            var energy = await context.Set<Industry>().FindAsync("ENRG-001");
+            if (energy == null)
+            {
+                energy = new Industry("ENRG-001") { Name = "Renewable Energy" };
+                context.Set<Industry>().Add(energy);
+            }
+
+            await context.SaveChangesAsync(); // Save industries first
+
+            var testInnovation = new Innovation(_testInnovationId)
+            {
                 IdeaToken = new Guid("33333333-3333-3333-3333-333333333333"),
                 OwnerId = actorId,
                 Title = "Quantum Battery Prototype",
@@ -131,7 +153,7 @@ public class Phase0JourneyTests : IDisposable
                 Status = InnovationStatus.Published,
                 CreatedAt = DateTime.UtcNow,
                 SubmittedAt = DateTime.UtcNow,
-                TargetIndustries = new List<Industry> { electronics!, energy! }
+                TargetIndustries = new List<Industry> { electronics, energy }
             };
             context.Set<Innovation>().Add(testInnovation);
             await context.SaveChangesAsync();
@@ -140,7 +162,8 @@ public class Phase0JourneyTests : IDisposable
         // Step 2: Activate
         var activateRequest = new
         {
-            ActivationToken = activationToken
+            email = testEmail,
+            token = activationToken
         };
 
         var activateResponse = await _client.PostAsJsonAsync("/auth/activate", activateRequest);
@@ -149,16 +172,16 @@ public class Phase0JourneyTests : IDisposable
         // Step 3: Login
         var loginRequest = new
         {
-            Email = testEmail,
-            ActorType = "IdeaGenerator",
-            Password = "Journey123!@#"
+            email = testEmail,
+            actorType = "IdeaGenerator",
+            password = "Journey123!@#"
         };
 
         var loginResponse = await _client.PostAsJsonAsync("/auth/login", loginRequest);
         Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
 
-        var loginData = await loginResponse.Content.ReadFromJsonAsync<dynamic>();
-        var accessToken = loginData?.accessToken?.ToString();
+        var loginData = await loginResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var accessToken = loginData.GetProperty("accessToken").GetString();
         Assert.NotNull(accessToken);
 
         // Step 4: View Innovation

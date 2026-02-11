@@ -1,15 +1,29 @@
 using System.ComponentModel.DataAnnotations;
+using Innoventity.API.Domain.Common;
 
 namespace Innoventity.API.Domain.Entities;
 
 /// <summary>
 /// Industry classification for innovation targeting and actor affiliation (Spec §R3.2)
+/// Inherits identity-based equality from EntityBase<string> (R9.1)
 /// </summary>
-public class Industry
+public class Industry : EntityBase<string>
 {
-    [Key]
-    [MaxLength(50)]
-    public required string IndustryId { get; set; }
+    // Id inherited from EntityBase<string> (renamed from IndustryId)
+
+    /// <summary>
+    /// Parameterless constructor for EF Core
+    /// </summary>
+    public Industry() : base()
+    {
+    }
+
+    /// <summary>
+    /// Constructor with Id for seed data and testing
+    /// </summary>
+    public Industry(string id) : base(id)
+    {
+    }
 
     [Required]
     [MaxLength(200)]

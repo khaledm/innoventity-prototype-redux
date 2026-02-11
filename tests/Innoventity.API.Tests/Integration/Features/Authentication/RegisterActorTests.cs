@@ -54,8 +54,15 @@ public class RegisterActorTests : IClassFixture<WebApplicationFactory<Program>>
         var registerRequest = new
         {
             email = "newidea@example.com",
-            fullName = "New Idea Generator",
-            contactAddress = "123 Innovation St",
+            firstName = "New Idea",
+            lastName = "Generator",
+            contactAddress = new
+            {
+                address1 = "123 Innovation St",
+                city = "London",
+                postCode = "SW1A 1AA",
+                countryCode = "GB"
+            },
             actorType = "IdeaGenerator",
             password = "SecureP@ss123!"
         };
@@ -84,8 +91,15 @@ public class RegisterActorTests : IClassFixture<WebApplicationFactory<Program>>
         var registerRequest = new
         {
             email = "duplicate@example.com",
-            fullName = "First User",
-            contactAddress = "123 Test St",
+            firstName = "First",
+            lastName = "User",
+            contactAddress = new
+            {
+                address1 = "123 Test St",
+                city = "Manchester",
+                postCode = "M1 1AA",
+                countryCode = "GB"
+            },
             actorType = "Manufacturing",
             password = "SecureP@ss123!"
         };
@@ -116,8 +130,15 @@ public class RegisterActorTests : IClassFixture<WebApplicationFactory<Program>>
         var request1 = new
         {
             email,
-            fullName = "User As Idea Generator",
-            contactAddress = "123 Test St",
+            firstName = "User",
+            lastName = "AsIdeaGenerator",
+            contactAddress = new
+            {
+                address1 = "123 Test St",
+                city = "Birmingham",
+                postCode = "B1 1AA",
+                countryCode = "GB"
+            },
             actorType = "IdeaGenerator",
             password = "SecureP@ss123!"
         };
@@ -125,8 +146,15 @@ public class RegisterActorTests : IClassFixture<WebApplicationFactory<Program>>
         var request2 = new
         {
             email,
-            fullName = "User As Investor",
-            contactAddress = "456 Finance Ave",
+            firstName = "User",
+            lastName = "AsInvestor",
+            contactAddress = new
+            {
+                address1 = "456 Finance Ave",
+                city = "Edinburgh",
+                postCode = "EH1 1AA",
+                countryCode = "GB"
+            },
             actorType = "Investor",
             password = "DifferentP@ss456!"
         };
@@ -149,8 +177,15 @@ public class RegisterActorTests : IClassFixture<WebApplicationFactory<Program>>
         var registerRequest = new
         {
             email = "weakpass@example.com",
-            fullName = "Weak Password User",
-            contactAddress = "123 Test St",
+            firstName = "Weak",
+            lastName = "PasswordUser",
+            contactAddress = new
+            {
+                address1 = "123 Test St",
+                city = "Cardiff",
+                postCode = "CF1 1AA",
+                countryCode = "GB"
+            },
             actorType = "RD",
             password = "weak"  // Violates R8.4 complexity requirements
         };

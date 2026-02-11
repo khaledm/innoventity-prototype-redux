@@ -42,17 +42,56 @@ public class AppDbContext : DbContext
                   .IsRequired()
                   .HasMaxLength(255);
 
-            entity.Property(a => a.FullName)
+            // R1.4: FirstName/LastName (replacing FullName)
+            entity.Property(a => a.FirstName)
                   .IsRequired()
-                  .HasMaxLength(200);
+                  .HasMaxLength(50);
 
-            entity.Property(a => a.ContactAddress)
+            entity.Property(a => a.LastName)
                   .IsRequired()
-                  .HasMaxLength(500);
+                  .HasMaxLength(50);
 
+            // Password security (R8.4, R8.5)
             entity.Property(a => a.PasswordHash)
                   .IsRequired()
                   .HasMaxLength(60); // BCrypt hash length
+
+            entity.Property(a => a.PasswordSalt)
+                  .IsRequired()
+                  .HasMaxLength(44); // Base64 encoded 32-byte salt
+
+            // Phone (optional, separate from address)
+            entity.Property(a => a.Phone)
+                  .HasMaxLength(20);
+
+            // R1.5: Configure Address as owned entity
+            entity.OwnsOne(a => a.ContactAddress, address =>
+            {
+                address.Property(ad => ad.Address1)
+                       .HasColumnName("ContactAddress_Address1")
+                       .IsRequired()
+                       .HasMaxLength(100);
+
+                address.Property(ad => ad.Address2)
+                       .HasColumnName("ContactAddress_Address2")
+                       .HasMaxLength(100);
+
+                address.Property(ad => ad.City)
+                       .HasColumnName("ContactAddress_City")
+                       .IsRequired()
+                       .HasMaxLength(50);
+
+                address.Property(ad => ad.PostCode)
+                       .HasColumnName("ContactAddress_PostCode")
+                       .IsRequired()
+                       .HasMaxLength(20);
+
+                address.Property(ad => ad.CountryCode)
+                       .HasColumnName("ContactAddress_CountryCode")
+                       .IsRequired()
+                       .HasMaxLength(2)
+                       .IsFixedLength();
+            });
 
             entity.Property(a => a.ActivationToken)
                   .HasMaxLength(64);
@@ -71,6 +110,10 @@ public class AppDbContext : DbContext
 
             entity.Property(a => a.UpdatedAt)
                   .HasDefaultValueSql("GETUTCDATE()");
+
+            // Computed properties are not stored (DisplayName, SortableName)
+            entity.Ignore(a => a.DisplayName);
+            entity.Ignore(a => a.SortableName);
         });
 
         // Configure Innovation entity
@@ -165,9 +208,9 @@ public class AppDbContext : DbContext
         // Configure Industry entity
         modelBuilder.Entity<Industry>(entity =>
         {
-            entity.HasKey(i => i.IndustryId);
+            entity.HasKey(i => i.Id);  // Renamed from IndustryId (R9.1)
 
-            entity.Property(i => i.IndustryId)
+            entity.Property(i => i.Id)  // Renamed from IndustryId (R9.1)
                   .IsRequired()
                   .HasMaxLength(50);
 

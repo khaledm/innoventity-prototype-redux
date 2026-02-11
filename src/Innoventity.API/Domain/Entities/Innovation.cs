@@ -1,15 +1,30 @@
 using System.ComponentModel.DataAnnotations;
+using Innoventity.API.Domain.Common;
 
 namespace Innoventity.API.Domain.Entities;
 
 /// <summary>
 /// Innovation entity for Phase 0 - View Innovation only (Spec §6 Test Data Requirements)
 /// Full innovation submission workflow deferred to Phase 1+
+/// Inherits identity-based equality from EntityOfGuid (R9.1)
 /// </summary>
-public class Innovation
+public class Innovation : EntityOfGuid
 {
-    [Key]
-    public Guid Id { get; set; }
+    // Id inherited from EntityOfGuid
+
+    /// <summary>
+    /// Parameterless constructor for EF Core
+    /// </summary>
+    public Innovation() : base()
+    {
+    }
+
+    /// <summary>
+    /// Constructor with Id for seed data and testing
+    /// </summary>
+    public Innovation(Guid id) : base(id)
+    {
+    }
 
     /// <summary>
     /// Unique tracking token for innovation (Spec §R2.3)

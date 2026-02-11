@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Innoventity.API.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,29 +30,39 @@ public static class SeedData
         }
 
         // Seed Industries
-        var electronicsIndustry = new Industry
+        var electronicsIndustry = new Industry("ELEC-001")
         {
-            IndustryId = "ELEC-001",
             Name = "Electronics"
         };
 
-        var energyIndustry = new Industry
+        var energyIndustry = new Industry("ENRG-001")
         {
-            IndustryId = "ENRG-001",
             Name = "Renewable Energy"
         };
 
         context.Set<Industry>().AddRange(electronicsIndustry, energyIndustry);
 
         // Seed test actor (Dr. Sarah Chen)
-        var testActor = new Actor
+        // Generate password salt (R8.5)
+        var saltBytes = new byte[32];
+        RandomNumberGenerator.Fill(saltBytes);
+        var passwordSalt = Convert.ToBase64String(saltBytes);
+
+        var testActor = new Actor(TestActorId)
         {
-            Id = TestActorId,
-            FullName = "Dr. Sarah Chen",
+            FirstName = "Sarah",
+            LastName = "Chen",
             Email = "test-generator@innoventity.dev",
             ActorType = ActorType.IdeaGenerator,
-            ContactAddress = "123 Innovation Drive, Tech City, TC 12345",
+            ContactAddress = new Address
+            {
+                Address1 = "123 Innovation Drive",
+                City = "Tech City",
+                PostCode = "TC 12345",
+                CountryCode = "US"
+            },
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Test123!@#", workFactor: 12),
+            PasswordSalt = passwordSalt,
             AccountStatus = AccountStatus.Active,
             CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
             UpdatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)
@@ -60,9 +71,8 @@ public static class SeedData
         context.Actors.Add(testActor);
 
         // Seed Quantum Battery Prototype innovation
-        var quantumBattery = new Innovation
+        var quantumBattery = new Innovation(TestInnovationId)
         {
-            Id = TestInnovationId,
             IdeaToken = TestIdeaToken,
             OwnerId = TestActorId,
             Title = "Quantum Battery Prototype",

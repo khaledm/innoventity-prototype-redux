@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Innoventity.API.Domain.Entities;
 using Innoventity.API.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -28,6 +29,9 @@ public class GetInnovationTests : IDisposable
 
     private WebApplicationFactory<Program> CreateFactory()
     {
+        // Generate unique database name once for this factory instance
+        var databaseName = $"TestDb_{Guid.NewGuid()}";
+
         return new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
@@ -54,10 +58,10 @@ public class GetInnovationTests : IDisposable
                         services.Remove(descriptor);
                     }
 
-                    // Add in-memory database with unique name for isolation
+                    // Add in-memory database with unique name for isolation (captured in closure)
                     services.AddDbContext<AppDbContext>(options =>
                     {
-                        options.UseInMemoryDatabase($"TestDb_{Guid.NewGuid()}");
+                        options.UseInMemoryDatabase(databaseName);
                     });
                 });
             });
@@ -69,29 +73,36 @@ public class GetInnovationTests : IDisposable
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         // Seed actor (Spec §6 Test Data Requirements)
-        var testActor = new Actor
+        var testActor = new Actor(_testActorId)
         {
-            Id = _testActorId,
-            FullName = "Dr. Sarah Chen",
+            FirstName = "Sarah",
+            LastName = "Chen",
             Email = "test-generator@innoventity.dev",
             ActorType = ActorType.IdeaGenerator,
             AccountStatus = AccountStatus.Active,
             PasswordHash = "$2a$12$XYZ...", // Placeholder hash
+            PasswordSalt = "somesalt",
             ActivationToken = null,
-            ContactAddress = "123 Test St",
-            CreatedAt = DateTime.UtcNow
+            ContactAddress = new Address
+            {
+                Address1 = "123 Test St",
+                City = "Test City",
+                PostCode = "12345",
+                CountryCode = "US"
+            },
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
         context.Actors.Add(testActor);
 
         // Seed industries (Spec §6)
-        var electronicsIndustry = new Industry { IndustryId = "ELEC-001", Name = "Electronics" };
-        var energyIndustry = new Industry { IndustryId = "ENRG-001", Name = "Renewable Energy" };
+        var electronicsIndustry = new Industry("ELEC-001") { Name = "Electronics" };
+        var energyIndustry = new Industry("ENRG-001") { Name = "Renewable Energy" };
         context.Set<Industry>().AddRange(electronicsIndustry, energyIndustry);
 
         // Seed innovation (Spec §6 Test Data Requirements)
-        var testInnovation = new Innovation
+        var testInnovation = new Innovation(_testInnovationId)
         {
-            Id = _testInnovationId,
             IdeaToken = new Guid("33333333-3333-3333-3333-333333333333"),
             OwnerId = _testActorId,
             Title = "Quantum Battery Prototype",
@@ -123,9 +134,9 @@ public class GetInnovationTests : IDisposable
         // Login to get access token
         var loginRequest = new
         {
-            Email = "test-generator@innoventity.dev",
-            ActorType = "IdeaGenerator",
-            Password = "Test123!@#" // This won't match the placeholder hash, so we need to update seed data
+            email = "test-generator@innoventity.dev",
+            actorType = "IdeaGenerator",
+            password = "Test123!@#" // This won't match the placeholder hash, so we need to update seed data
         };
 
         // For this test, we'll create a properly hashed password
@@ -134,15 +145,23 @@ public class GetInnovationTests : IDisposable
         var passwordHasher = scope.ServiceProvider.GetRequiredService<Infrastructure.Authentication.PasswordHasher>();
 
         var actor = await context.Actors.FindAsync(_testActorId);
-        if (actor != null)
+        if (actor == null)
         {
-            actor.PasswordHash = passwordHasher.HashPassword("Test123!@#");
-            await context.SaveChangesAsync();
+            throw new InvalidOperationException($"Actor with ID {_testActorId} not found in database");
         }
 
+        actor.PasswordHash = passwordHasher.HashPassword("Test123!@#");
+        await context.SaveChangesAsync();
+
         var response = await _client.PostAsJsonAsync("/auth/login", loginRequest);
-        var loginResponse = await response.Content.ReadFromJsonAsync<dynamic>();
-        return loginResponse?.accessToken?.ToString() ?? throw new InvalidOperationException("Failed to get access token");
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"Login failed with status {response.StatusCode}: {errorContent}");
+        }
+
+        var loginResponse = await response.Content.ReadFromJsonAsync<JsonElement>();
+        return loginResponse.GetProperty("accessToken").GetString() ?? throw new InvalidOperationException("Failed to get access token");
     }
 
     [Fact]
@@ -200,17 +219,25 @@ public class GetInnovationTests : IDisposable
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var passwordHasher = scope.ServiceProvider.GetRequiredService<Infrastructure.Authentication.PasswordHasher>();
 
-        var manufacturingActor = new Actor
+        var manufacturingActor = new Actor(Guid.NewGuid())
         {
-            Id = Guid.NewGuid(),
-            FullName = "Manufacturing Co",
+            FirstName = "Manufacturing",
+            LastName = "Co",
             Email = "test-manufacturing@innoventity.dev",
             ActorType = ActorType.Manufacturing,
             AccountStatus = AccountStatus.Active,
             PasswordHash = passwordHasher.HashPassword("Test123!@#"),
+            PasswordSalt = "somesalt",
             ActivationToken = null,
-            ContactAddress = "456 Factory Lane",
-            CreatedAt = DateTime.UtcNow
+            ContactAddress = new Address
+            {
+                Address1 = "456 Factory Lane",
+                City = "Factory City",
+                PostCode = "67890",
+                CountryCode = "US"
+            },
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
         context.Actors.Add(manufacturingActor);
         await context.SaveChangesAsync();
@@ -218,13 +245,13 @@ public class GetInnovationTests : IDisposable
         // Login as Manufacturing actor
         var loginRequest = new
         {
-            Email = "test-manufacturing@innoventity.dev",
-            ActorType = "Manufacturing",
-            Password = "Test123!@#"
+            email = "test-manufacturing@innoventity.dev",
+            actorType = "Manufacturing",
+            password = "Test123!@#"
         };
         var loginResponse = await _client.PostAsJsonAsync("/auth/login", loginRequest);
-        var loginData = await loginResponse.Content.ReadFromJsonAsync<dynamic>();
-        var token = loginData?.accessToken?.ToString() ?? throw new InvalidOperationException("Failed to get token");
+        var loginData = await loginResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var token = loginData.GetProperty("accessToken").GetString() ?? throw new InvalidOperationException("Failed to get token");
 
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 

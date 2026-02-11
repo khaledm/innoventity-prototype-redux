@@ -56,8 +56,15 @@ public class ActivateAccountTests : IClassFixture<WebApplicationFactory<Program>
         var registerRequest = new
         {
             email = "activate@example.com",
-            fullName = "Test User",
-            contactAddress = "123 Test St",
+            firstName = "Test",
+            lastName = "User",
+            contactAddress = new
+            {
+                address1 = "123 Test St",
+                city = "London",
+                postCode = "SW1A 1AA",
+                countryCode = "GB"
+            },
             actorType = "IdeaGenerator",
             password = "SecureP@ss123!"
         };
@@ -95,8 +102,15 @@ public class ActivateAccountTests : IClassFixture<WebApplicationFactory<Program>
         var registerRequest = new
         {
             email = "invalidtoken@example.com",
-            fullName = "Test User",
-            contactAddress = "123 Test St",
+            firstName = "Test",
+            lastName = "User",
+            contactAddress = new
+            {
+                address1 = "123 Test St",
+                city = "Manchester",
+                postCode = "M1 1AA",
+                countryCode = "GB"
+            },
             actorType = "RD",
             password = "SecureP@ss123!"
         };
@@ -132,8 +146,15 @@ public class ActivateAccountTests : IClassFixture<WebApplicationFactory<Program>
         var registerRequest = new
         {
             email = "alreadyactive@example.com",
-            fullName = "Test User",
-            contactAddress = "123 Test St",
+            firstName = "Test",
+            lastName = "User",
+            contactAddress = new
+            {
+                address1 = "123 Test St",
+                city = "Birmingham",
+                postCode = "B1 1AA",
+                countryCode = "GB"
+            },
             actorType = "Manufacturing",
             password = "SecureP@ss123!"
         };

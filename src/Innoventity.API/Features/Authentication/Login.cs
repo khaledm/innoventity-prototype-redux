@@ -26,7 +26,9 @@ public static class Login
     public record ActorInfo(
         Guid ActorId,
         string Email,
-        string FullName,
+        string FirstName,
+        string LastName,
+        string DisplayName,
         string ActorType
     );
 
@@ -92,7 +94,9 @@ public static class Login
                 Actor: new ActorInfo(
                     ActorId: actor.Id,
                     Email: actor.Email,
-                    FullName: actor.FullName,
+                    FirstName: actor.FirstName,
+                    LastName: actor.LastName,
+                    DisplayName: actor.DisplayName,
                     ActorType: actor.ActorType.ToString()
                 )
             );

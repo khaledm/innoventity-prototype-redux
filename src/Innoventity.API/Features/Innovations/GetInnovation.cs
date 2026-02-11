@@ -39,7 +39,9 @@ public static class GetInnovation
                 owner = innovation.Owner != null ? new
                 {
                     id = innovation.Owner.Id,
-                    fullName = innovation.Owner.FullName,
+                    firstName = innovation.Owner.FirstName,
+                    lastName = innovation.Owner.LastName,
+                    displayName = innovation.Owner.DisplayName,
                     email = innovation.Owner.Email,
                     actorType = innovation.Owner.ActorType.ToString()
                 } : null,
@@ -62,7 +64,7 @@ public static class GetInnovation
                 submittedAt = innovation.SubmittedAt,
                 targetIndustries = innovation.TargetIndustries.Select(i => new
                 {
-                    industryId = i.IndustryId,
+                    industryId = i.Id,  // Renamed from IndustryId (R9.1)
                     name = i.Name
                 }).ToList()
             });
