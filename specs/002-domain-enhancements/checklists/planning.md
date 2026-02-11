@@ -170,13 +170,14 @@ This checklist validates the **QUALITY OF TECHNICAL PLANNING**, not implementati
   - Login response: ✅ Complete JSON examples (before/after)
   - GetInnovation response: ✅ Complete JSON examples (before/after)
 
-- [ ] CHK032: Are new validation rules documented? [Completeness, Plan §Phase C1] ⚠️ PARTIALLY DOCUMENTED
-  - firstName: Required, min 2 chars, max 50 chars ⚠️ MinLength NOT IMPLEMENTED
-  - lastName: Required, min 2 chars, max 50 chars ⚠️ MinLength NOT IMPLEMENTED
-  - contactAddress: Optional (entire object nullable) ✓
-  - contactAddress: All-or-nothing validation (if any field provided, Address1/City/PostCode/CountryCode required) ⚠️ NOT IMPLEMENTED
-  - contactAddress.CountryCode: Exactly 2 uppercase letters (ISO 3166-1 alpha-2) ⚠️ Pattern validation NOT IMPLEMENTED
-  - phone: Optional, max 20 chars ✓
+- [X] CHK032: Are new validation rules documented? [Completeness, Plan §Phase C1] ✅ IMPLEMENTED
+  - firstName: Required, min 2 chars, max 50 chars ✅ Manual validation implemented (Register.cs line 73-82), XML documented
+  - lastName: Required, min 2 chars, max 50 chars ✅ Manual validation implemented (Register.cs line 84-93), XML documented
+  - contactAddress: Optional (entire object nullable) ✅ Documented
+  - contactAddress: All-or-nothing validation (if any field provided, Address1/City/PostCode/CountryCode required) ✅ Manual validation implemented (Register.cs line 98-116), XML documented
+  - contactAddress.CountryCode: Exactly 2 uppercase letters (ISO 3166-1 alpha-2) ✅ Regex validation implemented (Register.cs line 118-129), XML documented
+  - phone: Optional, max 20 chars ✅ Documented
+  - **T031**: Comprehensive XML documentation added with validation rules, HTTP status codes, and example error responses
 
 - [X] CHK033: Is deployment strategy for breaking changes addressed? [Deployment Planning, Plan §Risk Assessment] ✓ VERIFIED
   - Deployment approach documented: Big-bang (frontend + backend together)

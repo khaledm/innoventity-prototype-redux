@@ -106,33 +106,33 @@ This checklist validates the **COMPLETENESS OF BREAKING CHANGE DOCUMENTATION AND
 
 ### Validation Changes
 
-- [ ] BC010: Registration validation adds `firstName` min length 2 chars [NEW VALIDATION] ⚠️ GAP IDENTIFIED
+- [X] BC010: Registration validation adds `firstName` min length 2 chars [NEW VALIDATION] ✅ IMPLEMENTED
   - **Rule**: `firstName` must be at least 2 characters
   - **Error**: 400 Bad Request if violated: `{ "error": "First name must be at least 2 characters" }`
   - **Impact**: Single-letter first names (e.g., "J Smith") now rejected
   - **Affected Consumers**: Frontend registration form validation
-  - **STATUS**: ⚠️ NOT IMPLEMENTED - Register.cs has [Required] but no [MinimumLength(2)] attribute
+  - **STATUS**: ✅ IMPLEMENTED - Manual validation in Register.cs lines 73-82, XML documented with error example
 
-- [ ] BC011: Registration validation adds `lastName` min length 2 chars [NEW VALIDATION] ⚠️ GAP IDENTIFIED
+- [X] BC011: Registration validation adds `lastName` min length 2 chars [NEW VALIDATION] ✅ IMPLEMENTED
   - **Rule**: `lastName` must be at least 2 characters
   - **Error**: 400 Bad Request if violated: `{ "error": "Last name must be at least 2 characters" }`
   - **Impact**: Single-letter last names (e.g., "John S") now rejected
   - **Affected Consumers**: Frontend registration form validation
-  - **STATUS**: ⚠️ NOT IMPLEMENTED - Register.cs has [Required] but no [MinimumLength(2)] attribute
+  - **STATUS**: ✅ IMPLEMENTED - Manual validation in Register.cs lines 84-93, XML documented with error example
 
-- [ ] BC012: Registration validation adds `contactAddress` all-or-nothing rule [NEW VALIDATION] ⚠️ GAP IDENTIFIED
+- [X] BC012: Registration validation adds `contactAddress` all-or-nothing rule [NEW VALIDATION] ✅ IMPLEMENTED
   - **Rule**: If ANY address field provided, then Address1, City, PostCode, CountryCode required
   - **Error**: 400 Bad Request if violated: `{ "error": "If address provided, Address1, City, PostCode, and CountryCode are required" }`
   - **Impact**: Partial addresses (e.g., only City provided) now rejected
   - **Affected Consumers**: Frontend registration form validation
-  - **STATUS**: ⚠️ NOT IMPLEMENTED - Register.cs has basic [Required] on AddressRequest fields, but no all-or-nothing validation at DTO level
+  - **STATUS**: ✅ IMPLEMENTED - Manual validation in Register.cs lines 98-116, XML documented with error example and all-or-nothing rule explained
 
-- [ ] BC013: Registration validation adds `countryCode` exactly 2 chars [NEW VALIDATION] ⚠️ GAP IDENTIFIED
+- [X] BC013: Registration validation adds `countryCode` exactly 2 chars [NEW VALIDATION] ✅ IMPLEMENTED
   - **Rule**: CountryCode must be exactly 2 uppercase letters (ISO 3166-1 alpha-2)
   - **Error**: 400 Bad Request if violated: `{ "error": "CountryCode must be 2 characters (ISO 3166-1 alpha-2)" }`
   - **Impact**: Country names (e.g., "United Kingdom" instead of "GB") now rejected
   - **Affected Consumers**: Frontend registration form validation, country selector
-  - **STATUS**: ⚠️ NOT IMPLEMENTED - Register.cs has [Required] but no [StringLength] or [RegularExpression] validation for ISO 3166-1 alpha-2 format
+  - **STATUS**: ✅ IMPLEMENTED - Regex validation `^[A-Z]{2}$` in Register.cs lines 118-129, XML documented with ISO 3166-1 alpha-2 examples (US, GB, CA, etc.)
 
 ---
 
@@ -320,12 +320,18 @@ This checklist validates the **COMPLETENESS OF BREAKING CHANGE DOCUMENTATION AND
 
 ### OpenAPI/Swagger Spec
 
-- [ ] BC050: Registration endpoint OpenAPI spec updated [API Documentation]
-  - RequestBody schema updated: `fullName` removed, `firstName`/`lastName` added
-  - RequestBody schema updated: `contactAddress` changed from string to object
-  - RequestBody example updated with new structure
-  - Response schema updated: Actor object structure changed
-  - Validation rules documented in schema (minLength, pattern, etc.)
+- [X] BC050: Registration endpoint OpenAPI spec updated [API Documentation] ✅ IMPLEMENTED
+  - RequestBody schema updated: `fullName` removed, `firstName`/`lastName` added ✅
+  - RequestBody schema updated: `contactAddress` changed from string to object ✅
+  - RequestBody example updated with new structure ✅ (XML examples in `<example>` tags)
+  - Response schema updated: Actor object structure changed ✅
+  - Validation rules documented in schema (minLength, pattern, etc.) ✅
+  - **T031**: Comprehensive XML documentation added to Register.cs including:
+    - Method-level summary and remarks with all validation rules
+    - Parameter documentation for RegisterRequest (Email, FirstName, LastName, ContactAddress, Phone, ActorType, Password)
+    - Parameter documentation for AddressRequest (Address1, Address2, City, PostCode, CountryCode with ISO examples)
+    - HTTP status codes (201 Created, 400 Bad Request)
+    - Example validation error responses (short name, invalid country code, partial address)
 
 - [ ] BC051: Login endpoint OpenAPI spec updated [API Documentation]
   - Response schema updated: Actor object structure changed (`fullName` → `firstName`, `lastName`, `displayName`)
