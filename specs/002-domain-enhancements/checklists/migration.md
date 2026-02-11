@@ -168,11 +168,15 @@ This checklist validates the **SAFETY OF DATABASE MIGRATION**, testing whether t
 
 ### Data Preservation
 
-- [ ] MIG050: Down() migration reconstructs FullName from FirstName + LastName [Rollback Safety] ⚠️ NOT IMPLEMENTED
-  - Reconstruction logic: `[FirstName] + ' ' + [LastName]`
-  - Handles empty LastName: "Madonna" + ' ' + "" = "Madonna " (trailing space - acceptable)
-  - **Recommendation**: Add TRIM to remove trailing space: `LTRIM(RTRIM([FirstName] + ' ' + [LastName]))`
-  - **STATUS**: Down() migration in file does NOT reconstruct FullName - it just adds back empty FullName column with DEFAULT ''. This means rollback LOSES NAME DATA. ⚠️ CRITICAL GAP for production use (acceptable for fresh dev database)
+- [X] MIG050: Down() migration reconstructs FullName from FirstName + LastName [Rollback Safety] ✅ IMPLEMENTED
+  - Fix implemented: Down() now follows proper column lifecycle pattern:
+    1. Add FullName column (nullable initially)
+    2. Run SQL UPDATE: `UPDATE Actors SET FullName = LTRIM(RTRIM(FirstName + ' ' + LastName))`
+    3. AlterColumn FullName to NOT NULL
+    4. Drop FirstName/LastName columns
+  - Impact: Rollback now preserves all actor names (e.g., "John Smith" reconstructed correctly from FirstName="John", LastName="Smith")
+  - Location: `src/Innoventity.Infrastructure/Migrations/20260211152224_AddEntityBaseAndRefactorActor.cs` Down() method lines 48-65
+  - Tested: Code review confirms proper sequence; staging rollback test recommended before production
 
 - [X] MIG051: Down() migration handles NULL FirstName/LastName [Edge Case] N/A - FRESH DATABASE
   - If FirstName NULL: FullName becomes NULL (correct - preserves NULL state)

@@ -10,6 +10,61 @@ namespace Innoventity.API.Features.Authentication;
 
 public static class Register
 {
+    /// <summary>
+    /// Registers a new actor account in the platform
+    /// </summary>
+    /// <remarks>
+    /// Creates a new user account with PendingActivation status. An activation token is generated and must be
+    /// verified before the account becomes active.
+    ///
+    /// **Validation Rules:**
+    /// - **firstName**: Minimum 2 characters, maximum 50 characters (required)
+    /// - **lastName**: Minimum 2 characters, maximum 50 characters (required)
+    /// - **email**: Valid email format, unique per actor type (required)
+    /// - **password**: Must meet complexity requirements (8+ chars, uppercase, lowercase, digit, special character)
+    /// - **actorType**: Must be valid ActorType enum value (required)
+    /// - **contactAddress**: Optional, but if provided, all fields (address1, city, postCode, countryCode) are required
+    /// - **countryCode**: ISO 3166-1 alpha-2 format - exactly 2 uppercase letters (e.g., "US", "GB", "CA")
+    /// - **phone**: Optional, maximum 20 characters
+    ///
+    /// **Breaking Changes (Phase 0.5):**
+    /// - Registration now requires separate firstName and lastName (previously combined fullName)
+    /// - ContactAddress is now a structured object (previously unstructured string)
+    ///
+    /// **Example Validation Errors:**
+    ///
+    /// Short firstName (400 Bad Request):
+    /// ```json
+    /// {
+    ///   "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+    ///   "title": "Validation Failed",
+    ///   "status": 400,
+    ///   "detail": "First name must be at least 2 characters."
+    /// }
+    /// ```
+    ///
+    /// Invalid country code (400 Bad Request):
+    /// ```json
+    /// {
+    ///   "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+    ///   "title": "Validation Failed",
+    ///   "status": 400,
+    ///   "detail": "Country code must be 2 uppercase letters (ISO 3166-1 alpha-2)."
+    /// }
+    /// ```
+    ///
+    /// Partial address (400 Bad Request):
+    /// ```json
+    /// {
+    ///   "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+    ///   "title": "Validation Failed",
+    ///   "status": 400,
+    ///   "detail": "If address is provided, address1, city, postCode, and countryCode are all required."
+    /// }
+    /// ```
+    /// </remarks>
+    /// <response code="201">Actor registered successfully. Returns actor details and activation token.</response>
+    /// <response code="400">Validation failed or email already registered for this actor type.</response>
     public static void MapRegisterEndpoint(this WebApplication app)
     {
         app.MapPost("/auth/register", async (
@@ -215,21 +270,95 @@ public static class Register
         return Convert.ToBase64String(tokenBytes);
     }
 
+    /// <summary>
+    /// Request model for actor registration
+    /// </summary>
+    /// <remarks>
+    /// Contains all required information to create a new actor account.
+    /// Note: DataAnnotations attributes are for documentation only - validation is performed manually in the endpoint handler.
+    /// </remarks>
     public record RegisterRequest(
+        /// <summary>
+        /// Actor's email address (must be unique per actor type)
+        /// </summary>
+        /// <example>john.smith@example.com</example>
         [EmailAddress] string Email,
+
+        /// <summary>
+        /// Actor's first name (minimum 2 characters, maximum 50 characters)
+        /// </summary>
+        /// <example>John</example>
         [Required][MinLength(2)][MaxLength(50)] string FirstName,
+
+        /// <summary>
+        /// Actor's last name (minimum 2 characters, maximum 50 characters)
+        /// </summary>
+        /// <example>Smith</example>
         [Required][MinLength(2)][MaxLength(50)] string LastName,
+
+        /// <summary>
+        /// Actor's contact address (optional, but if provided, all fields are required)
+        /// </summary>
         AddressRequest? ContactAddress,
+
+        /// <summary>
+        /// Actor's phone number (optional, maximum 20 characters)
+        /// </summary>
+        /// <example>+1-555-123-4567</example>
         string? Phone,
+
+        /// <summary>
+        /// Type of actor (e.g., "IdeaGenerator", "Manufacturing", "SalesMarketing", "Engineering", "Investor")
+        /// </summary>
+        /// <example>IdeaGenerator</example>
         [Required] string ActorType,
+
+        /// <summary>
+        /// Account password (minimum 8 characters, must include uppercase, lowercase, digit, and special character)
+        /// </summary>
         [Required] string Password
     );
 
+    /// <summary>
+    /// Structured address information (value object)
+    /// </summary>
+    /// <remarks>
+    /// All-or-nothing validation: If any address field is provided, all required fields (address1, city, postCode, countryCode) must be provided.
+    /// Address is stored as an owned entity in the database (no separate AddressId).
+    /// </remarks>
     public record AddressRequest(
+        /// <summary>
+        /// Primary address line (required if address provided)
+        /// </summary>
+        /// <example>123 Main Street</example>
         [Required] string Address1,
+
+        /// <summary>
+        /// Secondary address line (optional)
+        /// </summary>
+        /// <example>Apartment 4B</example>
         string? Address2,
+
+        /// <summary>
+        /// City name (required if address provided)
+        /// </summary>
+        /// <example>London</example>
         [Required] string City,
+
+        /// <summary>
+        /// Postal/ZIP code (required if address provided)
+        /// </summary>
+        /// <example>SW1A 1AA</example>
         [Required] string PostCode,
+
+        /// <summary>
+        /// ISO 3166-1 alpha-2 country code - exactly 2 uppercase letters (required if address provided)
+        /// </summary>
+        /// <example>GB</example>
+        /// <remarks>
+        /// Common codes: US (United States), GB (United Kingdom), CA (Canada), AU (Australia), DE (Germany), FR (France), JP (Japan)
+        /// Full list: https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+        /// </remarks>
         [Required][StringLength(2, MinimumLength = 2)][RegularExpression("^[A-Z]{2}$", ErrorMessage = "Country code must be 2 uppercase letters (ISO 3166-1 alpha-2)")] string CountryCode
     );
 }

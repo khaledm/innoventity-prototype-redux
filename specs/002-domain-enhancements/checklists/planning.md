@@ -139,12 +139,15 @@ This checklist validates the **QUALITY OF TECHNICAL PLANNING**, not implementati
   - Future registrations require structured Address or leave entire object NULL
   - No data loss (old ContactAddress dropped after migration, data was already unstructured)
 
-- [ ] CHK024: Is Down() migration data-preserving? [Rollback Safety, Plan §Database Migration Strategy] ⚠️ GAP IDENTIFIED
-  - FullName reconstruction documented (FirstName + ' ' + LastName) ⚠️ NOT IMPLEMENTED in actual migration
-  - PasswordSalt drop documented (acceptable - hash still valid) ✓
-  - Address columns drop documented (acceptable - data was NULL for existing actors) ✓
-  - Rollback tested on local database (documented in Pre-Implementation checklist) NOT DONE
-  - **CRITICAL**: Down() migration does NOT reconstruct FullName - adds empty column. Data loss on rollback.
+- [X] CHK024: Is Down() migration data-preserving? [Rollback Safety, Plan §Database Migration Strategy] ✅ IMPLEMENTED
+  - Fix completed: Down() migration now follows proper column lifecycle:
+    1. Add FullName column (nullable)
+    2. Run SQL UPDATE: `SET FullName = LTRIM(RTRIM(FirstName + ' ' + LastName))`
+    3. AlterColumn FullName to NOT NULL
+    4. Drop FirstName/LastName columns
+  - Impact: Rollback preserves actor names (e.g., "John Smith" reconstructed from FirstName="John", LastName="Smith")
+  - Location: `20260211152224_AddEntityBaseAndRefactorActor.cs` Down() method lines 48-65
+  - Status: Code review complete ✅ | Staging test recommended
 
 - [X] CHK025: Are migration warnings/logging specified? [Observability, Plan §Risk Assessment] N/A - FRESH DATABASE
   - Single-word names flagged for manual review
