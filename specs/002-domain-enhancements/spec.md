@@ -19,7 +19,9 @@ The legacy Innoventity system (MVC Core) demonstrates expert DDD implementation 
 
 This specification incorporates proven patterns from the legacy system while modernizing infrastructure approach. The goal is **preservation of domain knowledge**, not simplification for ease of implementation.
 
-**Constitutional Impact**: 98/100 (current) → 99/100 (Phase 0.5) → 100/100 (Phase 2)
+**Constitutional Impact**: 98/100 (current) → 99/100 (Phase 0.5) → 100/100 (Phase 2)[^1]
+
+[^1]: **Constitutional Score**: Project health metric (0-100) measuring alignment with project constitution principles, including architecture quality, security practices, code maintainability, test coverage, and technical debt levels. Higher scores indicate stronger adherence to established principles.
 
 ---
 
