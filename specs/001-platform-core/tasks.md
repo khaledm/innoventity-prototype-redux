@@ -111,28 +111,29 @@
 
 ### Domain for User Story 3
 
-- [ ] T043 [P] [US3] Create ResearchCategory enum (Management, Engineering, NaturalScience) in Domain/Entities/ResearchCategory.cs
-- [ ] T044 [P] [US3] Create InnovationStatus enum (Draft, Published, etc.) in Domain/Entities/InnovationStatus.cs
-- [ ] T045 [US3] Create Innovation entity in Domain/Entities/Innovation.cs with required fields for Phase 0
-- [ ] T046 [P] [US3] Create Industry entity in Domain/Entities/Industry.cs
+- [X] T043 [P] [US3] Create ResearchCategory enum (Management, Engineering, NaturalScience) in Domain/Entities/ResearchCategory.cs
+- [X] T044 [P] [US3] Create InnovationStatus enum (Draft, Published, etc.) in Domain/Entities/InnovationStatus.cs
+- [X] T045 [US3] Create Innovation entity in Domain/Entities/Innovation.cs with required fields for Phase 0
+- [X] T046 [P] [US3] Create Industry entity in Domain/Entities/Industry.cs
 
 ### Tests for User Story 3 (Write FIRST, verify FAIL)
 
-- [ ] T047 [P] [US3] Unit test: Innovation entity validates required fields in tests/Unit/Domain/Entities/InnovationTests.cs
-- [ ] T048 [US3] Integration test: GET /innovations/{id} returns innovation data in tests/Integration/Features/Innovations/GetInnovationTests.cs
-- [ ] T049 [US3] Integration test: GET /innovations/{id} returns 404 for non-existent ID in GetInnovationTests.cs
-- [ ] T050 [US3] Integration test: GET /innovations/{id} returns 401 without auth token in GetInnovationTests.cs
-- [ ] T050a [US3] Integration test: Cross-actor access validation - User of ActorType Manufacturing reads innovation owned by ActorType IdeaGenerator, assert 200 status (validates Phase 0 open-discovery semantics: any authenticated user can view any innovation)
-- [ ] T051 [US3] E2E test: Register → Activate → Login → ViewInnovation journey in tests/E2E/Journeys/Phase0JourneyTests.cs
+- [X] T047 [P] [US3] Unit test: Innovation entity validates required fields in tests/Unit/Domain/Entities/InnovationTests.cs
+- [X] T048 [US3] Integration test: GET /innovations/{id} returns innovation data in tests/Integration/Features/Innovations/GetInnovationTests.cs
+- [X] T049 [US3] Integration test: GET /innovations/{id} returns 404 for non-existent ID in GetInnovationTests.cs
+- [X] T050 [US3] Integration test: GET /innovations/{id} returns 401 without auth token in GetInnovationTests.cs
+- [X] T050a [US3] Integration test: Cross-actor access validation - User of ActorType Manufacturing reads innovation owned by ActorType IdeaGenerator, assert 200 status (validates Phase 0 open-discovery semantics: any authenticated user can view any innovation)
+- [X] T051 [US3] E2E test: Register → Activate → Login → ViewInnovation journey in tests/E2E/Journeys/Phase0JourneyTests.cs
 
 ### Implementation for User Story 3
 
-- [ ] T052 [US3] Add Innovation and Industry entities to AppDbContext in Infrastructure/Persistence/AppDbContext.cs
-- [ ] T053 [US3] Create migration for Innovation and Industry tables in Infrastructure/Persistence/Migrations/
-- [ ] T054 [US3] Implement GET /innovations/{id} endpoint in Features/Innovations/GetInnovation.cs
-- [ ] T055 [US3] Add [Authorize] attribute to innovation endpoint in Features/Innovations/GetInnovation.cs
-- [ ] T056 [US3] Add validation for non-existent innovation ID in Features/Innovations/GetInnovation.cs
-- [ ] T057 [US3] Create seed data script for test innovation in Infrastructure/Persistence/SeedData.cs
+- [X] T052 [US3] Add Innovation and Industry entities to AppDbContext in Infrastructure/Persistence/AppDbContext.cs
+- [X] T053 [US3] Create migration for Innovation and Industry tables in Infrastructure/Persistence/Migrations/
+- [X] T054 [US3] Implement GET /innovations/{id} endpoint in Features/Innovations/GetInnovation.cs
+- [X] T055 [US3] Add [Authorize] attribute to innovation endpoint in Features/Innovations/GetInnovation.cs
+- [X] T056 [US3] Add validation for non-existent innovation ID in Features/Innovations/GetInnovation.cs
+- [X] T057 [US3] Create seed data script implementing spec.md §6 Test Data Requirements (Quantum Battery Prototype with fixed GUIDs, seeded actor, 2 industries) in Infrastructure/Persistence/SeedData.cs
+- [ ] T057a [Future-Phase6+] Integration test: Partner selection irreversibility - verify attempting to modify accepted partner selection returns 403 Forbidden with error "Partner selection is final and cannot be changed" in tests/Integration/Features/PartnerSelection/PartnerSelectionTests.cs (CRITICAL per Constitution Principle 5: human-written test required before implementing partner selection endpoint)
 
 ---
 
@@ -145,7 +146,7 @@
 - [ ] T062 Add structured logging with correlation IDs in Infrastructure/Logging/
 - [ ] T063 Verify all integration tests pass with clean database
 - [ ] T064 Verify E2E test passes end-to-end journey
-- [ ] T065 Create deployment configuration for Azure App Service in infrastructure/
+- [ ] T065 Create deployment configuration for Azure App Service in infrastructure/ (includes App Service Configuration for JWT signing key, database connection string; SendGrid API key config deferred to Phase 1+ when email notifications implemented)
 - [ ] T079 Run Stryker.NET mutation tests on Infrastructure/Authentication/JwtTokenService.cs and PasswordHasher.cs, verify ≥70% mutation score per CHK031 requirement
 
 ---

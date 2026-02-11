@@ -64,15 +64,22 @@ public class LoginTests : IClassFixture<WebApplicationFactory<Program>>
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var passwordHasher = scope.ServiceProvider.GetRequiredService<PasswordHasher>();
 
-        var actor = new Actor
+        var actor = new Actor(Guid.NewGuid())
         {
-            Id = Guid.NewGuid(),
             Email = "login.test@example.com",
-            FullName = "Login Test User",
-            ContactAddress = "123 Test St",
+            FirstName = "Login",
+            LastName = "Test User",
+            ContactAddress = new Address
+            {
+                Address1 = "123 Test St",
+                City = "Test City",
+                PostCode = "12345",
+                CountryCode = "US"
+            },
             ActorType = ActorType.IdeaGenerator,
             AccountStatus = AccountStatus.Active,
             PasswordHash = passwordHasher.HashPassword("ValidPass123!"),
+            PasswordSalt = "somesalt",
             ActivationToken = null,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
@@ -102,7 +109,9 @@ public class LoginTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal("Bearer", loginResponse.TokenType);
         Assert.Equal(actor.Id, loginResponse.Actor.ActorId);
         Assert.Equal("login.test@example.com", loginResponse.Actor.Email);
-        Assert.Equal("Login Test User", loginResponse.Actor.FullName);
+        Assert.Equal("Login", loginResponse.Actor.FirstName);
+        Assert.Equal("Test User", loginResponse.Actor.LastName);
+        Assert.Equal("Login Test User", loginResponse.Actor.DisplayName);
         Assert.Equal("IdeaGenerator", loginResponse.Actor.ActorType);
     }
 
@@ -118,15 +127,22 @@ public class LoginTests : IClassFixture<WebApplicationFactory<Program>>
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var passwordHasher = scope.ServiceProvider.GetRequiredService<PasswordHasher>();
 
-        var actor = new Actor
+        var actor = new Actor(Guid.NewGuid())
         {
-            Id = Guid.NewGuid(),
             Email = "pending@example.com",
-            FullName = "Pending User",
-            ContactAddress = "123 Test St",
+            FirstName = "Pending",
+            LastName = "User",
+            ContactAddress = new Address
+            {
+                Address1 = "123 Test St",
+                City = "Test City",
+                PostCode = "12345",
+                CountryCode = "US"
+            },
             ActorType = ActorType.RD,
             AccountStatus = AccountStatus.PendingActivation,
             PasswordHash = passwordHasher.HashPassword("ValidPass123!"),
+            PasswordSalt = "somesalt",
             ActivationToken = Guid.NewGuid().ToString(),
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
@@ -161,15 +177,22 @@ public class LoginTests : IClassFixture<WebApplicationFactory<Program>>
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var passwordHasher = scope.ServiceProvider.GetRequiredService<PasswordHasher>();
 
-        var actor = new Actor
+        var actor = new Actor(Guid.NewGuid())
         {
-            Id = Guid.NewGuid(),
             Email = "wrongpass@example.com",
-            FullName = "Wrong Pass User",
-            ContactAddress = "123 Test St",
+            FirstName = "Wrong",
+            LastName = "Pass User",
+            ContactAddress = new Address
+            {
+                Address1 = "123 Test St",
+                City = "Test City",
+                PostCode = "12345",
+                CountryCode = "US"
+            },
             ActorType = ActorType.Manufacturing,
             AccountStatus = AccountStatus.Active,
             PasswordHash = passwordHasher.HashPassword("CorrectPass123!"),
+            PasswordSalt = "somesalt",
             ActivationToken = null,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
@@ -204,7 +227,9 @@ public class LoginTests : IClassFixture<WebApplicationFactory<Program>>
     private record ActorInfo(
         Guid ActorId,
         string Email,
-        string FullName,
+        string FirstName,
+        string LastName,
+        string DisplayName,
         string ActorType
     );
 }

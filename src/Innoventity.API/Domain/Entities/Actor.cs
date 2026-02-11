@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Innoventity.API.Domain.Common;
 
 namespace Innoventity.API.Domain.Entities;
 
@@ -6,14 +7,25 @@ namespace Innoventity.API.Domain.Entities;
 /// Represents a platform actor (user) with specific role and account status.
 /// Enforces business rules R1.1 (Account Activation), R1.2 (Actor Type Immutability),
 /// and R1.3 (Email Uniqueness per ActorType).
+/// Inherits identity-based equality from EntityOfGuid (R9.1)
 /// </summary>
-public class Actor
+public class Actor : EntityOfGuid
 {
+    // Id inherited from EntityOfGuid
+
     /// <summary>
-    /// Unique identifier for the actor
+    /// Parameterless constructor for EF Core
     /// </summary>
-    [Key]
-    public Guid Id { get; set; }
+    public Actor() : base()
+    {
+    }
+
+    /// <summary>
+    /// Constructor with Id for seed data and testing
+    /// </summary>
+    public Actor(Guid id) : base(id)
+    {
+    }
 
     /// <summary>
     /// Email address - serves as username equivalent (R1.3)
@@ -25,18 +37,31 @@ public class Actor
     public string Email { get; set; } = string.Empty;
 
     /// <summary>
-    /// Full name of the actor or organization
+    /// First name of the actor (R1.4)
     /// </summary>
     [Required]
-    [MaxLength(200)]
-    public string FullName { get; set; } = string.Empty;
+    [MaxLength(50)]
+    public string FirstName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Contact address for the actor
+    /// Last name of the actor (R1.4)
     /// </summary>
     [Required]
-    [MaxLength(500)]
-    public string ContactAddress { get; set; } = string.Empty;
+    [MaxLength(50)]
+    public string LastName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Structured contact address (R1.5)
+    /// Stored as owned entity with columns ContactAddress_*
+    /// Nullable - address is optional
+    /// </summary>
+    public Address? ContactAddress { get; set; }
+
+    /// <summary>
+    /// Contact phone number (optional)
+    /// </summary>
+    [MaxLength(20)]
+    public string? Phone { get; set; }
 
     /// <summary>
     /// Actor role in the platform ecosystem (R1.2 - immutable after registration)
@@ -66,6 +91,14 @@ public class Actor
     public string PasswordHash { get; set; } = string.Empty;
 
     /// <summary>
+    /// Password salt for enhanced security (R8.5)
+    /// Base64-encoded 32-byte random salt (44 characters)
+    /// </summary>
+    [Required]
+    [MaxLength(44)]
+    public string PasswordSalt { get; set; } = string.Empty;
+
+    /// <summary>
     /// Timestamp when actor account was created
     /// </summary>
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
@@ -74,4 +107,16 @@ public class Actor
     /// Timestamp when actor account was last updated
     /// </summary>
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>
+    /// Computed property for display name (FirstName LastName)
+    /// Not stored in database
+    /// </summary>
+    public string DisplayName => $"{FirstName} {LastName}";
+
+    /// <summary>
+    /// Computed property for sortable name (LastName, FirstName)
+    /// Not stored in database
+    /// </summary>
+    public string SortableName => $"{LastName}, {FirstName}";
 }

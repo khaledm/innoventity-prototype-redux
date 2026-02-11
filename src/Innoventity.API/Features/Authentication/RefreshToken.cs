@@ -18,7 +18,17 @@ public static class RefreshToken
     public record RefreshTokenResponse(
         string AccessToken,
         int ExpiresIn,
-        string TokenType
+        string TokenType,
+        ActorInfo Actor
+    );
+
+    public record ActorInfo(
+        Guid ActorId,
+        string Email,
+        string FirstName,
+        string LastName,
+        string DisplayName,
+        string ActorType
     );
 
     public static void MapRefreshTokenEndpoint(this IEndpointRouteBuilder app)
@@ -92,10 +102,20 @@ public static class RefreshToken
                     actor.Email
                 );
 
+                var actorInfo = new ActorInfo(
+                    ActorId: actor.Id,
+                    Email: actor.Email,
+                    FirstName: actor.FirstName,
+                    LastName: actor.LastName,
+                    DisplayName: actor.DisplayName,
+                    ActorType: actor.ActorType.ToString()
+                );
+
                 var response = new RefreshTokenResponse(
                     AccessToken: newAccessToken,
                     ExpiresIn: 3600, // 1 hour in seconds
-                    TokenType: "Bearer"
+                    TokenType: "Bearer",
+                    Actor: actorInfo
                 );
 
                 return Results.Ok(response);

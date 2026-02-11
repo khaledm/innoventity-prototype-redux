@@ -64,15 +64,22 @@ public class RefreshTokenTests : IClassFixture<WebApplicationFactory<Program>>
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var jwtService = scope.ServiceProvider.GetRequiredService<JwtTokenService>();
 
-        var actor = new Actor
+        var actor = new Actor(Guid.NewGuid())
         {
-            Id = Guid.NewGuid(),
             Email = "refresh@example.com",
-            FullName = "Refresh Test User",
-            ContactAddress = "123 Test St",
+            FirstName = "Refresh",
+            LastName = "Test User",
+            ContactAddress = new Address
+            {
+                Address1 = "123 Test St",
+                City = "Test City",
+                PostCode = "12345",
+                CountryCode = "US"
+            },
             ActorType = ActorType.Investor,
             AccountStatus = AccountStatus.Active,
             PasswordHash = "dummy_hash",
+            PasswordSalt = "somesalt",
             ActivationToken = null,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow

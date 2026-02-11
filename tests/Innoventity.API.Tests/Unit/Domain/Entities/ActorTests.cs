@@ -11,22 +11,31 @@ public class ActorTests
     public void Actor_RequiredFields_MustBeProvided()
     {
         // Arrange & Act
-        var actor = new Actor
+        var actor = new Actor(Guid.NewGuid())
         {
-            Id = Guid.NewGuid(),
             Email = "test@example.com",
-            FullName = "Test Actor",
-            ContactAddress = "123 Test St",
+            FirstName = "Test",
+            LastName = "Actor",
+            ContactAddress = new Address
+            {
+                Address1 = "123 Test St",
+                City = "Test City",
+                PostCode = "12345",
+                CountryCode = "US"
+            },
             ActorType = ActorType.IdeaGenerator,
-            PasswordHash = "$2a$12$somehash"
+            PasswordHash = "$2a$12$somehash",
+            PasswordSalt = "somesalt"
         };
 
         // Assert
         Assert.NotEqual(Guid.Empty, actor.Id);
         Assert.False(string.IsNullOrEmpty(actor.Email));
-        Assert.False(string.IsNullOrEmpty(actor.FullName));
-        Assert.False(string.IsNullOrEmpty(actor.ContactAddress));
+        Assert.False(string.IsNullOrEmpty(actor.FirstName));
+        Assert.False(string.IsNullOrEmpty(actor.LastName));
+        Assert.NotNull(actor.ContactAddress);
         Assert.False(string.IsNullOrEmpty(actor.PasswordHash));
+        Assert.False(string.IsNullOrEmpty(actor.PasswordSalt));
         Assert.Equal(AccountStatus.PendingActivation, actor.AccountStatus); // R1.1: default status
     }
 
@@ -105,24 +114,38 @@ public class ActorTests
     public void Actor_EmailUniqueness_EnforcedPerActorType_R1_3()
     {
         // Arrange - Two actors with same email but different ActorType
-        var actor1 = new Actor
+        var actor1 = new Actor(Guid.NewGuid())
         {
-            Id = Guid.NewGuid(),
             Email = "shared@example.com",
-            FullName = "Actor One",
-            ContactAddress = "123 Test St",
+            FirstName = "Actor",
+            LastName = "One",
+            ContactAddress = new Address
+            {
+                Address1 = "123 Test St",
+                City = "Test City",
+                PostCode = "12345",
+                CountryCode = "US"
+            },
             ActorType = ActorType.IdeaGenerator,
-            PasswordHash = "$2a$12$hash1"
+            PasswordHash = "$2a$12$hash1",
+            PasswordSalt = "salt1"
         };
 
-        var actor2 = new Actor
+        var actor2 = new Actor(Guid.NewGuid())
         {
-            Id = Guid.NewGuid(),
             Email = "shared@example.com",
-            FullName = "Actor Two",
-            ContactAddress = "456 Test Ave",
+            FirstName = "Actor",
+            LastName = "Two",
+            ContactAddress = new Address
+            {
+                Address1 = "456 Test Ave",
+                City = "Test City",
+                PostCode = "67890",
+                CountryCode = "US"
+            },
             ActorType = ActorType.Investor,
-            PasswordHash = "$2a$12$hash2"
+            PasswordHash = "$2a$12$hash2",
+            PasswordSalt = "salt2"
         };
 
         // Assert - R1.3: Same email allowed for different ActorTypes
@@ -131,5 +154,103 @@ public class ActorTests
         Assert.Equal(actor1.Email, actor2.Email);
         Assert.NotEqual(actor1.ActorType, actor2.ActorType);
         Assert.NotEqual(actor1.Id, actor2.Id);
+    }
+
+    [Fact]
+    public void Actor_WithSameId_ShouldBeEqual()
+    {
+        // Arrange
+        var actorId = Guid.NewGuid();
+        var actor1 = new Actor(actorId)
+        {
+            Email = "test1@example.com",
+            FirstName = "Test",
+            LastName = "Actor 1",
+            ContactAddress = new Address
+            {
+                Address1 = "123 Test St",
+                City = "Test City",
+                PostCode = "12345",
+                CountryCode = "US"
+            },
+            ActorType = ActorType.IdeaGenerator,
+            PasswordHash = "$2a$12$hash1",
+            PasswordSalt = "salt1"
+        };
+
+        var actor2 = new Actor(actorId)
+        {
+            Email = "test2@example.com", // Different properties
+            FirstName = "Test",
+            LastName = "Actor 2",
+            ContactAddress = new Address
+            {
+                Address1 = "456 Test Ave",
+                City = "Test City",
+                PostCode = "67890",
+                CountryCode = "US"
+            },
+            ActorType = ActorType.Investor,
+            PasswordHash = "$2a$12$hash2",
+            PasswordSalt = "salt2"
+        };
+
+        // Act
+        var areEqual = actor1.Equals(actor2);
+        var operatorEqual = actor1 == actor2;
+
+        // Assert - EntityBase identity-based equality (R9.1)
+        Assert.True(areEqual, "Actors with same Id should be equal regardless of other properties");
+        Assert.True(operatorEqual, "== operator should respect identity equality");
+        Assert.Equal(actor2.GetHashCode(), actor1.GetHashCode());
+    }
+
+    [Fact]
+    public void Actor_CanBeAddedToHashSet()
+    {
+        // Arrange
+        var actor1 = new Actor(Guid.NewGuid())
+        {
+            Email = "actor1@example.com",
+            FirstName = "Actor",
+            LastName = "One",
+            ContactAddress = new Address
+            {
+                Address1 = "123 Test St",
+                City = "Test City",
+                PostCode = "12345",
+                CountryCode = "US"
+            },
+            ActorType = ActorType.IdeaGenerator,
+            PasswordHash = "$2a$12$hash1",
+            PasswordSalt = "salt1"
+        };
+
+        var actor2 = new Actor(Guid.NewGuid())
+        {
+            Email = "actor2@example.com",
+            FirstName = "Actor",
+            LastName = "Two",
+            ContactAddress = new Address
+            {
+                Address1 = "456 Test Ave",
+                City = "Test City",
+                PostCode = "67890",
+                CountryCode = "US"
+            },
+            ActorType = ActorType.Manufacturing,
+            PasswordHash = "$2a$12$hash2",
+            PasswordSalt = "salt2"
+        };
+
+        var actor3 = actor1; // Same reference, same Id
+
+        // Act
+        var actorSet = new HashSet<Actor> { actor1, actor2, actor3 };
+
+        // Assert - HashSet should contain only 2 distinct actors (actor1/actor3 are same Id)
+        Assert.Equal(2, actorSet.Count);
+        Assert.Contains(actor1, actorSet);
+        Assert.Contains(actor2, actorSet);
     }
 }

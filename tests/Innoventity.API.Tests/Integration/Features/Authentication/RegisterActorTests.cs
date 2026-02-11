@@ -54,8 +54,15 @@ public class RegisterActorTests : IClassFixture<WebApplicationFactory<Program>>
         var registerRequest = new
         {
             email = "newidea@example.com",
-            fullName = "New Idea Generator",
-            contactAddress = "123 Innovation St",
+            firstName = "New Idea",
+            lastName = "Generator",
+            contactAddress = new
+            {
+                address1 = "123 Innovation St",
+                city = "London",
+                postCode = "SW1A 1AA",
+                countryCode = "GB"
+            },
             actorType = "IdeaGenerator",
             password = "SecureP@ss123!"
         };
@@ -84,8 +91,15 @@ public class RegisterActorTests : IClassFixture<WebApplicationFactory<Program>>
         var registerRequest = new
         {
             email = "duplicate@example.com",
-            fullName = "First User",
-            contactAddress = "123 Test St",
+            firstName = "First",
+            lastName = "User",
+            contactAddress = new
+            {
+                address1 = "123 Test St",
+                city = "Manchester",
+                postCode = "M1 1AA",
+                countryCode = "GB"
+            },
             actorType = "Manufacturing",
             password = "SecureP@ss123!"
         };
@@ -116,8 +130,15 @@ public class RegisterActorTests : IClassFixture<WebApplicationFactory<Program>>
         var request1 = new
         {
             email,
-            fullName = "User As Idea Generator",
-            contactAddress = "123 Test St",
+            firstName = "User",
+            lastName = "AsIdeaGenerator",
+            contactAddress = new
+            {
+                address1 = "123 Test St",
+                city = "Birmingham",
+                postCode = "B1 1AA",
+                countryCode = "GB"
+            },
             actorType = "IdeaGenerator",
             password = "SecureP@ss123!"
         };
@@ -125,8 +146,15 @@ public class RegisterActorTests : IClassFixture<WebApplicationFactory<Program>>
         var request2 = new
         {
             email,
-            fullName = "User As Investor",
-            contactAddress = "456 Finance Ave",
+            firstName = "User",
+            lastName = "AsInvestor",
+            contactAddress = new
+            {
+                address1 = "456 Finance Ave",
+                city = "Edinburgh",
+                postCode = "EH1 1AA",
+                countryCode = "GB"
+            },
             actorType = "Investor",
             password = "DifferentP@ss456!"
         };
@@ -149,8 +177,15 @@ public class RegisterActorTests : IClassFixture<WebApplicationFactory<Program>>
         var registerRequest = new
         {
             email = "weakpass@example.com",
-            fullName = "Weak Password User",
-            contactAddress = "123 Test St",
+            firstName = "Weak",
+            lastName = "PasswordUser",
+            contactAddress = new
+            {
+                address1 = "123 Test St",
+                city = "Cardiff",
+                postCode = "CF1 1AA",
+                countryCode = "GB"
+            },
             actorType = "RD",
             password = "weak"  // Violates R8.4 complexity requirements
         };
@@ -164,5 +199,97 @@ public class RegisterActorTests : IClassFixture<WebApplicationFactory<Program>>
         var error = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.True(error.TryGetProperty("detail", out var detail));
         Assert.Contains("password", detail.GetString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Register_RejectsFirstNameTooShort_NewValidation()
+    {
+        // Arrange
+        var factory = CreateFactory();
+        var client = factory.CreateClient();
+        var registerRequest = new
+        {
+            email = "shortname@example.com",
+            firstName = "J",  // Too short - minimum 2 chars required
+            lastName = "Smith",
+            contactAddress = new
+            {
+                address1 = "123 Test St",
+                city = "Cardiff",
+                postCode = "CF1 1AA",
+                countryCode = "GB"
+            },
+            actorType = "IdeaGenerator",
+            password = "SecurePass123!"
+        };
+
+        // Act
+        var response = await client.PostAsJsonAsync("/auth/register", registerRequest);
+
+        // Assert - MinLength(2) validation
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.True(response.StatusCode == HttpStatusCode.BadRequest,
+            $"Expected BadRequest but got {response.StatusCode}. Response: {content}");
+    }
+
+    [Fact]
+    public async Task Register_RejectsInvalidCountryCode_NewValidation()
+    {
+        // Arrange
+        var factory = CreateFactory();
+        var client = factory.CreateClient();
+        var registerRequest = new
+        {
+            email = "invalidcountry@example.com",
+            firstName = "John",
+            lastName = "Smith",
+            contactAddress = new
+            {
+                address1 = "123 Test St",
+                city = "Cardiff",
+                postCode = "CF1 1AA",
+                countryCode = "GBR"  // Invalid - must be exactly 2 uppercase letters (ISO 3166-1 alpha-2)
+            },
+            actorType = "IdeaGenerator",
+            password = "SecurePass123!"
+        };
+
+        // Act
+        var response = await client.PostAsJsonAsync("/auth/register", registerRequest);
+
+        // Assert - CountryCode pattern validation
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_RejectsPartialAddress_AllOrNothingValidation()
+    {
+        // Arrange
+        var factory = CreateFactory();
+        var client = factory.CreateClient();
+        var registerRequest = new
+        {
+            email = "partialaddress@example.com",
+            firstName = "John",
+            lastName = "Smith",
+            contactAddress = new
+            {
+                address1 = "123 Test St",
+                city = "Cardiff"
+                // Missing postCode and countryCode - violates all-or-nothing rule
+            },
+            actorType = "IdeaGenerator",
+            password = "SecurePass123!"
+        };
+
+        // Act
+        var response = await client.PostAsJsonAsync("/auth/register", registerRequest);
+
+        // Assert - All-or-nothing validation
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var error = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(error.TryGetProperty("detail", out var detail));
+        Assert.Contains("address", detail.GetString(), StringComparison.OrdinalIgnoreCase);
     }
 }

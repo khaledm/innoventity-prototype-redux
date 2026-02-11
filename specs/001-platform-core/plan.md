@@ -13,16 +13,16 @@ Build an open innovation platform enabling research-based innovation originators
 
 ## Technical Context
 
-**Language/Version**: C# 12 / .NET 8 (backend), TypeScript 5.x / Angular 18 (frontend)  
+**Language/Version**: C# 12 / .NET 8 (backend), TypeScript 5.x / Angular 18 (frontend)
 
-**Primary Dependencies**: 
+**Primary Dependencies**:
 - Backend: ASP.NET Core 8, EF Core 8, IdentityModel.Tokens.Jwt, BCrypt.Net, Azure.Extensions.*
 - Frontend: Angular 18 (standalone components, signals), RxJS, Angular Material (UI components)
 - Testing: xUnit, Playwright (E2E), Stryker.NET (mutation testing)
 
 **Storage**: Azure SQL Database (via EF Core 8), Azure Service Bus (async messaging), Azure Blob Storage (future document management)
 
-**Testing**: 
+**Testing**:
 - Unit: xUnit with test data builders
 - Integration: WebApplicationFactory with test database
 - E2E: Playwright for critical user journeys (J1-J3)
@@ -108,6 +108,7 @@ logout(): void {
 - Multiple devices CAN log in simultaneously (no device tracking in v1.0)
 - Client-side logout affects ONLY the device where logout is triggered
 - Other devices remain authenticated until token expires (max 1hr exposure)
+- **Refresh tokens are NOT device-specific**: Logout on Device A does not invalidate tokens on Device B until natural expiration (1hr max exposure for access tokens)
 - Explicit decision: Multi-device tracking excluded from v1.0 scope (per checklist CHK018)
 
 **v2.0 Upgrade Path** (if "logout all devices" becomes requirement):
@@ -203,7 +204,7 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
   - Secrets encrypted at rest, accessible only via Azure RBAC
   - **Cost**: $0 additional (included with App Service)
   - **Complexity**: Low
-  
+
 - **Setup Steps** (Azure Portal):
   1. Navigate to App Service → Configuration → Application settings
   2. Click "+ New application setting" for each secret:
@@ -251,11 +252,11 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
 - **Least Privilege**: Developers should have Reader role + specific Configuration write access (not full Contributor)
 
 **Secret Rotation Requirements**:
-- **Database Connection String**: 
+- **Database Connection String**:
   1. Update App Service Configuration with new value (Azure Portal or Azure CLI)
   2. Restart app: Azure Portal → Restart button (triggers configuration reload)
   3. Test connectivity before decommissioning old password
-- **JWT Signing Key**: 
+- **JWT Signing Key**:
   - Phase 0: Manual rotation → update Configuration → restart app (invalidates all existing tokens, users must re-login)
   - v2.0: Multi-key validation (store key version in token claims, support 2 concurrent keys during rotation)
 - **Rotation Testing**: Always test in Staging deployment slot before swapping to Production
@@ -433,7 +434,7 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
     "detail": "An unexpected error occurred while processing your request"
   }
   ```
-- **Frontend Handling**: 
+- **Frontend Handling**:
   - Generic banner error message (do NOT expose stack traces/DB details to users)
   - Log full error details to browser console for debugging
   - Provide "Retry" button for transient failures (network, timeouts)
@@ -518,7 +519,7 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
 
 ### CHK076: Maximum Concurrent Bids per Innovation
 - **Phase 0 Decision**: **No maximum limit** - uncapped bid submissions allowed in v1.0
-- **Rationale**: 
+- **Rationale**:
   - v1.0 user scale (100 concurrent users) prevents bid spam naturally
   - Innovation owner benefits from more partnership options (competitive bidding)
   - Database can handle unlimited bids per innovation (Bid table has FK + index on InnovationId)
@@ -540,7 +541,7 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
   | Innovation.KeyAdvantages | - | 1000 chars | Data Model line 241 |
   | Innovation.ProductKeywords | - | 500 chars | Data Model line 244 |
   | Bid.ParticipationProposal | **200 chars** | 5000 chars | Data Model line 515 (CHECK constraint) |
-- **Frontend Validation**: 
+- **Frontend Validation**:
   - Display character counter below textareas: "250 / 2000 characters"
   - Real-time validation: Turn counter red when exceeding max
   - Disable submit if any field exceeds max length
@@ -661,7 +662,7 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
       .WithMany()
       .HasForeignKey(b => b.InnovationId)
       .OnDelete(DeleteBehavior.Cascade);  // DELETE CASCADE
-  
+
   modelBuilder.Entity<Innovation>()
       .HasOne<Actor>()
       .WithMany()
@@ -697,7 +698,7 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
 ### CHK029: Performance Test Requirements (Load & Stress Testing)
 - **Phase 0 Target**: 100 concurrent users (Plan §Scale/Scope, line 49)
 - **Pre-Production Testing Requirements**:
-  
+
   **1. Load Testing** (sustained usage):
   - **Tool**: JMeter or k6 (open-source load testing)
   - **Scenario**: 100 concurrent users, 30-minute duration
@@ -712,7 +713,7 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
     - Error rate < 0.1% (exclude 4xx validation errors)
     - CPU utilization < 70% (Azure App Service B1 tier)
     - Memory utilization < 80%
-  
+
   **2. Stress Testing** (breaking point):
   - **Goal**: Identify failure threshold beyond expected load
   - **Ramp-up**: Start at 100 users, increase by 50 users every 5 minutes until errors > 5%
@@ -721,7 +722,7 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
     - API returns 503 Service Unavailable (not internal errors)
     - Application Insights logs saturation warnings
     - Frontend displays: "The platform is experiencing high traffic. Please try again in a few minutes."
-  
+
   **3. Database Connection Pool Testing**:
   - **Configuration**: EF Core connection pool (default: 100 connections)
   - **Test**: Verify no connection exhaustion under 100 concurrent users
@@ -738,7 +739,7 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
     3. Manual validation: QA tests critical user flows
     4. **Swap** Staging ↔ Production (instant switch, ~2 seconds downtime)
   - **Rollback**: Swap Production ↔ Staging (reverts to previous version instantly)
-  
+
 - **Database Migration Rollback**:
   - **Challenge**: EF Core migrations are forward-only (no automatic rollback)
   - **Strategy 1: Point-in-Time Restore** (for breaking schema changes):
@@ -749,17 +750,17 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
     - Write reverse migration manually: `dotnet ef migrations add RevertFeatureX`
     - Apply: `dotnet ef database update`
     - Deploy previous app version
-  - **Prevention**: 
+  - **Prevention**:
     - Always make schema changes **additive** (add nullable columns, not drop)
     - Use feature flags to disable new features without redeployment
     - Test migrations in Staging environment before Production
 
 - **Failure Scenarios**:
-  
+
   **Scenario 1: App Deployment Succeeds but App Crashes**
   - **Detection**: Application Insights alerts (>10% HTTP 500 errors in 5 minutes)
   - **Response**: Automatic rollback via deployment slot swap (2-second downtime)
-  
+
   **Scenario 2: Database Migration Breaks App**
   - **Detection**: Health check endpoint fails (cannot connect to DB)
   - **Response**:
@@ -767,7 +768,7 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
     2. Assess migration impact:
        - Non-breaking: Deploy hotfix migration
        - Breaking: Restore database to pre-migration state (CHK101)
-  
+
   **Scenario 3: Frontend Deployment Incompatible with Backend**
   - **Prevention**: Version API endpoints (`/api/v1/auth/login`) to support gradual migration
   - **Detection**: Frontend Angular app shows network errors, CORS issues
@@ -785,7 +786,7 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
     - [ ] Indexes added on large tables (may take >5 minutes, plan maintenance window)
 
 - **Failure Scenarios & Recovery**:
-  
+
   **Scenario 1: Migration Timeout** (e.g., adding index on 1M+ row table)
   - **Symptom**: `dotnet ef database update` hangs or times out
   - **Recovery**:
@@ -793,21 +794,21 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
     2. Check database state: `SELECT * FROM __EFMigrationsHistory` (last applied migration)
     3. If migration partially applied: Manually complete SQL operations
     4. If migration rolled back: Increase timeout (`Database.SetCommandTimeout(600)`) and retry
-  
+
   **Scenario 2: Constraint Violation** (e.g., adding NOT NULL column with existing NULL values)
   - **Symptom**: Migration fails with constraint violation error
   - **Recovery**:
     1. Migration auto-rolls back (EF Core transaction)
     2. Fix data: `UPDATE Actor SET FullName = 'Unknown' WHERE FullName IS NULL`
     3. Retry migration
-  
+
   **Scenario 3: Foreign Key Mismatch** (orphaned records prevent constraint creation)
   - **Symptom**: `ALTER TABLE Bid ADD CONSTRAINT FK_Bid_Innovation FOREIGN KEY... failed`
   - **Recovery**:
     1. Identify orphaned records: `SELECT * FROM Bid WHERE InnovationId NOT IN (SELECT Id FROM Innovation)`
     2. Decision: Delete orphans OR create placeholder Innovation records
     3. Retry migration
-  
+
   **Scenario 4: Production Migration Breaks App** (cannot rollback schema)
   - **Symptom**: App crashes on startup (EF Core model mismatch with database schema)
   - **Recovery Steps**:
@@ -817,7 +818,7 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
        - If migration failed midway: Manually fix partial migration
     3. **Validate**: Run integration tests against Production database
     4. **Re-deploy**: Fixed app version to Production
-  
+
   **Scenario 5: Complete Database Corruption from Failed Migration**
   - **Last Resort**: Contact Azure support for database recovery options
   - **Downtime**: Variable depending on issue severity
@@ -828,7 +829,7 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
 
 ### Principle 1: User Experience First ✅
 
-**Assessment**: PASS  
+**Assessment**: PASS
 **Evidence**:
 - Specification focuses on user needs and pain points for all 5 personas
 - Error scenarios documented with user-facing messages and recovery paths
@@ -844,11 +845,11 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
 
 ### Principle 2: Quality is Non-Negotiable ✅
 
-**Assessment**: PASS  
+**Assessment**: PASS
 **Evidence**:
 - Test-first development mandated (TDD: red → green → refactor)
 - Coverage targets: >80% unit, 100% integration, P0 journeys E2E
-- Mutation testing (>70% score) validates test quality  
+- Mutation testing (>70% score) validates test quality
 - Security from day one: JWT authentication, bcrypt passwords, App Service Configuration for secrets
 - Production-ready from Phase 0 (no "prototype" mindset)
 
@@ -875,6 +876,7 @@ For Phase 0 to be considered "production-ready" (even as a constrained first sli
   - Integration tests cover all Phase 0 API endpoints (registration, activation, login, refresh, view innovation, health)
   - At least one Playwright E2E test exercises the full Phase 0 journey via the Angular client
   - Mutation score for core authentication domain and token generation is at least 70%
+  - **Mutation Testing Priority** (if <70% score): Fix in order: (1) Authentication logic (JWT validation, token generation), (2) Password hashing (BCrypt parameters, salt handling), (3) Business rule validation (account status checks)
 
 3. **Infrastructure & Operations**
   - Dev environment can be created and destroyed from infrastructure code within 10 minutes (FR7.1)
@@ -898,7 +900,7 @@ These checklist items provide the concrete interpretation of "production-ready f
 
 ### Principle 3: Simplicity Over Cleverness ✅
 
-**Assessment**: PASS  
+**Assessment**: PASS
 **Evidence**:
 - Standard technology choices: ASP.NET Core Minimal APIs, EF Core, Angular (Microsoft template)
 - Vertical Slice Architecture (feature-oriented, simple to navigate)
@@ -914,7 +916,7 @@ These checklist items provide the concrete interpretation of "production-ready f
 
 ### Principle 4: Specification Drives Implementation ✅
 
-**Assessment**: PASS  
+**Assessment**: PASS
 **Evidence**:
 - Functional specification approved before technical design (95.5/100 constitutional compliance)
 - Specification contains zero implementation details (functional requirements only)
@@ -930,11 +932,11 @@ These checklist items provide the concrete interpretation of "production-ready f
 
 ###Principle 5: Tests Must Prove They Work ✅
 
-**Assessment**: PASS  
+**Assessment**: PASS
 **Evidence**:
 - TDD workflow enforced: observe test failing before implementation
 - Critical business logic (partner selection, authorization, bid validation) requires human-written tests
-- Mutation testing validates tests actually catch bugs (>70% score target)  
+- Mutation testing validates tests actually catch bugs (>70% score target)
 - Phase 0 testing strategy: unit → integration → E2E progression
 
 **Architecture Alignment**:
@@ -946,7 +948,7 @@ These checklist items provide the concrete interpretation of "production-ready f
 
 ### Principle 6: AI Augments, Humans Decide ✅
 
-**Assessment**: PASS  
+**Assessment**: PASS
 **Evidence**:
 - Architectural decisions made by human (this PLAN phase)
 - Critical business logic to be human-implemented:
@@ -966,7 +968,7 @@ These checklist items provide the concrete interpretation of "production-ready f
 
 ### Principle 7: Architecture Must Support Evolution ✅
 
-**Assessment**: PASS  
+**Assessment**: PASS
 **Evidence**:
 - v2.0 features explicitly deferred (multi-tenancy, organizations, closed/hybrid modes)
 - Repository abstractions enable v2.0 tenant filtering without rewrite
@@ -1058,7 +1060,7 @@ tests/Innoventity.API.Tests/
 │   ├── Domain/               # Entity/value object tests
 │   └── Builders/             # Test data builders
 ├── Integration/               # API integration tests
-│   ├── Features/             # Feature endpoint tests  
+│   ├── Features/             # Feature endpoint tests
 │   └── Infrastructure/       # WebApplicationFactory setup
 └── E2E/                       # End-to-end tests (Playwright)
     ├── Journeys/             # User journey tests (J1-J3 priority)
@@ -1073,11 +1075,11 @@ infra/
 └── bicep/                     # Azure resource definitions
 ```
 
-**Structure Decision**: 
+**Structure Decision**:
 - **Backend**: Vertical Slice Architecture organized by feature (each feature = cohesive slice with its own APIs, logic, persistence)
 - **Frontend**: Angular standalone components grouped by feature area
 - **Testing**: Separate test project mirroring backend structure (Unit/Integration/E2E)
-- **Rationale**: 
+- **Rationale**:
   - Vertical slices reduce coupling, improve maintainability
   - Feature-oriented structure aligns with Spec-Kit workflow (one spec = one or more feature slices)
   - Repository abstractions in Domain layer enable v2.0 multi-tenancy without rewrite
