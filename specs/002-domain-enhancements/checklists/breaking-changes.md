@@ -106,29 +106,33 @@ This checklist validates the **COMPLETENESS OF BREAKING CHANGE DOCUMENTATION AND
 
 ### Validation Changes
 
-- [ ] BC010: Registration validation adds `firstName` min length 2 chars [NEW VALIDATION]
+- [ ] BC010: Registration validation adds `firstName` min length 2 chars [NEW VALIDATION] ⚠️ GAP IDENTIFIED
   - **Rule**: `firstName` must be at least 2 characters
   - **Error**: 400 Bad Request if violated: `{ "error": "First name must be at least 2 characters" }`
   - **Impact**: Single-letter first names (e.g., "J Smith") now rejected
   - **Affected Consumers**: Frontend registration form validation
+  - **STATUS**: ⚠️ NOT IMPLEMENTED - Register.cs has [Required] but no [MinimumLength(2)] attribute
 
-- [ ] BC011: Registration validation adds `lastName` min length 2 chars [NEW VALIDATION]
+- [ ] BC011: Registration validation adds `lastName` min length 2 chars [NEW VALIDATION] ⚠️ GAP IDENTIFIED
   - **Rule**: `lastName` must be at least 2 characters
   - **Error**: 400 Bad Request if violated: `{ "error": "Last name must be at least 2 characters" }`
   - **Impact**: Single-letter last names (e.g., "John S") now rejected
   - **Affected Consumers**: Frontend registration form validation
+  - **STATUS**: ⚠️ NOT IMPLEMENTED - Register.cs has [Required] but no [MinimumLength(2)] attribute
 
-- [ ] BC012: Registration validation adds `contactAddress` all-or-nothing rule [NEW VALIDATION]
+- [ ] BC012: Registration validation adds `contactAddress` all-or-nothing rule [NEW VALIDATION] ⚠️ GAP IDENTIFIED
   - **Rule**: If ANY address field provided, then Address1, City, PostCode, CountryCode required
   - **Error**: 400 Bad Request if violated: `{ "error": "If address provided, Address1, City, PostCode, and CountryCode are required" }`
   - **Impact**: Partial addresses (e.g., only City provided) now rejected
   - **Affected Consumers**: Frontend registration form validation
+  - **STATUS**: ⚠️ NOT IMPLEMENTED - Register.cs has basic [Required] on AddressRequest fields, but no all-or-nothing validation at DTO level
 
-- [ ] BC013: Registration validation adds `countryCode` exactly 2 chars [NEW VALIDATION]
+- [ ] BC013: Registration validation adds `countryCode` exactly 2 chars [NEW VALIDATION] ⚠️ GAP IDENTIFIED
   - **Rule**: CountryCode must be exactly 2 uppercase letters (ISO 3166-1 alpha-2)
   - **Error**: 400 Bad Request if violated: `{ "error": "CountryCode must be 2 characters (ISO 3166-1 alpha-2)" }`
   - **Impact**: Country names (e.g., "United Kingdom" instead of "GB") now rejected
   - **Affected Consumers**: Frontend registration form validation, country selector
+  - **STATUS**: ⚠️ NOT IMPLEMENTED - Register.cs has [Required] but no [StringLength] or [RegularExpression] validation for ISO 3166-1 alpha-2 format
 
 ---
 

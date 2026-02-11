@@ -114,6 +114,30 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            // Add FullName column back FIRST (nullable initially)
+            migrationBuilder.AddColumn<string>(
+                name: "FullName",
+                table: "Actors",
+                type: "nvarchar(200)",
+                maxLength: 200,
+                nullable: true);
+
+            // Reconstruct FullName from FirstName + LastName BEFORE dropping those columns
+            migrationBuilder.Sql(@"
+                UPDATE Actors
+                SET FullName = LTRIM(RTRIM(FirstName + ' ' + LastName))
+                WHERE FirstName IS NOT NULL AND LastName IS NOT NULL;
+            ", suppressTransaction: true);
+
+            // Make FullName NOT NULL after reconstruction
+            migrationBuilder.AlterColumn<string>(
+                name: "FullName",
+                table: "Actors",
+                type: "nvarchar(200)",
+                maxLength: 200,
+                nullable: false);
+
+            // Now safe to drop ContactAddress owned entity columns
             migrationBuilder.DropColumn(
                 name: "ContactAddress_Address1",
                 table: "Actors");
@@ -134,6 +158,7 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                 name: "ContactAddress_PostCode",
                 table: "Actors");
 
+            // Now drop FirstName and LastName (FullName already reconstructed)
             migrationBuilder.DropColumn(
                 name: "FirstName",
                 table: "Actors");
@@ -174,19 +199,12 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                 oldType: "datetimeoffset",
                 oldDefaultValueSql: "GETUTCDATE()");
 
+            // Add back old ContactAddress string column
             migrationBuilder.AddColumn<string>(
                 name: "ContactAddress",
                 table: "Actors",
                 type: "nvarchar(500)",
                 maxLength: 500,
-                nullable: false,
-                defaultValue: "");
-
-            migrationBuilder.AddColumn<string>(
-                name: "FullName",
-                table: "Actors",
-                type: "nvarchar(200)",
-                maxLength: 200,
                 nullable: false,
                 defaultValue: "");
         }

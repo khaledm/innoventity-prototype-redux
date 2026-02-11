@@ -17,6 +17,60 @@ public static class Register
             AppDbContext dbContext,
             PasswordHasher passwordHasher) =>
         {
+            // Validate firstName and lastName minimum length
+            if (request.FirstName.Length < 2)
+            {
+                return Results.BadRequest(new
+                {
+                    type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                    title = "Validation Failed",
+                    status = 400,
+                    detail = "First name must be at least 2 characters."
+                });
+            }
+
+            if (request.LastName.Length < 2)
+            {
+                return Results.BadRequest(new
+                {
+                    type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                    title = "Validation Failed",
+                    status = 400,
+                    detail = "Last name must be at least 2 characters."
+                });
+            }
+
+            // Validate ContactAddress if present
+            if (request.ContactAddress != null)
+            {
+                // Validate all-or-nothing (if any field provided, all required fields must be present)
+                if (string.IsNullOrWhiteSpace(request.ContactAddress.Address1) ||
+                    string.IsNullOrWhiteSpace(request.ContactAddress.City) ||
+                    string.IsNullOrWhiteSpace(request.ContactAddress.PostCode) ||
+                    string.IsNullOrWhiteSpace(request.ContactAddress.CountryCode))
+                {
+                    return Results.BadRequest(new
+                    {
+                        type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                        title = "Validation Failed",
+                        status = 400,
+                        detail = "If address is provided, Address1, City, PostCode, and CountryCode are required."
+                    });
+                }
+
+                // Validate CountryCode format (ISO 3166-1 alpha-2: exactly 2 uppercase letters)
+                if (!System.Text.RegularExpressions.Regex.IsMatch(request.ContactAddress.CountryCode, "^[A-Z]{2}$"))
+                {
+                    return Results.BadRequest(new
+                    {
+                        type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                        title = "Validation Failed",
+                        status = 400,
+                        detail = "Country code must be 2 uppercase letters (ISO 3166-1 alpha-2)."
+                    });
+                }
+            }
+
             // Validate password complexity (R8.4)
             var passwordValidation = ValidatePasswordComplexity(request.Password);
             if (!passwordValidation.IsValid)
@@ -163,8 +217,8 @@ public static class Register
 
     public record RegisterRequest(
         [EmailAddress] string Email,
-        [Required] string FirstName,
-        [Required] string LastName,
+        [Required][MinLength(2)][MaxLength(50)] string FirstName,
+        [Required][MinLength(2)][MaxLength(50)] string LastName,
         AddressRequest? ContactAddress,
         string? Phone,
         [Required] string ActorType,
@@ -176,6 +230,6 @@ public static class Register
         string? Address2,
         [Required] string City,
         [Required] string PostCode,
-        [Required] string CountryCode
+        [Required][StringLength(2, MinimumLength = 2)][RegularExpression("^[A-Z]{2}$", ErrorMessage = "Country code must be 2 uppercase letters (ISO 3166-1 alpha-2)")] string CountryCode
     );
 }

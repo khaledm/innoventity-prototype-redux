@@ -75,45 +75,46 @@ This checklist validates the **SAFETY OF DATABASE MIGRATION**, testing whether t
 
 ### FullName Split Algorithm
 
-- [ ] MIG020: FullName split logic handles standard names correctly [Core Functionality]
+- [X] MIG020: FullName split logic handles standard names correctly [Core Functionality] N/A - FRESH DATABASE
   - "John Smith" → FirstName="John", LastName="Smith" ✅
   - "Mary Jane Watson" → FirstName="Mary Jane", LastName="Watson" (split on LAST space) ✅
-  - "Dr. Sarah Chen" → FirstName="Dr. Sarah", LastName="Chen" ✅
-
-- [ ] MIG021: FullName split logic handles single-word names [Edge Case]
+  - "Dr. Sarah Chen" → FirstName="Dr. Sarah", LastName="Chen" ✅  - **N/A**: Fresh database - no existing FullName data to split
+- [X] MIG021: FullName split logic handles single-word names [Edge Case] N/A - FRESH DATABASE
   - "Madonna" → FirstName="Madonna", LastName="" (empty LastName acceptable for manual review)
   - "Cher" → FirstName="Cher", LastName=""
   - Migration logs warning for LastName='' records (flagged for manual review)
+  - **N/A**: Fresh database - all actors created with FirstName + LastName from start
 
-- [ ] MIG022: FullName split logic handles multiple spaces [Edge Case]
+- [X] MIG022: FullName split logic handles multiple spaces [Edge Case] N/A - FRESH DATABASE
   - "Mary  Jane  Watson" (double spaces) → splits on last space, preserves double spaces in FirstName
   - Whitespace NOT trimmed in SQL split (acceptable - data preserved as-is)
   - **Recommendation**: Add TRIM() to FirstName/LastName after split
 
-- [ ] MIG023: FullName split logic handles leading/trailing whitespace [Edge Case]
+- [X] MIG023: FullName split logic handles leading/trailing whitespace [Edge Case] N/A - FRESH DATABASE
   - " John Smith " (leading/trailing spaces) → NOT trimmed in current SQL (GAP)
   - **Recommendation**: Add LTRIM(RTRIM(...)) to FirstName/LastName assignment
   - Example: `SET [FirstName] = LTRIM(RTRIM(CASE WHEN CHARINDEX(...)`
 
-- [ ] MIG024: FullName split logic handles NULL values [Edge Case]
+- [X] MIG024: FullName split logic handles NULL values [Edge Case] N/A - FRESH DATABASE
   - NULL FullName → FirstName=NULL, LastName=NULL
   - Error when making FirstName NOT NULL (migration fails - CORRECT behavior)
   - **Validation**: Verify no NULL FullName in current database before migration
   - **Pre-migration query**: `SELECT * FROM Actors WHERE FullName IS NULL`
 
-- [ ] MIG025: FullName split logic handles empty string [Edge Case]
+- [X] MIG025: FullName split logic handles empty string [Edge Case] N/A - FRESH DATABASE
   - "" (empty string) FullName → FirstName="", LastName=""
   - Error when making FirstName NOT NULL with empty string (migration fails - CORRECT behavior)
   - **Validation**: Verify no empty FullName in current database before migration
   - **Pre-migration query**: `SELECT * FROM Actors WHERE FullName = ''`
 
-- [ ] MIG026: FullName split SQL is syntactically correct [SQL Validation]
+- [X] MIG026: FullName split SQL is syntactically correct [SQL Validation] N/A - FRESH DATABASE
   - CHARINDEX(...) function syntax correct for SQL Server
   - REVERSE(...) function syntax correct
   - LEFT(...) function syntax correct
   - RIGHT(...) function syntax correct
   - LEN(...) function handles trailing spaces correctly (SQL Server trims by default)
   - No SQL injection risk (no dynamic SQL, no user input)
+  - **N/A**: Fresh database migration uses simple DROP/ADD columns, no complex SQL split logic needed
 
 ### PasswordSalt Generation
 
@@ -140,11 +141,12 @@ This checklist validates the **SAFETY OF DATABASE MIGRATION**, testing whether t
 
 ### ContactAddress Migration
 
-- [ ] MIG040: ContactAddress string is NOT migrated to structured Address [Correct Behavior]
+- [X] MIG040: ContactAddress string is NOT migrated to structured Address [Correct Behavior] ✓ VERIFIED
   - Current ContactAddress: Unstructured string (e.g., "123 Main St, London, UK")
   - Target Address: Structured (Address1, City, PostCode, CountryCode - parsing impossible)
   - Migration strategy: Leave Address NULL for existing actors (correct - no data loss)
   - Future: New registrations provide structured Address
+  - **VERIFIED**: Migration drops old ContactAddress column, adds ContactAddress_* columns as nullable ✓
 
 - [X] MIG041: Address columns are correctly named with prefix [EF Core Owned Entity]
   - ContactAddress_Address1 ✅
@@ -166,32 +168,36 @@ This checklist validates the **SAFETY OF DATABASE MIGRATION**, testing whether t
 
 ### Data Preservation
 
-- [ ] MIG050: Down() migration reconstructs FullName from FirstName + LastName [Rollback Safety]
+- [ ] MIG050: Down() migration reconstructs FullName from FirstName + LastName [Rollback Safety] ⚠️ NOT IMPLEMENTED
   - Reconstruction logic: `[FirstName] + ' ' + [LastName]`
   - Handles empty LastName: "Madonna" + ' ' + "" = "Madonna " (trailing space - acceptable)
   - **Recommendation**: Add TRIM to remove trailing space: `LTRIM(RTRIM([FirstName] + ' ' + [LastName]))`
+  - **STATUS**: Down() migration in file does NOT reconstruct FullName - it just adds back empty FullName column with DEFAULT ''. This means rollback LOSES NAME DATA. ⚠️ CRITICAL GAP for production use (acceptable for fresh dev database)
 
-- [ ] MIG051: Down() migration handles NULL FirstName/LastName [Edge Case]
+- [X] MIG051: Down() migration handles NULL FirstName/LastName [Edge Case] N/A - FRESH DATABASE
   - If FirstName NULL: FullName becomes NULL (correct - preserves NULL state)
   - If LastName NULL: FullName becomes FirstName + ' ' (trailing space - acceptable)
   - **Note**: NULL should never occur after successful Up() migration (NOT NULL constraint)
 
-- [ ] MIG052: Down() migration drops new columns [Rollback Completeness]
-  - FirstName column dropped
-  - LastName column dropped
-  - PasswordSalt column dropped
-  - Phone column dropped
-  - ContactAddress_* columns dropped (5 columns)
+- [X] MIG052: Down() migration drops new columns [Rollback Completeness] ✓ VERIFIED
+  - FirstName column dropped ✓
+  - LastName column dropped ✓
+  - PasswordSalt column dropped ✓
+  - Phone column dropped ✓
+  - ContactAddress_* columns dropped (5 columns) ✓
+  - **VERIFIED**: All DROP COLUMN statements present in Down() method
 
-- [ ] MIG053: Down() migration restores old columns [Rollback Completeness]
-  - FullName column restored (nullable or NOT NULL based on original schema)
-  - ContactAddress column restored (string type)
+- [X] MIG053: Down() migration restores old columns [Rollback Completeness] ✓ VERIFIED
+  - FullName column restored (nullable or NOT NULL based on original schema) ✓
+  - ContactAddress column restored (string type) ✓
   - **Issue**: Original column constraints must be preserved (nullable, maxLength, etc.)
   - **Verification**: Check AppDbContext OnModelCreating for original constraints
+  - **VERIFIED**: Down() adds FullName (nvarchar(200), NOT NULL, DEFAULT '') and ContactAddress (nvarchar(500), NOT NULL, DEFAULT '')
 
-- [ ] MIG054: Down() migration reverses Industry rename (if applied) [Rollback Completeness]
+- [X] MIG054: Down() migration reverses Industry rename (if applied) [Rollback Completeness] ✓ VERIFIED
   - **IF** Industry Id → IndustryId rename was applied: Reverse with `sp_rename 'Industries.Id', 'IndustryId', 'COLUMN'`
   - **IF** Industry keeps IndustryId: No action needed
+  - **VERIFIED**: Down() includes RenameColumn("Industries", "Id", "IndustryId") ✓
 
 ### Rollback Testing
 
@@ -216,20 +222,20 @@ This checklist validates the **SAFETY OF DATABASE MIGRATION**, testing whether t
 
 ### Data Validation Queries
 
-- [ ] MIG070: Verify no NULL FullName in current database [Pre-Migration Check]
+- [X] MIG070: Verify no NULL FullName in current database [Pre-Migration Check] N/A - FRESH DATABASE
   - Query: `SELECT Id, Email, FullName FROM Actors WHERE FullName IS NULL`
   - Expected: 0 rows (if rows found, migration will fail - fix data first)
 
-- [ ] MIG071: Verify no empty FullName in current database [Pre-Migration Check]
+- [X] MIG071: Verify no empty FullName in current database [Pre-Migration Check] N/A - FRESH DATABASE
   - Query: `SELECT Id, Email, FullName FROM Actors WHERE FullName = ''`
   - Expected: 0 rows (if rows found, migration will fail - fix data first)
 
-- [ ] MIG072: Verify FullName distribution (identify single-word names) [Pre-Migration Analysis]
+- [X] MIG072: Verify FullName distribution (identify single-word names) [Pre-Migration Analysis] N/A - FRESH DATABASE
   - Query: `SELECT Id, Email, FullName FROM Actors WHERE CHARINDEX(' ', FullName) = 0`
   - Purpose: Identify actors requiring manual review after migration (empty LastName)
   - Document count and plan for manual review
 
-- [ ] MIG073: Count total actors to verify 100% data migration [Pre-Migration Baseline]
+- [X] MIG073: Count total actors to verify 100% data migration [Pre-Migration Baseline] N/A - FRESH DATABASE
   - Query: `SELECT COUNT(*) FROM Actors`
   - Record count (e.g., 3 seed actors + any test data)
   - After migration: Verify same count, verify all have FirstName/LastName
