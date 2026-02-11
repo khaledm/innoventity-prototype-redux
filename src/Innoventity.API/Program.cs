@@ -1,6 +1,7 @@
 using System.Text;
 using Innoventity.API.Features.Authentication;
 using Innoventity.API.Features.Health;
+using Innoventity.API.Features.Innovations;
 using Innoventity.API.Infrastructure.Authentication;
 using Innoventity.API.Infrastructure.ErrorHandling;
 using Innoventity.API.Infrastructure.Persistence;
@@ -87,6 +88,7 @@ app.MapRegisterEndpoint();
 app.MapActivateEndpoint();
 app.MapLoginEndpoint();
 app.MapRefreshTokenEndpoint();
+app.MapGetInnovation();
 app.MapGet("/", () => "Hello World!");
 
 app.Run();

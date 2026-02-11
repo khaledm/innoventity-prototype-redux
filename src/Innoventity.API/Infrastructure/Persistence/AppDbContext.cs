@@ -15,6 +15,16 @@ public class AppDbContext : DbContext
     /// </summary>
     public DbSet<Actor> Actors => Set<Actor>();
 
+    /// <summary>
+    /// Innovations submitted by IdeaGenerators (Phase 0: read-only, future phases: full CRUD)
+    /// </summary>
+    public DbSet<Innovation> Innovations => Set<Innovation>();
+
+    /// <summary>
+    /// Industries for innovation targeting and actor affiliation
+    /// </summary>
+    public DbSet<Industry> Industries => Set<Industry>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -61,6 +71,109 @@ public class AppDbContext : DbContext
 
             entity.Property(a => a.UpdatedAt)
                   .HasDefaultValueSql("GETUTCDATE()");
+        });
+
+        // Configure Innovation entity
+        modelBuilder.Entity<Innovation>(entity =>
+        {
+            entity.HasKey(i => i.Id);
+
+            entity.Property(i => i.Title)
+                  .IsRequired()
+                  .HasMaxLength(200);
+
+            entity.Property(i => i.ProductType)
+                  .IsRequired()
+                  .HasMaxLength(200);
+
+            entity.Property(i => i.ResearchBackground)
+                  .IsRequired()
+                  .HasMaxLength(2000);
+
+            entity.Property(i => i.ResearchCategory)
+                  .IsRequired()
+                  .HasConversion<string>();
+
+            entity.Property(i => i.IprStatus)
+                  .IsRequired()
+                  .HasMaxLength(200);
+
+            entity.Property(i => i.ProductDescription)
+                  .IsRequired()
+                  .HasMaxLength(2000);
+
+            entity.Property(i => i.ProductAdvantages)
+                  .IsRequired()
+                  .HasMaxLength(2000);
+
+            entity.Property(i => i.DevelopmentPhase)
+                  .IsRequired()
+                  .HasMaxLength(200);
+
+            entity.Property(i => i.DevelopmentProcess)
+                  .IsRequired()
+                  .HasMaxLength(2000);
+
+            entity.Property(i => i.TargetMarket)
+                  .IsRequired()
+                  .HasMaxLength(2000);
+
+            entity.Property(i => i.TargetCustomerBase)
+                  .IsRequired()
+                  .HasMaxLength(2000);
+
+            entity.Property(i => i.TargetCustomerType)
+                  .IsRequired()
+                  .HasMaxLength(100);
+
+            entity.Property(i => i.ProductKeywords)
+                  .IsRequired()
+                  .HasMaxLength(500);
+
+            entity.Property(i => i.AdvantageKeywords)
+                  .IsRequired()
+                  .HasMaxLength(500);
+
+            entity.Property(i => i.Status)
+                  .IsRequired()
+                  .HasConversion<string>();
+
+            entity.Property(i => i.CreatedAt)
+                  .HasDefaultValueSql("GETUTCDATE()");
+
+            // Configure relationship with Actor (Owner)
+            entity.HasOne(i => i.Owner)
+                  .WithMany()
+                  .HasForeignKey(i => i.OwnerId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure many-to-many relationship with Industry
+            entity.HasMany(i => i.TargetIndustries)
+                  .WithMany()
+                  .UsingEntity<Dictionary<string, object>>(
+                      "InnovationIndustry",
+                      j => j.HasOne<Industry>()
+                            .WithMany()
+                            .HasForeignKey("IndustryId")
+                            .OnDelete(DeleteBehavior.Cascade),
+                      j => j.HasOne<Innovation>()
+                            .WithMany()
+                            .HasForeignKey("InnovationId")
+                            .OnDelete(DeleteBehavior.Cascade));
+        });
+
+        // Configure Industry entity
+        modelBuilder.Entity<Industry>(entity =>
+        {
+            entity.HasKey(i => i.IndustryId);
+
+            entity.Property(i => i.IndustryId)
+                  .IsRequired()
+                  .HasMaxLength(50);
+
+            entity.Property(i => i.Name)
+                  .IsRequired()
+                  .HasMaxLength(200);
         });
     }
 }

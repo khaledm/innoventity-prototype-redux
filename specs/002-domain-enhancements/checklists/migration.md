@@ -1,0 +1,421 @@
+# Database Migration Safety Checklist: AddEntityBaseAndRefactorActor
+
+**Purpose**: Ensure database migration is safe, reversible, and data-preserving before execution
+**Created**: February 10, 2026
+**Migration**: `20260210_AddEntityBaseAndRefactorActor`
+**Risk Level**: HIGH (complex data transformation, breaking schema changes)
+
+---
+
+## Checklist Purpose
+
+This checklist validates the **SAFETY OF DATABASE MIGRATION**, testing whether the migration preserves data, handles edge cases, and can be rolled back without data loss. This is a **CRITICAL SAFETY GATE** before applying migration to any database (dev, staging, production).
+
+**What This Checklist Tests**:
+- ✅ Does migration preserve existing data?
+- ✅ Does migration handle edge cases without corruption?
+- ✅ Can migration be rolled back safely?
+- ✅ Are migration scripts reviewed for SQL injection/errors?
+
+**What This Checklist Does NOT Test**:
+- ❌ Whether application code uses new schema correctly (that's integration testing)
+- ❌ Whether tests pass after migration (that's test execution)
+- ❌ Whether API endpoints work (that's functional testing)
+
+---
+
+## Pre-Migration Validation
+
+### Migration File Structure
+
+- [ ] MIG001: Migration file exists in `src/Innoventity.API/Migrations/` directory [File Structure]
+  - File naming: `[Timestamp]_AddEntityBaseAndRefactorActor.cs`
+  - Timestamp format: `yyyyMMddHHmmss` (EF Core convention)
+  - Class name matches file name (EF Core requirement)
+
+- [ ] MIG002: Migration class inherits from `Microsoft.EntityFrameworkCore.Migrations.Migration` [Code Structure]
+  - Namespace: `Innoventity.API.Migrations`
+  - Contains `protected override void Up(MigrationBuilder migrationBuilder)` method
+  - Contains `protected override void Down(MigrationBuilder migrationBuilder)` method
+
+- [ ] MIG003: Migration is correctly registered in ModelSnapshot [EF Core Integrity]
+  - Run `dotnet ef migrations list` to verify migration appears in list
+  - Migration is in "Pending" state (not yet applied)
+  - No duplicate migration names in history
+
+### Schema Change Validation
+
+- [ ] MIG010: Up() migration adds columns as nullable first (allows existing rows) [Safety]
+  - FirstName: `nullable: true` initially (changed to `nullable: false` after data migration)
+  - LastName: `nullable: true` initially (changed to `nullable: false` after data migration)
+  - PasswordSalt: `nullable: false, defaultValue: ""` (mandatory field, default provided)
+  - Phone: `nullable: true` (optional field)
+  - ContactAddress_Address1: `nullable: true` (Address object optional)
+  - ContactAddress_Address2: `nullable: true`
+  - ContactAddress_City: `nullable: true`
+  - ContactAddress_PostCode: `nullable: true`
+  - ContactAddress_CountryCode: `nullable: true`
+
+- [ ] MIG011: Up() migration operation sequence is correct [Safety]
+  - ✅ Step 1: Add new columns (nullable or with defaults)
+  - ✅ Step 2: Migrate data (populate new columns from old columns)
+  - ✅ Step 3: Make columns NOT NULL (after data populated)
+  - ✅ Step 4: Drop old columns (after data migrated)
+  - ❌ WRONG ORDER: Drop columns before data migration (causes data loss)
+
+- [ ] MIG012: Industry table column rename is correct [Schema Change]
+  - **IF** Industry uses EntityBase<string>: IndustryId → Id rename executed
+  - **IF** Industry keeps string PK: No rename, property mapped to IndustryId
+  - Clarify decision: Plan mentions rename but not confirmed in final approach
+
+---
+
+## Data Migration Logic
+
+### FullName Split Algorithm
+
+- [ ] MIG020: FullName split logic handles standard names correctly [Core Functionality]
+  - "John Smith" → FirstName="John", LastName="Smith" ✅
+  - "Mary Jane Watson" → FirstName="Mary Jane", LastName="Watson" (split on LAST space) ✅
+  - "Dr. Sarah Chen" → FirstName="Dr. Sarah", LastName="Chen" ✅
+
+- [ ] MIG021: FullName split logic handles single-word names [Edge Case]
+  - "Madonna" → FirstName="Madonna", LastName="" (empty LastName acceptable for manual review)
+  - "Cher" → FirstName="Cher", LastName=""
+  - Migration logs warning for LastName='' records (flagged for manual review)
+
+- [ ] MIG022: FullName split logic handles multiple spaces [Edge Case]
+  - "Mary  Jane  Watson" (double spaces) → splits on last space, preserves double spaces in FirstName
+  - Whitespace NOT trimmed in SQL split (acceptable - data preserved as-is)
+  - **Recommendation**: Add TRIM() to FirstName/LastName after split
+
+- [ ] MIG023: FullName split logic handles leading/trailing whitespace [Edge Case]
+  - " John Smith " (leading/trailing spaces) → NOT trimmed in current SQL (GAP)
+  - **Recommendation**: Add LTRIM(RTRIM(...)) to FirstName/LastName assignment
+  - Example: `SET [FirstName] = LTRIM(RTRIM(CASE WHEN CHARINDEX(...)`
+
+- [ ] MIG024: FullName split logic handles NULL values [Edge Case]
+  - NULL FullName → FirstName=NULL, LastName=NULL
+  - Error when making FirstName NOT NULL (migration fails - CORRECT behavior)
+  - **Validation**: Verify no NULL FullName in current database before migration
+  - **Pre-migration query**: `SELECT * FROM Actors WHERE FullName IS NULL`
+
+- [ ] MIG025: FullName split logic handles empty string [Edge Case]
+  - "" (empty string) FullName → FirstName="", LastName=""
+  - Error when making FirstName NOT NULL with empty string (migration fails - CORRECT behavior)
+  - **Validation**: Verify no empty FullName in current database before migration
+  - **Pre-migration query**: `SELECT * FROM Actors WHERE FullName = ''`
+
+- [ ] MIG026: FullName split SQL is syntactically correct [SQL Validation]
+  - CHARINDEX(...) function syntax correct for SQL Server
+  - REVERSE(...) function syntax correct
+  - LEFT(...) function syntax correct
+  - RIGHT(...) function syntax correct
+  - LEN(...) function handles trailing spaces correctly (SQL Server trims by default)
+  - No SQL injection risk (no dynamic SQL, no user input)
+
+### PasswordSalt Generation
+
+- [ ] MIG030: PasswordSalt generation strategy is documented [Decision]
+  - Strategy: Generate new random salt (existing PasswordHash remains valid - BCrypt embeds salt)
+  - Alternative considered: Extract embedded salt from BCrypt hash (not implemented - complex)
+  - Justification: BCrypt stores salt in hash ($2a$12$[22-char-salt]), explicit PasswordSalt for audit trail
+
+- [ ] MIG031: PasswordSalt generation uses cryptographically secure RNG [Security]
+  - SQL approach: `HASHBYTES('SHA2_256', NEWID())` generates cryptographic hash of GUID
+  - Output: 32-byte hash, converted to Base64 = 44 characters (fits nvarchar(44))
+  - **Issue**: HASHBYTES output is binary, needs CONVERT to Base64
+  - **Correct SQL**: `CONVERT(nvarchar(44), HASHBYTES('SHA2_256', NEWID()), 1)` (1 = hex, NOT Base64)
+  - **Recommendation**: Use C# migration code for proper Base64 encoding
+
+- [ ] MIG032: PasswordSalt column constraints are correct [Schema]
+  - Type: nvarchar(44) (Base64 encoded 32-byte salt = 44 chars)
+  - NOT NULL: Yes (mandatory field)
+  - DEFAULT: '' (empty string for existing rows, will be backfilled)
+  - **Issue**: DEFAULT '' means existing actors have invalid empty salt
+  - **Recommendation**: Generate salt in data migration step, not default value
+
+### ContactAddress Migration
+
+- [ ] MIG040: ContactAddress string is NOT migrated to structured Address [Correct Behavior]
+  - Current ContactAddress: Unstructured string (e.g., "123 Main St, London, UK")
+  - Target Address: Structured (Address1, City, PostCode, CountryCode - parsing impossible)
+  - Migration strategy: Leave Address NULL for existing actors (correct - no data loss)
+  - Future: New registrations provide structured Address
+
+- [ ] MIG041: Address columns are correctly named with prefix [EF Core Owned Entity]
+  - ContactAddress_Address1 (NOT Address_Address1) - prefix matches property name
+  - ContactAddress_Address2
+  - ContactAddress_City
+  - ContactAddress_PostCode
+  - ContactAddress_CountryCode
+  - Matches EF Core OwnsOne configuration in AppDbContext
+
+- [ ] MIG042: Address columns are nullable [Correct Behavior]
+  - All Address columns: nullable: true
+  - Entire Address object optional (Actor.ContactAddress is nullable)
+  - All-or-nothing validation in application code (not database constraints)
+
+---
+
+## Down() Migration (Rollback)
+
+### Data Preservation
+
+- [ ] MIG050: Down() migration reconstructs FullName from FirstName + LastName [Rollback Safety]
+  - Reconstruction logic: `[FirstName] + ' ' + [LastName]`
+  - Handles empty LastName: "Madonna" + ' ' + "" = "Madonna " (trailing space - acceptable)
+  - **Recommendation**: Add TRIM to remove trailing space: `LTRIM(RTRIM([FirstName] + ' ' + [LastName]))`
+
+- [ ] MIG051: Down() migration handles NULL FirstName/LastName [Edge Case]
+  - If FirstName NULL: FullName becomes NULL (correct - preserves NULL state)
+  - If LastName NULL: FullName becomes FirstName + ' ' (trailing space - acceptable)
+  - **Note**: NULL should never occur after successful Up() migration (NOT NULL constraint)
+
+- [ ] MIG052: Down() migration drops new columns [Rollback Completeness]
+  - FirstName column dropped
+  - LastName column dropped
+  - PasswordSalt column dropped
+  - Phone column dropped
+  - ContactAddress_* columns dropped (5 columns)
+
+- [ ] MIG053: Down() migration restores old columns [Rollback Completeness]
+  - FullName column restored (nullable or NOT NULL based on original schema)
+  - ContactAddress column restored (string type)
+  - **Issue**: Original column constraints must be preserved (nullable, maxLength, etc.)
+  - **Verification**: Check AppDbContext OnModelCreating for original constraints
+
+- [ ] MIG054: Down() migration reverses Industry rename (if applied) [Rollback Completeness]
+  - **IF** Industry Id → IndustryId rename was applied: Reverse with `sp_rename 'Industries.Id', 'IndustryId', 'COLUMN'`
+  - **IF** Industry keeps IndustryId: No action needed
+
+### Rollback Testing
+
+- [ ] MIG060: Rollback tested on local database [Testing]
+  - Create test database with Phase 0-5 schema
+  - Seed with test actors (including edge cases: single-word names, NULL, empty)
+  - Apply Up() migration: `dotnet ef database update`
+  - Verify data migrated correctly
+  - Apply Down() migration: `dotnet ef database update [PreviousMigration]`
+  - Verify FullName reconstructed correctly
+  - Run original 32 tests - all passing
+
+- [ ] MIG061: Rollback tested with various data scenarios [Edge Case Testing]
+  - Standard names: "John Smith" → split → reconstructed correctly
+  - Single-word names: "Madonna" → FirstName="Madonna", LastName="" → reconstructed as "Madonna " (acceptable)
+  - Multiple spaces: "Mary Jane Watson" → reconstructed correctly
+  - Empty LastName: Reconstructed with trailing space (acceptable)
+
+---
+
+## Pre-Migration Checks (Execute Before Applying)
+
+### Data Validation Queries
+
+- [ ] MIG070: Verify no NULL FullName in current database [Pre-Migration Check]
+  - Query: `SELECT Id, Email, FullName FROM Actors WHERE FullName IS NULL`
+  - Expected: 0 rows (if rows found, migration will fail - fix data first)
+
+- [ ] MIG071: Verify no empty FullName in current database [Pre-Migration Check]
+  - Query: `SELECT Id, Email, FullName FROM Actors WHERE FullName = ''`
+  - Expected: 0 rows (if rows found, migration will fail - fix data first)
+
+- [ ] MIG072: Verify FullName distribution (identify single-word names) [Pre-Migration Analysis]
+  - Query: `SELECT Id, Email, FullName FROM Actors WHERE CHARINDEX(' ', FullName) = 0`
+  - Purpose: Identify actors requiring manual review after migration (empty LastName)
+  - Document count and plan for manual review
+
+- [ ] MIG073: Count total actors to verify 100% data migration [Pre-Migration Baseline]
+  - Query: `SELECT COUNT(*) FROM Actors`
+  - Record count (e.g., 3 seed actors + any test data)
+  - After migration: Verify same count, verify all have FirstName/LastName
+
+### Backup Strategy
+
+- [ ] MIG080: Database backup created before migration [Safety]
+  - Backup type: Full database backup (not differential)
+  - Backup location: Documented and accessible
+  - Backup verified: Restore test performed
+  - Retention: Keep backup for 30 days after successful migration
+
+- [ ] MIG081: Migration tested on copy of production schema [Staging Test]
+  - Copy production database to staging (if production exists)
+  - OR create test database with production-like data (realistic edge cases)
+  - Apply migration on staging
+  - Verify success before production deployment
+
+---
+
+## Post-Migration Validation
+
+### Data Integrity Checks
+
+- [ ] MIG090: All actors have FirstName and LastName [Data Integrity]
+  - Query: `SELECT COUNT(*) FROM Actors WHERE FirstName IS NULL OR LastName IS NULL`
+  - Expected: 0 rows (NOT NULL constraint enforced)
+
+- [ ] MIG091: All actors have non-empty FirstName [Data Quality]
+  - Query: `SELECT COUNT(*) FROM Actors WHERE FirstName = ''`
+  - Expected: 0 rows (validation MIN LENGTH 2 enforced by application, but migration doesn't enforce)
+  - **Note**: Empty FirstName possible if existing data had empty FullName (should fail migration)
+
+- [ ] MIG092: Identify actors with empty LastName (single-word names) [Manual Review]
+  - Query: `SELECT Id, Email, FirstName, LastName FROM Actors WHERE LastName = ''`
+  - Expected: N rows (where N = single-word names identified in MIG072)
+  - Action: Manual review and correction if needed (e.g., "Madonna" might need LastName=".")
+
+- [ ] MIG093: All actors have PasswordSalt [Data Integrity]
+  - Query: `SELECT COUNT(*) FROM Actors WHERE PasswordSalt IS NULL OR PasswordSalt = ''`
+  - Expected: 0 rows (NOT NULL constraint + backfill in migration)
+  - **Issue**: If DEFAULT '' used, all existing actors have empty salt (SECURITY ISSUE)
+
+- [ ] MIG094: PasswordSalt values are unique (no duplicate salts) [Security]
+  - Query: `SELECT PasswordSalt, COUNT(*) FROM Actors GROUP BY PasswordSalt HAVING COUNT(*) > 1`
+  - Expected: 0 rows (each actor should have unique salt)
+  - **Issue**: If DEFAULT '' used, all actors have duplicate empty salt (SECURITY ISSUE)
+
+- [ ] MIG095: Address columns are NULL for existing actors [Expected Behavior]
+  - Query: `SELECT COUNT(*) FROM Actors WHERE ContactAddress_Address1 IS NOT NULL`
+  - Expected: 0 rows (or only new registrations after migration)
+  - Existing actors: All Address columns should be NULL (unstructured ContactAddress not migrated)
+
+- [ ] MIG096: FullName column no longer exists [Schema Change]
+  - Query: `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Actors' AND COLUMN_NAME = 'FullName'`
+  - Expected: 0 rows (FullName dropped)
+
+- [ ] MIG097: Old ContactAddress string column no longer exists [Schema Change]
+  - Query: `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Actors' AND COLUMN_NAME = 'ContactAddress' AND DATA_TYPE = 'nvarchar'`
+  - Expected: 0 rows (old string column dropped)
+  - **Note**: ContactAddress_* columns should exist (owned entity)
+
+- [ ] MIG098: Unique index (Email, ActorType) still exists [Constraint Preservation]
+  - Query: `SELECT name FROM sys.indexes WHERE name = 'IX_Actor_Email_ActorType' AND object_id = OBJECT_ID('Actors')`
+  - Expected: 1 row (index preserved)
+
+- [ ] MIG099: Timestamp defaults (CreatedAt, UpdatedAt) still work [Constraint Preservation]
+  - Insert new test actor without CreatedAt/UpdatedAt values
+  - Verify CreatedAt/UpdatedAt populated with GETUTCDATE() default
+  - Delete test actor after verification
+
+---
+
+## Critical Issues & Blockers
+
+### Security Issues
+
+- [ ] SEC001: PasswordSalt DEFAULT '' is a security vulnerability [CRITICAL]
+  - **Issue**: Plan specifies `DEFAULT ''` for PasswordSalt on existing rows
+  - **Impact**: All existing actors have empty salt (not cryptographically secure)
+  - **Fix**: Generate unique salt in data migration step using C# RandomNumberGenerator
+  - **SQL Alternative**: Use `HASHBYTES('SHA2_256', NEWID())` but ensure Base64 encoding
+  - **Status**: ⚠️ BLOCKER - Must fix before applying migration
+
+### Data Corruption Risks
+
+- [ ] DATA001: FullName split whitespace handling incomplete [HIGH]
+  - **Issue**: Leading/trailing whitespace NOT trimmed in split logic
+  - **Impact**: FirstName=" John" (leading space) causes poor UX, sorting issues
+  - **Fix**: Add LTRIM(RTRIM(...)) to FirstName/LastName assignment in migration SQL
+  - **Status**: ⚠️ HIGH PRIORITY - Fix before applying migration
+
+- [ ] DATA002: Empty FullName causes migration failure [MEDIUM]
+  - **Issue**: Empty string FullName → empty FirstName → violates NOT NULL after data migration
+  - **Impact**: Migration fails if any actor has empty FullName
+  - **Fix**: Add pre-migration validation query (MIG071), fix data before migration
+  - **Status**: ✅ MITIGATED by pre-migration check
+
+### Rollback Risks
+
+- [ ] ROLL001: Down() migration FullName reconstruction has trailing space [LOW]
+  - **Issue**: "Madonna" + ' ' + "" = "Madonna " (trailing space)
+  - **Impact**: Rollback introduces trailing space in FullName (minor UX issue)
+  - **Fix**: Add TRIM() to reconstruction: `LTRIM(RTRIM([FirstName] + ' ' + [LastName]))`
+  - **Status**: ⚠️ RECOMMENDED FIX - Low priority, acceptable without fix
+
+---
+
+## Migration Review Sign-Off
+
+### Required Reviews
+
+- [ ] REV001: SQL reviewed by database expert [Peer Review]
+  - Reviewer: [Name]
+  - Date: [Date]
+  - Focus: SQL syntax, performance, security
+
+- [ ] REV002: Security reviewed (PasswordSalt generation) [Security Review]
+  - Reviewer: [Name]
+  - Date: [Date]
+  - Focus: Cryptographic salt generation, no hardcoded secrets
+
+- [ ] REV003: Rollback procedure tested on staging [QA Review]
+  - Tester: [Name]
+  - Date: [Date]
+  - Result: Rollback successful / Data preserved / Tests passing
+
+### Pre-Production Checklist
+
+- [ ] PROD001: Migration tested on staging environment [Staging Test]
+  - Environment: [Staging URL]
+  - Date: [Date]
+  - Result: SUCCESS / FAILED
+  - Issues: [List any issues]
+
+- [ ] PROD002: Rollback tested on staging environment [Rollback Test]
+  - Environment: [Staging URL]
+  - Date: [Date]
+  - Result: SUCCESS / FAILED
+  - Original data restored: YES / NO
+
+- [ ] PROD003: Database backup created [Backup]
+  - Backup file: [Path]
+  - Backup size: [Size]
+  - Backup verified: YES / NO (restore test performed)
+
+- [ ] PROD004: Stakeholder approval obtained [Approval]
+  - Approved by: [Name]
+  - Date: [Date]
+  - Deployment window: [Date/Time]
+
+---
+
+## Overall Assessment
+
+**Status**: ⚠️ **NEEDS FIXES** (1 critical, 1 high priority)
+
+### Critical Blockers (Must Fix Before Migration)
+
+1. **SEC001**: PasswordSalt DEFAULT '' security vulnerability
+   - **Severity**: CRITICAL
+   - **Action**: Rewrite migration to generate unique cryptographic salt for each actor
+   - **Time to Fix**: 20-30 minutes
+
+### High Priority Issues (Recommended Fix)
+
+2. **DATA001**: FullName split whitespace handling
+   - **Severity**: HIGH
+   - **Action**: Add LTRIM(RTRIM(...)) to FirstName/LastName assignment
+   - **Time to Fix**: 10 minutes
+
+### Recommended Improvements
+
+3. **ROLL001**: Down() migration trailing space
+   - **Severity**: LOW
+   - **Action**: Add TRIM() to FullName reconstruction
+   - **Time to Fix**: 5 minutes
+
+### Total Time to Fix Issues: 35-45 minutes
+
+**Recommendation**: Fix SEC001 and DATA001 before applying migration. ROLL001 is optional but recommended.
+
+**Post-Fix Action**: Re-run this checklist after fixes applied, then proceed to migration.
+
+---
+
+## Sign-Off
+
+**Migration Safety Reviewer**: [Name]
+**Date**: [Date]
+**Status**: BLOCKED (critical security issue) / PASSED (all checks complete)
+**Next Step**: Fix SEC001 and DATA001, then re-review and apply migration on staging
+

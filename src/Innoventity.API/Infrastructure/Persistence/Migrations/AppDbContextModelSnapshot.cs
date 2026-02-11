@@ -22,6 +22,21 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("InnovationIndustry", b =>
+                {
+                    b.Property<string>("IndustryId")
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("InnovationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("IndustryId", "InnovationId");
+
+                    b.HasIndex("InnovationId");
+
+                    b.ToTable("InnovationIndustry");
+                });
+
             modelBuilder.Entity("Innoventity.API.Domain.Entities.Actor", b =>
                 {
                     b.Property<Guid>("Id")
@@ -77,6 +92,148 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("IX_Actor_Email_ActorType");
 
                     b.ToTable("Actors");
+                });
+
+            modelBuilder.Entity("Innoventity.API.Domain.Entities.Industry", b =>
+                {
+                    b.Property<string>("IndustryId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("IndustryId");
+
+                    b.ToTable("Industries");
+                });
+
+            modelBuilder.Entity("Innoventity.API.Domain.Entities.Innovation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AdvantageKeywords")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("DevelopmentPhase")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("DevelopmentProcess")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<Guid>("IdeaToken")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("IprStatus")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ProductAdvantages")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("ProductDescription")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("ProductKeywords")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ProductType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ResearchBackground")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("ResearchCategory")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TargetCustomerBase")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("TargetCustomerType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("TargetMarket")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId");
+
+                    b.ToTable("Innovations");
+                });
+
+            modelBuilder.Entity("InnovationIndustry", b =>
+                {
+                    b.HasOne("Innoventity.API.Domain.Entities.Industry", null)
+                        .WithMany()
+                        .HasForeignKey("IndustryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Innoventity.API.Domain.Entities.Innovation", null)
+                        .WithMany()
+                        .HasForeignKey("InnovationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Innoventity.API.Domain.Entities.Innovation", b =>
+                {
+                    b.HasOne("Innoventity.API.Domain.Entities.Actor", "Owner")
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,10 +1,11 @@
 # Innoventity Platform - Functional Specification
 
-**Feature**: Platform Core (v1.0)  
-**Specification Type**: Functional Requirements  
-**Phase**: SPECIFY  
-**Status**: Approved (95.5/100 Constitutional Compliance)  
+**Feature**: Platform Core (v1.0)
+**Specification Type**: Functional Requirements
+**Phase**: SPECIFY
+**Status**: Approved (98/100 Constitutional Compliance)
 **Approval Date**: February 8, 2026
+**Last Review**: February 10, 2026 (Resolved: C3 CRITICAL - partner selection test requirement, U1+T5 HIGH - seed data + test coverage, T1+T2+T4+C2 MEDIUM - authorization/mutation/session/secret clarifications)
 
 ---
 
@@ -504,7 +505,7 @@ The platform creates a **multi-sided marketplace** for research-based innovation
      - Activity feed (recent updates)
 
 2. **Business Plan Development**
-   
+
    **Collaboration Mechanics**:
    - **Section Assignment**: Each business plan section has a designated lead (based on partner expertise)
    - **Editing Workflow**:
@@ -518,41 +519,41 @@ The platform creates a **multi-sided marketplace** for research-based innovation
    - **Visibility**: All team members can view all sections, but only assigned lead can edit
    - **Comments**: Team members can add threaded comments on any section for discussion
    - **Version History**: System tracks changes, allows viewing previous versions of each section
-   
+
    **Business Plan Sections**:
-   
+
    - **Financial Model** (led by investor or innovation owner if no investor):
      - Revenue projections (3-5 year forecast)
      - Cost structure (fixed and variable costs)
      - Break-even analysis
      - Funding requirements and timeline
-   
+
    - **Ownership Structure** (collaborative, requires consensus):
      - Equity splits among partners
      - IP licensing terms
      - Revenue sharing model
      - Exit strategy considerations
-   
+
    - **Market Strategy** (led by sales/marketing partner):
      - Customer acquisition plan
      - Competitive positioning
      - Pricing strategy
      - Distribution channels
      - Marketing budget and timeline
-   
+
    - **Technical Roadmap** (led by R&D partner):
      - Development phases and milestones
      - Resource requirements (personnel, equipment, facilities)
      - Risk mitigation for technical challenges
      - Quality assurance approach
-   
+
    - **Production Plan** (led by manufacturing partner):
      - Manufacturing approach (in-house, contract, hybrid)
      - Volume scaling strategy
      - Quality standards and certifications
      - Supply chain management
      - Cost per unit projections at various volumes
-   
+
    - **Competitive Analysis** (collaborative):
      - Market landscape overview
      - Key competitors and their offerings
@@ -612,7 +613,7 @@ The platform creates a **multi-sided marketplace** for research-based innovation
 4. **Deadlocked Ownership Structure Negotiation**
    - **What happens**: Team cannot agree on equity splits or revenue sharing
    - **System response**: Section remains in "draft" status, preventing business plan completion
-   - **Recovery path**: 
+   - **Recovery path**:
      - Team uses comment threads to negotiate terms
      - Innovation owner has final authority to approve structure if consensus cannot be reached
      - Alternative: Team can mark this section as "to be determined" and complete rest of plan
@@ -784,6 +785,8 @@ Scenario: Owner can edit their own innovation
 - Innovations with selected partners: Full details visible only to owner and accepted partners
 - Rejected bids: Bidders retain limited view (visible but cannot access collaboration workspace)
 
+**Phase 0 Simplification**: All authenticated users can view all published innovations (open discovery with JWT validation only). Resource-level authorization (ownership checks for edit/delete operations) deferred to Phase 1+. See plan.md §Phase 0 Authorization for implementation details.
+
 **R3.2 Industry-Based Matching**:
 - Actors see innovations where:
   - Actor's industry affiliation overlaps with innovation's target industries
@@ -803,7 +806,7 @@ Scenario: Owner can edit their own innovation
 - Actor cannot bid on their own innovations
 - Innovation must be published and accepting partnership proposals
 - Actor cannot submit multiple bids for the same innovation
-- **Error messages**: 
+- **Error messages**:
   - "Only R&D, Manufacturing, Sales/Marketing, and Investor actors can submit bids"
   - "You cannot bid on your own innovation"
   - "This innovation is not accepting bids"
@@ -1366,14 +1369,24 @@ These journeys are important for full platform value but can be tested with inte
 
 **Goal**: Prove end-to-end functionality with simplest possible workflow.
 
-**Scope**: 
+**Scope**:
 1. **User Registration & Authentication (Backend)**: User can register as Idea Generator, activate account, and log in via API endpoints
 2. **View Single Innovation (Backend)**: Authenticated user can retrieve and view one innovation by its unique identifier via API endpoint
 3. **Minimal Angular Client (Frontend)**: Angular 18 application exercising Phase 0 API endpoints for end-to-end validation of the complete user journey
 
+**What's OUT of Phase 0 Scope** (Deferred to Phase 1+):
+- ❌ **Innovation Submission**: Creating and publishing new innovations (multi-step form workflow)
+- ❌ **Bid Submission**: Partners submitting formal partnership proposals
+- ❌ **Partner Selection**: Idea Generator selecting collaboration partners from received bids
+- ❌ **Virtual Incubator Access**: Team collaboration workspace for selected partners
+- ❌ **Business Plan Creation**: Collaborative business plan development
+- ✅ **View-Only Access** in Phase 0: Users can only view existing innovations (no creation, no bidding, no selection)
+
+**Rationale**: Phase 0 focuses on proving authentication and data retrieval infrastructure. Business-critical operations (partner selection irreversibility per Constitution Principle 5) will be implemented with full test coverage in subsequent phases.
+
 **User Story**:
-> As an authenticated Idea Generator,  
-> I want to retrieve a specific innovation by its identifier,  
+> As an authenticated Idea Generator,
+> I want to retrieve a specific innovation by its identifier,
 > So that I can view its details.
 
 **Required Information Displayed**:
@@ -1420,6 +1433,61 @@ These journeys are important for full platform value but can be tested with inte
 - Deployment pipeline functional
 - Monitoring and observability operational
 - Testing strategy validated (unit → integration → end-to-end with real frontend)
+
+### Test Data Requirements (Phase 0)
+
+**Purpose**: Support GET /innovations/{id} endpoint testing and E2E journey validation with deterministic, reproducible test data.
+
+**Required Seed Data**:
+
+**Innovation 1**: "Quantum Battery Prototype"
+- **Owner**: Seeded Actor (Idea Generator, email: "test-generator@innoventity.dev")
+  - ActorId: Fixed GUID `11111111-1111-1111-1111-111111111111`
+  - FullName: "Dr. Sarah Chen"
+  - ActorType: IdeaGenerator
+  - AccountStatus: Active
+  - Password: Hashed "Test123!@#" (for integration test login)
+- **InnovationId**: Fixed GUID `22222222-2222-2222-2222-222222222222` for consistent test assertions
+- **IdeaToken**: Fixed GUID `33333333-3333-3333-3333-333333333333` for tracking
+- **Status**: Published (accepting proposals)
+- **ResearchCategory**: Engineering
+- **Target Industries**: Electronics, Energy (2 industries from master list)
+  - Industry 1: "Electronics" (IndustryId: `ELEC-001`)
+  - Industry 2: "Renewable Energy" (IndustryId: `ENRG-001`)
+- **IPR Status**: Patent Pending
+- **Research Background**: "Lithium-air battery leveraging quantum tunneling for 10x energy density improvement over conventional Li-ion batteries. Based on 3 years of R&D at Advanced Energy Lab."
+- **Product Type**: "Energy Storage Device"
+- **Product Description**: "Next-generation battery technology for electric vehicles enabling 1000-mile range on single charge with 50% faster charging and 20-year lifespan."
+- **Product Advantages**: "10x energy density, 50% faster charging time, 20-year operational lifespan, environmentally sustainable materials"
+- **Development Phase**: "Prototype"
+- **Development Process**: "Laboratory validation complete, seeking partners for commercial scale production"
+- **Target Market**: "Electric vehicle manufacturers, renewable energy storage systems, consumer electronics"
+- **Target Customer Base**: "Automotive OEMs, grid-scale energy storage providers"
+- **Target Customer Type**: "B2B"
+- **Product Keywords**: "battery, energy storage, electric vehicle, quantum, lithium-air"
+- **Advantage Keywords**: "energy density, fast charging, long lifespan, sustainable"
+- **Creation Timestamp**: Fixed date `2026-01-15T10:00:00Z` for deterministic assertions
+- **Submission Timestamp**: Fixed date `2026-01-15T14:30:00Z` for deterministic assertions
+- **Collaboration Requirements**: Requires R&D Organization, Manufacturing Company, Sales & Marketing Company (no Investor for Phase 0)
+
+**Industry Master List** (Partial for Phase 0):
+- Electronics (IndustryId: `ELEC-001`)
+- Renewable Energy (IndustryId: `ENRG-001`)
+- Automotive (IndustryId: `AUTO-001`)
+- Healthcare (IndustryId: `HLTH-001`)
+
+**Validation**:
+- Integration test T048 retrieves innovation by ID `22222222-2222-2222-2222-222222222222` and asserts all fields match specification
+- Integration test T050a uses seeded Manufacturing actor to verify cross-actor access (any authenticated user can view)
+- E2E test T051 validates complete journey using seeded actor credentials and innovation data
+- Seed script runs as part of test database initialization (`DbContext.Database.EnsureCreated()` or test startup hook)
+- All GUIDs are fixed for deterministic test assertions (no random generation in seed data)
+
+**Implementation Notes**:
+- Seed data script location: `Infrastructure/Persistence/SeedData.cs`
+- Seeding strategy: Check if data exists before inserting (idempotent seeding for test reruns)
+- Test database isolation: Each integration test uses unique in-memory database or cleans state before/after
+- Production database: Seed script does NOT run in production (test data only)
 
 ---
 
