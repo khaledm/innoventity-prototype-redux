@@ -3,8 +3,17 @@ using Xunit;
 
 namespace Innoventity.API.Tests.Unit.Domain.Entities;
 
+/// <summary>
+/// PHASE 1 WORK - Domain validation tests deferred to Phase 1 (Post Phase 0.6)
+/// These tests validate Innovation entity field requirements using [Required] attributes.
+/// Expected failures in Phase 0.6 implementation as domain validation not yet implemented.
+/// Will be addressed in Phase 1 when domain layer is enhanced with data annotations/FluentValidation.
+/// </summary>
 public class InnovationTests
 {
+    /// <summary>
+    /// PHASE 1 DEFERRED: Validates Title is required
+    /// </summary>
     [Fact]
     public void Innovation_Should_RequireTitle()
     {
@@ -31,6 +40,9 @@ public class InnovationTests
         Assert.Contains("Title", exception.Message);
     }
 
+    /// <summary>
+    /// PHASE 1 DEFERRED: Validates ProductType is required
+    /// </summary>
     [Fact]
     public void Innovation_Should_RequireProductType()
     {
@@ -58,6 +70,9 @@ public class InnovationTests
         Assert.Contains("ProductType", exception.Message);
     }
 
+    /// <summary>
+    /// PHASE 1 DEFERRED: Validates ResearchBackground is required
+    /// </summary>
     [Fact]
     public void Innovation_Should_RequireResearchBackground()
     {
