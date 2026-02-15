@@ -21,7 +21,7 @@ This document captures practical lessons learned during Phase 0.6 implementation
 
 **Discovered During**: T009 - GET /industries implementation (commit 4f1a65d)
 
-**Problem**: 
+**Problem**:
 When using `AppDbContext.HasData()` to seed reference data (like industries), integration tests using SQL Server via WebApplicationFactory will fail with PRIMARY KEY constraint violations if tests also manually seed the same data.
 
 **Root Cause**:
@@ -165,12 +165,12 @@ public static async Task<IResult> CreateInnovation(
     // Validate required fields
     if (string.IsNullOrWhiteSpace(request.Title))
         return Results.BadRequest(new { error = "Title is required" });
-    
+
     if (request.Title.Length > 200)
         return Results.BadRequest(new { error = "Title cannot exceed 200 characters" });
-    
+
     // ... more validation rules
-    
+
     // Business logic...
 }
 
@@ -191,7 +191,7 @@ public static async Task<IResult> CreateInnovation(
 
 **Impact**: MEDIUM - Prevents wasted time implementing FluentValidation that would need removal
 
-**Recommendation**: 
+**Recommendation**:
 1. Add "⚠️ NO FLUENTVALIDATION" to tasks.md Pre-Task Checklist
 2. Include validation pattern example in plan.md "Implementation Patterns" section
 3. Document rationale (Principle 3 alignment) not just the prohibition
@@ -215,7 +215,7 @@ T007 (PATCH /innovations/{id}/submit) has 13 validation rules including complex 
 - T009: 1/1 test passing (2 hours with PRIMARY KEY fix)
 - Developer confidence high before attempting T007's 13 validation rules
 
-**Pattern Discovery**: 
+**Pattern Discovery**:
 When task breakdown includes outlier complexity (T007 = 4 hours with 13 rules vs T008/T009 = 2-3 hours each), consider **non-linear execution order** to maintain momentum and avoid early-stage burnout.
 
 **Specification Gap**:
@@ -323,15 +323,15 @@ Based on T001-T009 implementation experience, recommend these additions:
 2. **Elevate Validation Constraint** (move from line 888 to top-level requirement)
    ```markdown
    ### SR0: Validation Strategy (NEW - insert before SR1)
-   
-   **Requirement**: All endpoint validation MUST use manual inline validation. 
+
+   **Requirement**: All endpoint validation MUST use manual inline validation.
    FluentValidation library is explicitly PROHIBITED.
-   
-   **Rationale**: 
+
+   **Rationale**:
    - Principle 3: Simplicity Over Cleverness
    - Vertical Slice Architecture: validation co-located with endpoints
    - Phase 0.6 scope constraint
-   
+
    **Pattern**: [include code example from L4]
    ```
 
@@ -381,7 +381,7 @@ Based on T001-T009 implementation experience, recommend these additions:
 **Gaps Discovered**: 7 lessons (4 critical, 3 medium)
 **Implementation Velocity Impact**: ~3 hours lost to PRIMARY KEY debugging, FluentValidation clarification, and industry taxonomy discovery
 
-**Estimated Impact of Enhancements**: 
+**Estimated Impact of Enhancements**:
 - **With enhanced spec**: Future developers could avoid ~3-5 hours of trial-and-error
 - **Pattern reuse**: L1-L4 patterns will repeat in Phase 1+ (Bid Management endpoints, Journey 3-5)
 
