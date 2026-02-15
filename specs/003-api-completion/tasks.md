@@ -45,6 +45,11 @@
 - [ ] T013 is **COMPLEX** (first journey test) - template for all future journey tests
 - [ ] Contingency: Switch to SQLite if EF Core In-Memory provider insufficient (see plan.md Risk Assessment)
 
+### Critical Implementation Patterns ⚠️
+- [ ] **Validation Pattern**: Manual validation ONLY - NO FluentValidation library (spec.md line 888, Principle 3: Simplicity)
+- [ ] **Industry Data**: Must align with legacy ICB taxonomy (see implementation-lessons.md L3) - 10 top-level industries from legacy SchemaBuilder
+- [ ] **EF Core Seeding**: Always use `if (!await context.{Entity}.AnyAsync())` guard before manual seeding in tests to avoid PRIMARY KEY conflicts with HasData() (see implementation-lessons.md L1)
+
 ---
 
 ## Post-Task Commit Guidelines
@@ -138,6 +143,7 @@ Tests: SubmitInnovationTests (4/4 passing)"
 ### T001: Diagnose Database Context Lifecycle Issues
 **Phase**: Phase 1 - Test Infrastructure Fixes
 **Priority**: P0 - CRITICAL (blocks all integration tests)
+**Complexity**: 🟡 Medium (investigation + documentation)
 **Estimated Effort**: 3 hours
 **Dependencies**: None
 
@@ -185,6 +191,7 @@ grep -i "root cause" .specify/analysis/test-context-diagnostic.md
 ### T002: Implement Database Context Lifecycle Fix
 **Phase**: Phase 1 - Test Infrastructure Fixes
 **Priority**: P0 - CRITICAL
+**Complexity**: 🟢 Simple (apply pattern from T001 diagnosis)
 **Estimated Effort**: 4 hours
 **Dependencies**: T001 (diagnostic complete)
 
@@ -237,6 +244,7 @@ dotnet test --filter "FullyQualifiedName~Phase0JourneyTests" --verbosity normal
 ### T003: Fix JWT Token Attachment Issues
 **Phase**: Phase 1 - Test Infrastructure Fixes
 **Priority**: P0 - CRITICAL
+**Complexity**: 🟡 Medium (configuration alignment + test pattern refactoring)
 **Estimated Effort**: 2 hours
 **Dependencies**: T002 (database context fixed)
 
@@ -291,6 +299,7 @@ dotnet test --filter "FullyQualifiedName~GetInnovationTests" --verbosity normal
 ### T004: Validate Subcutaneous Test Infrastructure Complete
 **Phase**: Phase 1 - Test Infrastructure Fixes
 **Priority**: P0 - CRITICAL
+**Complexity**: 🟢 Simple (verification only, no implementation)
 **Estimated Effort**: 1 hour
 **Dependencies**: T001, T002, T003 (all fixes implemented)
 
@@ -349,6 +358,7 @@ dotnet test --filter "FullyQualifiedName~Phase0JourneyTests|FullyQualifiedName~G
 ### T005: Implement POST /innovations (Create Draft Innovation)
 **Phase**: Phase 2 - Innovation CRUD
 **Priority**: P0 - CRITICAL (Journey 1 blocker)
+**Complexity**: 🟡 Medium (CRUD endpoint with authorization + validation)
 **Estimated Effort**: 3 hours
 **Dependencies**: T004 (infrastructure stable)
 
@@ -447,6 +457,7 @@ dotnet run --project src/Innoventity.API
 ### T006: Implement PUT /innovations/{id} (Update Draft Innovation)
 **Phase**: Phase 2 - Innovation CRUD
 **Priority**: P0 - CRITICAL (Journey 1 blocker)
+**Complexity**: 🟡 Medium (ownership validation + partial update logic)
 **Estimated Effort**: 3 hours
 **Dependencies**: T005 (POST /innovations implemented)
 
@@ -532,7 +543,9 @@ dotnet test --filter "FullyQualifiedName~UpdateInnovationTests" --verbosity norm
 ### T007: Implement PATCH /innovations/{id}/submit (Publish Innovation)
 **Phase**: Phase 2 - Innovation CRUD
 **Priority**: P0 - CRITICAL (Journey 1 blocker)
-**Estimated Effort**: 4 hours
+**Complexity**: 🔴 Complex (13 validation rules, status transition logic)
+**Execution Strategy**: ⚠️ Consider executing AFTER T008-T009 to build momentum (see implementation-lessons.md L5)
+**Estimated Effort**: 4 hours (may extend to 5-6 hours)
 **Dependencies**: T005, T006 (CRUD operations complete)
 
 **Objective**: Enable innovation submission for publication with comprehensive completeness validation (R2.1).
@@ -621,6 +634,8 @@ dotnet test --filter "FullyQualifiedName~SubmitInnovationTests" --verbosity norm
 ### T008: Implement GET /innovations (List Innovations with Filters)
 **Phase**: Phase 2 - Innovation CRUD
 **Priority**: P0 - CRITICAL (Journey 2 discovery blocker)
+**Complexity**: 🟢 Simple (read-only endpoint with basic filtering)
+**Momentum Builder**: ✅ Good task to complete before T007 (builds confidence)
 **Estimated Effort**: 3 hours
 **Dependencies**: T005, T007 (innovations can be created and published)
 
@@ -720,21 +735,29 @@ dotnet test --filter "FullyQualifiedName~ListInnovationsTests" --verbosity norma
 ### T009: Implement GET /industries (Master Industry List)
 **Phase**: Phase 2 - Innovation CRUD
 **Priority**: P0 - CRITICAL (frontend blocker)
+**Complexity**: 🟢 Simple (read-only reference data endpoint)
+**Momentum Builder**: ✅ Good task to complete before T007 (builds confidence)
 **Estimated Effort**: 2 hours
 **Dependencies**: None (independent reference data)
 
-**Objective**: Provide industry master list for dropdown selection in innovation creation and actor profile management.
+**Objective**: Provide industry master list for dropdown selection in innovation creation and actor profile management. **MUST align with legacy ICB taxonomy** (see implementation-lessons.md L3).
 
 **Actions**:
 1. Create endpoint file: `src/Innoventity.API/Features/Industries/GetIndustries.cs`
-2. Seed industry master list in database
-   - Create migration: `AddIndustryMasterList`
-   - Seed minimum 4 industries:
-     - ELEC-001: Electronics
-     - ENRG-001: Renewable Energy
-     - AUTO-001: Automotive
-     - HLTH-001: Healthcare
-   - Additional industries: Finance, Agriculture, Manufacturing, IT Services (optional)
+2. Seed industry master list in database using **ICB (Industry Classification Benchmark) taxonomy**
+   - Seed 10 top-level ICB industries (Phase 0 flat structure):
+     - HLTH-001: Health Care
+     - TECH-001: Technology
+     - ENRG-001: Oil & Gas (includes Renewable Energy subsector)
+     - AUTO-001: Consumer Goods (includes Automobiles subsector)
+     - INDU-001: Industrials
+     - FIN-001: Financials
+     - TCOM-001: Telecommunications
+     - CSVC-001: Consumer Services
+     - UTIL-001: Utilities
+     - MTRL-001: Basic Materials
+   - **Legacy Reference**: `innoventity-prototype-development/legacy-mvc/src/SchemaBuilder/Program.cs::GetCommonLookupSql()` (lines 600-1100)
+   - **Future Enhancement**: Expand to hierarchical SuperSector → Sector → Subsector structure in Phase 1+
 3. Implement GET endpoint
    - Query all industries from database
    - Return list of {IndustryId, Name, Description}
@@ -749,15 +772,16 @@ dotnet test --filter "FullyQualifiedName~ListInnovationsTests" --verbosity norma
 
 **Deliverables**:
 - [x] GetIndustries.cs endpoint file with GET /industries
-- [x] Database migration seeding industry master list (AppDbContext.HasData)
+- [x] Database migration seeding industry master list (AppDbContext.HasData with 10 ICB industries)
 - [x] XML documentation complete
 - [x] 1 integration test passing
 
 **Acceptance Criteria**:
-- ✅ GET /industries returns ≥4 industries
-- ✅ Response includes IndustryId, Name, Description for each industry
+- ✅ GET /industries returns 10 ICB top-level industries (aligned with legacy system)
+- ✅ Response includes IndustryId and Name for each industry
 - ✅ No authentication required (public endpoint)
 - ✅ Integration test passes
+- ✅ Industry IDs match legacy ICB taxonomy: HLTH-001, TECH-001, ENRG-001, AUTO-001, INDU-001, FIN-001, TCOM-001, CSVC-001, UTIL-001, MTRL-001
 
 **API Contract**:
 ```http
@@ -821,6 +845,7 @@ curl http://localhost:5000/industries
 ### T010: Implement POST /innovations/{innovationId}/bids (Submit Bid)
 **Phase**: Phase 3 - Bid Management
 **Priority**: P0 - CRITICAL (Journey 2 blocker)
+**Complexity**: 🟡 Medium (eligibility validation + business rules)
 **Estimated Effort**: 4 hours
 **Dependencies**: T008 (innovations discoverable)
 
@@ -905,6 +930,7 @@ dotnet test --filter "FullyQualifiedName~SubmitBidTests" --verbosity normal
 ### T011: Implement GET /innovations/{innovationId}/bids (List Bids for Innovation)
 **Phase**: Phase 3 - Bid Management
 **Priority**: P0 - CRITICAL (Journey 2 owner visibility)
+**Complexity**: 🟢 Simple (read-only endpoint with ownership check)
 **Estimated Effort**: 3 hours
 **Dependencies**: T010 (bids can be submitted)
 
@@ -987,6 +1013,7 @@ dotnet test --filter "FullyQualifiedName~GetBidsTests" --verbosity normal
 ### T012: Implement PUT /bids/{bidId} (Update Unaccepted Bid)
 **Phase**: Phase 3 - Bid Management
 **Priority**: P1 - Important (UX improvement, not Journey 2 blocker)
+**Complexity**: 🟡 Medium (status validation + partial update)
 **Estimated Effort**: 3 hours
 **Dependencies**: T010, T011 (bid creation and viewing complete)
 
@@ -1068,6 +1095,7 @@ dotnet test --filter "FullyQualifiedName~UpdateBidTests" --verbosity normal
 ### T013: Build Journey 1 Complete Test Suite (Innovation Submission)
 **Phase**: Phase 4 - Journey Tests
 **Priority**: P0 - CRITICAL (Journey 1 validation)
+**Complexity**: 🔴 Complex (multi-step orchestration, template for future journey tests)
 **Estimated Effort**: 5 hours
 **Dependencies**: T005, T006, T007, T008 (Innovation CRUD complete)
 
@@ -1168,6 +1196,7 @@ dotnet test --filter "FullyQualifiedName~Journey1_InnovationSubmissionTests" --v
 ### T014: Build Journey 2 Complete Test Suite (Discovery & Bidding)
 **Phase**: Phase 4 - Journey Tests
 **Priority**: P0 - CRITICAL (Journey 2 validation)
+**Complexity**: 🔴 Complex (multi-actor orchestration across 6+ endpoints)
 **Estimated Effort**: 4 hours
 **Dependencies**: T010, T011, T012 (Bid management complete)
 
@@ -1220,6 +1249,7 @@ dotnet test --filter "FullyQualifiedName~Journey2_BiddingTests" --verbosity norm
 ### T015: Validate Complete Test Suite (100% Pass Rate)
 **Phase**: Phase 4 - Journey Tests
 **Priority**: P0 - CRITICAL (quality gate)
+**Complexity**: 🟢 Simple (verification only, troubleshooting if needed)
 **Estimated Effort**: 1 hour
 **Dependencies**: T013, T014 (journey tests complete)
 
@@ -1290,6 +1320,7 @@ grep "Time: " test-results.txt
 ### T016: Complete OpenAPI Documentation for All Endpoints
 **Phase**: Phase 5 - Documentation
 **Priority**: P1 - Important (frontend integration readiness)
+**Complexity**: 🟡 Medium (XML docs conversion + validation)
 **Estimated Effort**: 2 hours
 **Dependencies**: T005-T012 (all endpoints implemented)
 
@@ -1373,6 +1404,7 @@ dotnet run --project src/Innoventity.API
 ---
 
 ### T017: Update Specification Traceability & Documentation
+**Complexity**: 🟢 Simple (documentation update only)
 **Phase**: Phase 5 - Documentation
 **Priority**: P1 - Important (project documentation)
 **Estimated Effort**: 2 hours

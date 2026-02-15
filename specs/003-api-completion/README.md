@@ -37,8 +37,10 @@ Complete the backend API with **subcutaneous testing** (Martin Fowler pattern) t
 | Document | Purpose | Status |
 |----------|---------|--------|
 | **[spec.md](spec.md)** | Complete feature specification with user stories, system requirements, success metrics | ✅ Complete |
+| **[plan.md](plan.md)** | Implementation plan with technical approach, constitution check, timeline | ✅ Complete |
 | **[tasks.md](tasks.md)** | Detailed task breakdown (T001-T017) with acceptance criteria | ✅ Complete |
 | **[subcutaneous-test-requirements.md](subcutaneous-test-requirements.md)** | Subcutaneous testing patterns, infrastructure fixes, code examples | ✅ Complete |
+| **[implementation-lessons.md](implementation-lessons.md)** | **NEW** Lessons learned from T001-T009 (specification gaps, patterns discovered) | ✅ Complete |
 | **[traceability.md](traceability.md)** | (To be created) Implementation traceability matrix | ⏳ Phase 5 deliverable |
 
 ---
