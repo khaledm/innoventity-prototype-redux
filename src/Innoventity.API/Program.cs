@@ -89,6 +89,7 @@ app.MapActivateEndpoint();
 app.MapLoginEndpoint();
 app.MapRefreshTokenEndpoint();
 app.MapGetInnovation();
+app.MapCreateInnovation(); // T005: POST /innovations - Create draft innovation
 app.MapGet("/", () => "Hello World!");
 
 app.Run();

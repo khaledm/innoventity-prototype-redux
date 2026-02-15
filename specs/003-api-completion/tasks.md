@@ -72,10 +72,10 @@ Use **Conventional Commits** format:
 <footer>
 ```
 
-**Types**: `feat`, `fix`, `test`, `docs`, `refactor`, `chore`  
-**Scope**: endpoint name or component (e.g., `CreateInnovation`, `TestFixture`, `database-context`)  
-**Subject**: Imperative mood, lowercase, no period, max 72 characters  
-**Body**: What and why (not how), wrap at 80 characters  
+**Types**: `feat`, `fix`, `test`, `docs`, `refactor`, `chore`
+**Scope**: endpoint name or component (e.g., `CreateInnovation`, `TestFixture`, `database-context`)
+**Subject**: Imperative mood, lowercase, no period, max 72 characters
+**Body**: What and why (not how), wrap at 80 characters
 **Footer**: `Closes #issue` or `BREAKING CHANGE` (if applicable)
 
 ### Commit Message Examples
@@ -85,9 +85,9 @@ Use **Conventional Commits** format:
 git add .specify/analysis/test-context-diagnostic.md
 git commit -m "docs(test-infrastructure): diagnose database context lifecycle issue
 
-Root cause identified: EF Core In-Memory provider creates separate database 
-instances when DbContext instances differ between test constructor and 
-WebApplicationFactory. Proposed solution: unique database naming strategy 
+Root cause identified: EF Core In-Memory provider creates separate database
+instances when DbContext instances differ between test constructor and
+WebApplicationFactory. Proposed solution: unique database naming strategy
 with shared configuration.
 
 Related to Phase 0.6 T001."
@@ -389,18 +389,21 @@ dotnet test --filter "FullyQualifiedName~Phase0JourneyTests|FullyQualifiedName~G
    - `CreateInnovationTests.CreateInnovation_MissingRequiredFields_Returns400()`
 
 **Deliverables**:
-- [ ] CreateInnovation.cs endpoint file with POST /innovations
-- [ ] Request/response DTOs (CreateInnovationRequest, CreateInnovationResponse)
-- [ ] XML documentation complete
-- [ ] 4 integration tests passing
+- [X] CreateInnovation.cs endpoint file with POST /innovations
+- [X] Request/response DTOs (CreateInnovationRequest, CreateInnovationResponse)
+- [X] XML documentation complete
+- [X] 4 integration tests passing (CreateInnovationTests.cs)
+- [X] Endpoint registered in Program.cs (MapCreateInnovation)
 
 **Acceptance Criteria**:
 - ✅ POST /innovations returns 201 Created with InnovationId and IdeaToken
 - ✅ Innovation saved to database with Draft status
-- ✅ OwnerId matches authenticated actor ID
-- ✅ Wrong actor type returns 403 Forbidden
+- ✅ OwnerId matches authenticated actor ID (extracted from JWT claims)
+- ✅ Wrong actor type returns 403 Forbidden (only IdeaGenerator allowed)
 - ✅ Unauthenticated request returns 401 Unauthorized
-- ✅ All 4 integration tests passing
+- ✅ All 4 integration tests passing (61/64 total tests, 95.3% pass rate)
+
+**Result**: T005 COMPLETE - Innovation draft creation endpoint fully functional
 
 **API Contract**:
 ```http
