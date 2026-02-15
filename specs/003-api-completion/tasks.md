@@ -1,0 +1,1306 @@
+# Phase 0.6 Task Breakdown: API Completion & Subcutaneous Testing
+
+**Feature**: 003-api-completion
+**Parent Branch**: 001-platform-core
+**Target**: 100% passing tests (67/67), complete Journey 1-2 API coverage
+**Estimated Effort**: 40-50 hours over 3-4 weeks
+
+---
+
+## Week 1: Fix Failing Subcutaneous Tests (10 hours)
+
+### T001: Diagnose Database Context Lifecycle Issues
+**Phase**: Phase 1 - Test Infrastructure Fixes
+**Priority**: P0 - CRITICAL (blocks all integration tests)
+**Estimated Effort**: 3 hours
+**Dependencies**: None
+
+**Objective**: Understand why `SeedTestData()` in test constructor is not visible to test method execution, causing GetInnovation endpoint to return BadRequest instead of OK.
+
+**Actions**:
+1. Review current Phase0JourneyTests implementation
+   - Analyze constructor: `SeedTestInnovation()` execution
+   - Analyze test method: `GetAccessToken()` actor query
+   - Identify context scope boundaries
+2. Add diagnostic logging to track data visibility
+   - Log in `SeedTestInnovation()`: Confirm innovation record inserted
+   - Log in test method: Confirm innovation record queryable
+   - Log database name to verify same database used
+3. Inspect EF Core In-Memory provider behavior
+   - Review Microsoft.EntityFrameworkCore.InMemory documentation
+   - Understand database naming and scoping rules
+   - Identify if constructor vs method scope creates new database instance
+4. Document findings in diagnostic report
+   - Root cause: Why database records not visible across scopes?
+   - Technical explanation: EF Core In-Memory scoping behavior
+   - Proposed solution approach
+
+**Deliverables**:
+- [ ] Diagnostic report document (Markdown) in `.specify/analysis/test-context-diagnostic.md`
+- [ ] Root cause confirmed with code references
+- [ ] Proposed solution documented
+
+**Acceptance Criteria**:
+- ✅ Exact cause of data visibility issue identified (constructor vs method scope)
+- ✅ Technical explanation provided with EF Core In-Memory provider behavior
+- ✅ Solution approach documented and reviewed
+
+**Verification**:
+```bash
+# Review diagnostic report
+cat .specify/analysis/test-context-diagnostic.md
+
+# Confirm root cause statement present
+grep -i "root cause" .specify/analysis/test-context-diagnostic.md
+```
+
+---
+
+### T002: Implement Database Context Lifecycle Fix
+**Phase**: Phase 1 - Test Infrastructure Fixes
+**Priority**: P0 - CRITICAL
+**Estimated Effort**: 4 hours
+**Dependencies**: T001 (diagnostic complete)
+
+**Objective**: Ensure seeded test data is visible across entire test lifecycle, enabling subcutaneous tests to pass.
+
+**Actions**:
+1. Implement consistent database naming strategy
+   - Use unique database name per test class instance: `TestDb_{ClassName}_{Guid}`
+   - Ensure WebApplicationFactory uses same database name as test DbContext
+   - Document naming convention
+2. Refactor test base class or fixture
+   - Create shared test fixture class if not exists
+   - Configure DbContext with in-memory database in constructor
+   - Seed test data using same DbContext instance
+3. Configure WebApplicationFactory to share database
+   - Override `ConfigureServices` in factory setup
+   - Remove default DbContext registration
+   - Add DbContext with same database name as test context
+   - Verify singleton scoping (one database instance per test)
+4. Update all integration test classes
+   - Update Phase0JourneyTests.cs to use new pattern
+   - Update GetInnovationTests.cs to use new pattern
+   - Ensure consistent pattern across all test files
+
+**Deliverables**:
+- [ ] Updated Phase0JourneyTests.cs with fixed database context lifecycle
+- [ ] Updated GetInnovationTests.cs with fixed database context lifecycle
+- [ ] Test fixture or base class with consistent database configuration
+- [ ] Code comments documenting database naming strategy
+
+**Acceptance Criteria**:
+- ✅ `SeedTestData()` executes in constructor and records are queryable in test methods
+- ✅ Phase0JourneyTests.Phase0Journey_RegisterActivateLoginViewInnovation_Success passes (Expected: HTTP 200 OK, not BadRequest)
+- ✅ Database context uses unique name per test instance
+- ✅ WebApplicationFactory shares same database as test DbContext
+
+**Verification**:
+```bash
+# Run Phase0JourneyTests
+dotnet test --filter "FullyQualifiedName~Phase0JourneyTests" --verbosity normal
+
+# Expected: 1 test passing (Phase0Journey_RegisterActivateLoginViewInnovation_Success)
+# If still failing, check test output for HTTP status code
+```
+
+---
+
+### T003: Fix JWT Token Attachment Issues
+**Phase**: Phase 1 - Test Infrastructure Fixes
+**Priority**: P0 - CRITICAL
+**Estimated Effort**: 2 hours
+**Dependencies**: T002 (database context fixed)
+
+**Objective**: Ensure authenticated HTTP requests properly include JWT token in Authorization header, fixing GetInnovationTests returning Unauthorized.
+
+**Actions**:
+1. Review current JWT token attachment implementation
+   - Inspect GetInnovationTests.cs: How is token attached to requests?
+   - Check if using `HttpClient.DefaultRequestHeaders` or per-request headers
+   - Verify token format: `Bearer {token}`
+2. Create JWT token helper method
+   - Implement `SetAuthorizationHeader(HttpClient client, string token)` in test fixture
+   - Or implement per-request: `SetAuthorizationHeader(HttpRequestMessage request, string token)`
+   - Document usage pattern
+3. Update all authenticated test requests
+   - GetInnovationTests.cs: Use helper method for all requests
+   - Phase0JourneyTests.cs: Use helper method for GetInnovation call
+   - Ensure consistent pattern across all authenticated endpoints
+4. Verify JWT configuration consistency
+   - Compare test JWT configuration (appsettings.Test.json) with app JWT configuration
+   - Ensure signing key matches
+   - Ensure Issuer and Audience match
+
+**Deliverables**:
+- [ ] JWT token helper method in test fixture/base class
+- [ ] Updated GetInnovationTests.cs with correct token attachment
+- [ ] Updated Phase0JourneyTests.cs with correct token attachment
+- [ ] Verified JWT configuration consistency between test and app
+
+**Acceptance Criteria**:
+- ✅ GetInnovationTests.GetInnovation_WithValidId_ReturnsInnovationData passes (Expected: HTTP 200 OK, not Unauthorized)
+- ✅ GetInnovationTests.GetInnovation_WithNonExistentId_Returns404 passes (Expected: HTTP 404, not Unauthorized)
+- ✅ GetInnovationTests.GetInnovation_CrossActorAccess_Returns200 passes (Expected: HTTP 200 OK, not Unauthorized)
+- ✅ All authenticated requests include `Authorization: Bearer {token}` header
+
+**Verification**:
+```bash
+# Run GetInnovationTests
+dotnet test --filter "FullyQualifiedName~GetInnovationTests" --verbosity normal
+
+# Expected: 3 tests passing (no Unauthorized responses)
+```
+
+---
+
+### T004: Validate Subcutaneous Test Infrastructure Complete
+**Phase**: Phase 1 - Test Infrastructure Fixes
+**Priority**: P0 - CRITICAL
+**Estimated Effort**: 1 hour
+**Dependencies**: T001, T002, T003 (all fixes implemented)
+
+**Objective**: Confirm all existing subcutaneous tests pass, achieving 95% pass rate (57/60 tests, excluding 3 Phase 1 domain validation tests).
+
+**Actions**:
+1. Run full test suite
+   - Execute: `dotnet test --verbosity normal`
+   - Capture test results summary
+   - Document pass/fail counts
+2. Verify subcutaneous infrastructure tests pass
+   - Phase0JourneyTests: 1 test passing
+   - GetInnovationTests: 3 tests passing
+   - Total: 4 subcutaneous infrastructure tests passing ✅
+3. Document remaining failures
+   - InnovationTests: 3 tests failing (Phase 1 domain validation work)
+   - Confirm these are EXPECTED failures (deferred to Phase 1)
+   - Add comments in test file marking as Phase 1 work
+4. Create test execution report
+   - Document pass rate: 57/60 (95%)
+   - List passing test categories
+   - List deferred failures with justification
+
+**Deliverables**:
+- [ ] Test execution report showing 57/60 passing
+- [ ] All 4 subcutaneous infrastructure tests passing
+- [ ] Comments in InnovationTests.cs marking 3 tests as Phase 1 deferred work
+- [ ] Updated tasks.md with pass rate confirmation
+
+**Acceptance Criteria**:
+- ✅ Full test suite pass rate: 95% (57/60 tests passing)
+- ✅ Subcutaneous infrastructure: 100% (4/4 tests passing)
+- ✅ Remaining 3 failures documented as expected (Phase 1 scope)
+- ✅ Zero infrastructure blockers for Phase 2-4 work
+
+**Verification**:
+```bash
+# Run full test suite
+dotnet test --verbosity normal > test-results.txt
+
+# Check pass rate
+grep "Passed!" test-results.txt
+# Expected output: "Passed! - Failed: 3, Passed: 57, Skipped: 0, Total: 60"
+
+# Verify subcutaneous tests specifically
+dotnet test --filter "FullyQualifiedName~Phase0JourneyTests|FullyQualifiedName~GetInnovationTests" --verbosity normal
+# Expected: 4 passed, 0 failed
+```
+
+---
+
+## Week 2: Innovation CRUD API Implementation (15 hours)
+
+### T005: Implement POST /innovations (Create Draft Innovation)
+**Phase**: Phase 2 - Innovation CRUD
+**Priority**: P0 - CRITICAL (Journey 1 blocker)
+**Estimated Effort**: 3 hours
+**Dependencies**: T004 (infrastructure stable)
+
+**Objective**: Enable Idea Generator actors to create innovation drafts via API.
+
+**Actions**:
+1. Create endpoint file: `src/Innoventity.API/Features/Innovations/CreateInnovation.cs`
+2. Implement request DTO validation
+   - Required fields: Title, ProductType, ResearchCategory
+   - Optional fields: All detail sections (IdeaSummary, Product, Market, Collaboration)
+   - Data types: Decimal for market sizes, string lengths
+3. Implement authorization check
+   - Actor must be authenticated (JWT token required)
+   - Actor must be Idea Generator (check ActorType in claims)
+   - Return 403 Forbidden if wrong actor type
+4. Implement database insert
+   - Create Innovation entity with Draft status
+   - Assign OwnerId from authenticated actor ID
+   - Generate InnovationId (Guid)
+   - Generate IdeaToken (Guid) for owner reference
+   - Record CreatedTimestamp
+5. Add comprehensive XML documentation
+   - `<summary>`: Endpoint description
+   - `<remarks>`: Business rules (R2.1 completeness optional for drafts, R2.2 ownership)
+   - `<param>`: Request body schema
+   - `<response code="201">`: Created response with example
+   - `<response code="400">`: Validation errors with example
+   - `<response code="401">`: Unauthorized if not authenticated
+   - `<response code="403">`: Forbidden if wrong actor type
+6. Write unit tests (validation logic only)
+   - Test validation: Title required
+   - Test validation: ProductType required
+   - Test validation: ResearchCategory required
+7. Write integration tests
+   - `CreateInnovationTests.CreateInnovation_WithCompleteData_Returns201Created()`
+   - `CreateInnovationTests.CreateInnovation_Unauthenticated_Returns401()`
+   - `CreateInnovationTests.CreateInnovation_WrongActorType_Returns403()`
+   - `CreateInnovationTests.CreateInnovation_MissingRequiredFields_Returns400()`
+
+**Deliverables**:
+- [ ] CreateInnovation.cs endpoint file with POST /innovations
+- [ ] Request/response DTOs (CreateInnovationRequest, CreateInnovationResponse)
+- [ ] XML documentation complete
+- [ ] 4 integration tests passing
+
+**Acceptance Criteria**:
+- ✅ POST /innovations returns 201 Created with InnovationId and IdeaToken
+- ✅ Innovation saved to database with Draft status
+- ✅ OwnerId matches authenticated actor ID
+- ✅ Wrong actor type returns 403 Forbidden
+- ✅ Unauthenticated request returns 401 Unauthorized
+- ✅ All 4 integration tests passing
+
+**API Contract**:
+```http
+POST /innovations
+Authorization: Bearer {jwt_token}
+Content-Type: application/json
+
+{
+  "title": "Quantum Battery Prototype",
+  "productType": "Energy Storage Device",
+  "researchCategory": "Engineering",
+  "researchBackground": "Lithium-air battery...",
+  "hasIPR": true,
+  "hasRightToUse": true
+}
+
+Response 201 Created:
+{
+  "innovationId": "uuid",
+  "ideaToken": "uuid",
+  "status": "Draft",
+  "createdAt": "2026-02-15T10:00:00Z"
+}
+```
+
+**Verification**:
+```bash
+# Run integration tests
+dotnet test --filter "FullyQualifiedName~CreateInnovationTests" --verbosity normal
+
+# Expected: 4 tests passing
+
+# Manual API test (optional)
+dotnet run --project src/Innoventity.API
+# POST http://localhost:5000/innovations with Bearer token
+# Verify 201 response
+```
+
+---
+
+### T006: Implement PUT /innovations/{id} (Update Draft Innovation)
+**Phase**: Phase 2 - Innovation CRUD
+**Priority**: P0 - CRITICAL (Journey 1 blocker)
+**Estimated Effort**: 3 hours
+**Dependencies**: T005 (POST /innovations implemented)
+
+**Objective**: Enable innovation owners to update draft details before publication.
+
+**Actions**:
+1. Create endpoint file: `src/Innoventity.API/Features/Innovations/UpdateInnovation.cs`
+2. Implement ownership validation
+   - Query innovation from database by ID
+   - Check OwnerId matches authenticated actor ID
+   - Return 403 Forbidden if different owner
+   - Return 404 Not Found if innovation doesn't exist
+3. Implement status validation
+   - Check innovation.Status == Draft
+   - Return 409 Conflict if innovation already Published (cannot edit)
+4. Implement partial update logic
+   - Accept UpdateInnovationRequest DTO with optional fields
+   - Update only provided fields (null = no change)
+   - Preserve CreatedTimestamp, OwnerId, InnovationId
+   - Update ModifiedTimestamp
+5. Add XML documentation
+   - Document ownership requirement
+   - Document draft-only editing rule
+   - Provide error response examples
+6. Write integration tests
+   - `UpdateInnovationTests.UpdateInnovation_AsOwner_Returns200OK()`
+   - `UpdateInnovationTests.UpdateInnovation_AsNonOwner_Returns403Forbidden()`
+   - `UpdateInnovationTests.UpdateInnovation_PublishedInnovation_Returns409Conflict()`
+   - `UpdateInnovationTests.UpdateInnovation_NotFound_Returns404()`
+
+**Deliverables**:
+- [ ] UpdateInnovation.cs endpoint file with PUT /innovations/{id}
+- [ ] UpdateInnovationRequest DTO (all fields optional)
+- [ ] XML documentation complete
+- [ ] 4 integration tests passing
+
+**Acceptance Criteria**:
+- ✅ PUT /innovations/{id} updates draft innovation and returns 200 OK
+- ✅ Non-owner receives 403 Forbidden
+- ✅ Published innovation cannot be edited (409 Conflict)
+- ✅ Non-existent innovation returns 404 Not Found
+- ✅ ModifiedTimestamp updated in database
+- ✅ All 4 integration tests passing
+
+**API Contract**:
+```http
+PUT /innovations/{id}
+Authorization: Bearer {jwt_token}
+Content-Type: application/json
+
+{
+  "title": "Quantum Battery Prototype v2",
+  "researchBackground": "Updated research details..."
+}
+
+Response 200 OK:
+{
+  "innovationId": "uuid",
+  "title": "Quantum Battery Prototype v2",
+  "status": "Draft",
+  "modifiedAt": "2026-02-15T11:00:00Z"
+}
+```
+
+**Verification**:
+```bash
+# Run integration tests
+dotnet test --filter "FullyQualifiedName~UpdateInnovationTests" --verbosity normal
+
+# Expected: 4 tests passing
+```
+
+---
+
+### T007: Implement PATCH /innovations/{id}/submit (Publish Innovation)
+**Phase**: Phase 2 - Innovation CRUD
+**Priority**: P0 - CRITICAL (Journey 1 blocker)
+**Estimated Effort**: 4 hours
+**Dependencies**: T005, T006 (CRUD operations complete)
+
+**Objective**: Enable innovation submission for publication with comprehensive completeness validation (R2.1).
+
+**Actions**:
+1. Create endpoint file: `src/Innoventity.API/Features/Innovations/SubmitInnovation.cs`
+2. Implement ownership validation (same as T006)
+3. Implement completeness validation per R2.1 (13 rules)
+   - Title not empty and not placeholder
+   - ProductType provided
+   - ResearchCategory selected
+   - ResearchBackground min 50 characters
+   - HasIPR declared (true/false)
+   - HasRightToUse = true (blocking validation)
+   - ProductDescription provided
+   - TechnologyDescription provided
+   - TargetBeneficiaries provided
+   - RelevantMarketSize > 0
+   - PotentialMarketSize > 0
+   - TargetIndustries count ≥ 1
+   - PartnersNeeded count ≥ 1
+4. Implement status transition
+   - Check current status == Draft
+   - Return 409 Conflict if already Published
+   - Update status to Published
+   - Record SubmissionTimestamp
+5. Add comprehensive XML documentation
+   - Document all 13 validation rules
+   - Provide example validation error response
+   - Document irreversibility (once published, cannot return to draft)
+6. Write integration tests
+   - `SubmitInnovationTests.SubmitInnovation_Complete_Returns200AndPublishes()`
+   - `SubmitInnovationTests.SubmitInnovation_Incomplete_Returns400WithErrors()`
+   - `SubmitInnovationTests.SubmitInnovation_AlreadyPublished_Returns409Conflict()`
+   - `SubmitInnovationTests.SubmitInnovation_AsNonOwner_Returns403Forbidden()`
+
+**Deliverables**:
+- [ ] SubmitInnovation.cs endpoint file with PATCH /innovations/{id}/submit
+- [ ] Completeness validation logic (13 rules)
+- [ ] XML documentation with validation error examples
+- [ ] 4 integration tests passing
+
+**Acceptance Criteria**:
+- ✅ Complete innovation publishes successfully (status Draft → Published)
+- ✅ SubmissionTimestamp recorded in database
+- ✅ Incomplete innovation returns 400 Bad Request with specific validation errors
+- ✅ Already published innovation returns 409 Conflict
+- ✅ Non-owner receives 403 Forbidden
+- ✅ All 4 integration tests passing
+
+**API Contract**:
+```http
+PATCH /innovations/{id}/submit
+Authorization: Bearer {jwt_token}
+
+Response 200 OK:
+{
+  "innovationId": "uuid",
+  "status": "Published",
+  "submittedAt": "2026-02-15T12:00:00Z"
+}
+
+Response 400 Bad Request (incomplete):
+{
+  "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+  "title": "Validation Failed",
+  "status": 400,
+  "errors": {
+    "ResearchBackground": ["Research background must be at least 50 characters"],
+    "TargetIndustries": ["At least one target industry is required"],
+    "HasRightToUse": ["You must have the right to use this innovation"]
+  }
+}
+```
+
+**Verification**:
+```bash
+# Run integration tests
+dotnet test --filter "FullyQualifiedName~SubmitInnovationTests" --verbosity normal
+
+# Expected: 4 tests passing
+```
+
+---
+
+### T008: Implement GET /innovations (List Innovations with Filters)
+**Phase**: Phase 2 - Innovation CRUD
+**Priority**: P0 - CRITICAL (Journey 2 discovery blocker)
+**Estimated Effort**: 3 hours
+**Dependencies**: T005, T007 (innovations can be created and published)
+
+**Objective**: Enable actors to discover published innovations with industry and category filtering.
+
+**Actions**:
+1. Create endpoint file: `src/Innoventity.API/Features/Innovations/ListInnovations.cs`
+2. Implement authentication check (all actors must be authenticated)
+3. Implement query filters
+   - `industryId` (optional): Filter by target industry
+   - `researchCategory` (optional): Filter by Management/Engineering/NaturalScience
+   - `status` (optional, default Published): Filter by innovation status (Draft not visible to non-owners)
+   - `page` (optional, default 1): Pagination page number
+   - `pageSize` (optional, default 20, max 100): Items per page
+4. Implement visibility rules (R3.1)
+   - Published innovations visible to all authenticated actors
+   - Draft innovations only visible to owner
+   - Apply filters after visibility check
+5. Implement pagination
+   - Return Items[] array
+   - Return TotalCount (total matching records)
+   - Return Page and PageSize metadata
+6. Add XML documentation
+   - Document filters and default values
+   - Document visibility rules
+   - Provide example responses
+7. Write integration tests
+   - `ListInnovationsTests.ListInnovations_NoFilter_ReturnsAllPublished()`
+   - `ListInnovationsTests.ListInnovations_FilterByIndustry_ReturnsMatched()`
+   - `ListInnovationsTests.ListInnovations_FilterByResearchCategory_ReturnsMatched()`
+   - `ListInnovationsTests.ListInnovations_Pagination_ReturnsCorrectPage()`
+
+**Deliverables**:
+- [ ] ListInnovations.cs endpoint file with GET /innovations
+- [ ] Query filter implementation (industryId, researchCategory, pagination)
+- [ ] Pagination logic with metadata
+- [ ] XML documentation complete
+- [ ] 4 integration tests passing
+
+**Acceptance Criteria**:
+- ✅ GET /innovations returns all Published innovations (not Drafts)
+- ✅ IndustryId filter returns only matching innovations
+- ✅ ResearchCategory filter returns only matching innovations
+- ✅ Pagination works correctly (page 1 vs page 2 returns different items)
+- ✅ Unauthenticated request returns 401 Unauthorized
+- ✅ All 4 integration tests passing
+
+**API Contract**:
+```http
+GET /innovations?industryId=ELEC-001&researchCategory=Engineering&page=1&pageSize=20
+Authorization: Bearer {jwt_token}
+
+Response 200 OK:
+{
+  "items": [
+    {
+      "innovationId": "uuid",
+      "title": "Quantum Battery Prototype",
+      "productType": "Energy Storage Device",
+      "researchCategory": "Engineering",
+      "status": "Published",
+      "submittedAt": "2026-02-15T10:30:00Z",
+      "owner": {
+        "actorId": "uuid",
+        "firstName": "Sarah",
+        "lastName": "Chen",
+        "displayName": "Dr. Sarah Chen"
+      },
+      "targetIndustries": ["Electronics", "Renewable Energy"],
+      "partnersNeeded": ["RD", "Manufacturing", "SalesMarketing"]
+    }
+  ],
+  "totalCount": 1,
+  "page": 1,
+  "pageSize": 20
+}
+```
+
+**Verification**:
+```bash
+# Run integration tests
+dotnet test --filter "FullyQualifiedName~ListInnovationsTests" --verbosity normal
+
+# Expected: 4 tests passing
+```
+
+---
+
+### T009: Implement GET /industries (Master Industry List)
+**Phase**: Phase 2 - Innovation CRUD
+**Priority**: P0 - CRITICAL (frontend blocker)
+**Estimated Effort**: 2 hours
+**Dependencies**: None (independent reference data)
+
+**Objective**: Provide industry master list for dropdown selection in innovation creation and actor profile management.
+
+**Actions**:
+1. Create endpoint file: `src/Innoventity.API/Features/Industries/GetIndustries.cs`
+2. Seed industry master list in database
+   - Create migration: `AddIndustryMasterList`
+   - Seed minimum 4 industries:
+     - ELEC-001: Electronics
+     - ENRG-001: Renewable Energy
+     - AUTO-001: Automotive
+     - HLTH-001: Healthcare
+   - Additional industries: Finance, Agriculture, Manufacturing, IT Services (optional)
+3. Implement GET endpoint
+   - Query all industries from database
+   - Return list of {IndustryId, Name, Description}
+   - No authentication required (public reference data)
+4. Add XML documentation
+   - Document as reference data endpoint
+   - Note: No authentication required
+5. Write integration test
+   - `GetIndustriesTests.GetIndustries_ReturnsAllIndustries()`
+   - Verify ≥4 industries returned
+   - Verify specific IDs present (ELEC-001, ENRG-001, AUTO-001, HLTH-001)
+
+**Deliverables**:
+- [ ] GetIndustries.cs endpoint file with GET /industries
+- [ ] Database migration seeding industry master list
+- [ ] XML documentation complete
+- [ ] 1 integration test passing
+
+**Acceptance Criteria**:
+- ✅ GET /industries returns ≥4 industries
+- ✅ Response includes IndustryId, Name, Description for each industry
+- ✅ No authentication required (public endpoint)
+- ✅ Integration test passes
+
+**API Contract**:
+```http
+GET /industries
+
+Response 200 OK:
+{
+  "industries": [
+    {
+      "industryId": "ELEC-001",
+      "name": "Electronics",
+      "description": "Consumer electronics, semiconductors, electronic components"
+    },
+    {
+      "industryId": "ENRG-001",
+      "name": "Renewable Energy",
+      "description": "Solar, wind, battery storage, grid infrastructure"
+    },
+    {
+      "industryId": "AUTO-001",
+      "name": "Automotive",
+      "description": "Electric vehicles, autonomous driving, automotive manufacturing"
+    },
+    {
+      "industryId": "HLTH-001",
+      "name": "Healthcare",
+      "description": "Medical devices, pharmaceuticals, healthcare IT"
+    }
+  ]
+}
+```
+
+**Verification**:
+```bash
+# Run integration test
+dotnet test --filter "FullyQualifiedName~GetIndustriesTests" --verbosity normal
+
+# Expected: 1 test passing
+
+# Manual verification
+dotnet run --project src/Innoventity.API
+curl http://localhost:5000/industries
+# Verify ≥4 industries in response
+```
+
+---
+
+## Week 3: Bid Submission API Implementation (10 hours)
+
+### T010: Implement POST /innovations/{innovationId}/bids (Submit Bid)
+**Phase**: Phase 3 - Bid Management
+**Priority**: P0 - CRITICAL (Journey 2 blocker)
+**Estimated Effort**: 4 hours
+**Dependencies**: T008 (innovations discoverable)
+
+**Objective**: Enable R&D/Manufacturing/Sales/Investor actors to submit partnership proposals.
+
+**Actions**:
+1. Create endpoint file: `src/Innoventity.API/Features/Bids/SubmitBid.cs`
+2. Implement bid eligibility validation (R4.1)
+   - Actor must be authenticated
+   - Actor type must be RD, Manufacturing, SalesMarketing, or Investor (NOT IdeaGenerator)
+   - Innovation must exist
+   - Innovation must be Published status (accepting bids)
+   - Actor cannot bid on their own innovation (ownerId check)
+   - Actor cannot submit duplicate bid (query existing bids by actorId + innovationId)
+3. Implement content validation (R4.2)
+   - Location required (non-empty string)
+   - ParticipationType required
+   - ParticipationProposal required, min 200 characters
+4. Implement database insert
+   - Create Bid entity with Pending status
+   - Record SubmittedTimestamp
+   - Generate BidId (Guid)
+5. Add comprehensive XML documentation
+   - Document all eligibility rules
+   - Document content requirements
+   - Provide error response examples
+6. Write integration tests
+   - `SubmitBidTests.SubmitBid_ValidManufacturing_Returns201Created()`
+   - `SubmitBidTests.SubmitBid_IdeaGeneratorAttempt_Returns403Forbidden()`
+   - `SubmitBidTests.SubmitBid_DuplicateBid_Returns409Conflict()`
+   - `SubmitBidTests.SubmitBid_ShortProposal_Returns400BadRequest()`
+
+**Deliverables**:
+- [ ] SubmitBid.cs endpoint file with POST /innovations/{innovationId}/bids
+- [ ] Bid eligibility validation (R4.1)
+- [ ] Bid content validation (R4.2)
+- [ ] XML documentation complete
+- [ ] 4 integration tests passing
+
+**Acceptance Criteria**:
+- ✅ Manufacturing actor submits bid successfully (201 Created)
+- ✅ Idea Generator actor receives 403 Forbidden
+- ✅ Duplicate bid attempt returns 409 Conflict
+- ✅ Proposal <200 chars returns 400 Bad Request with validation error
+- ✅ Bid saved to database with Pending status
+- ✅ All 4 integration tests passing
+
+**API Contract**:
+```http
+POST /innovations/{innovationId}/bids
+Authorization: Bearer {jwt_token}
+Content-Type: application/json
+
+{
+  "location": "Munich, Germany",
+  "participationType": "Manufacturing Partner",
+  "participationProposal": "We have 20 years of experience in precision battery manufacturing with ISO 9001 certification... [200+ characters]"
+}
+
+Response 201 Created:
+{
+  "bidId": "uuid",
+  "innovationId": "uuid",
+  "actorId": "uuid",
+  "location": "Munich, Germany",
+  "participationType": "Manufacturing Partner",
+  "submittedAt": "2026-02-15T11:00:00Z",
+  "status": "Pending"
+}
+```
+
+**Verification**:
+```bash
+# Run integration tests
+dotnet test --filter "FullyQualifiedName~SubmitBidTests" --verbosity normal
+
+# Expected: 4 tests passing
+```
+
+---
+
+### T011: Implement GET /innovations/{innovationId}/bids (List Bids for Innovation)
+**Phase**: Phase 3 - Bid Management
+**Priority**: P0 - CRITICAL (Journey 2 owner visibility)
+**Estimated Effort**: 3 hours
+**Dependencies**: T010 (bids can be submitted)
+
+**Objective**: Enable innovation owners to review all submitted bids with full proposal details.
+
+**Actions**:
+1. Create endpoint file: `src/Innoventity.API/Features/Bids/GetBids.cs`
+2. Implement authorization check (R6.1, R8.2)
+   - Actor must be authenticated
+   - Query innovation OwnerId
+   - Check if authenticated actor ID == OwnerId
+   - Return 403 Forbidden if not owner
+   - Return 404 Not Found if innovation doesn't exist
+3. Implement bid query
+   - Query all bids where InnovationId matches
+   - Include actor details (firstName, lastName, displayName, actorType)
+   - Include full proposal text (owners see everything)
+   - Order by SubmittedTimestamp descending (newest first)
+4. Add XML documentation
+   - Document owner-only access
+   - Document bid details included
+   - Provide example response
+5. Write integration tests
+   - `GetBidsTests.GetBids_AsOwner_ReturnsAllBids()`
+   - `GetBidsTests.GetBids_AsNonOwner_Returns403Forbidden()`
+   - `GetBidsTests.GetBids_GroupedByActorType_CorrectCounts()` (verify bid counts by actor type per R4.4)
+
+**Deliverables**:
+- [ ] GetBids.cs endpoint file with GET /innovations/{innovationId}/bids
+- [ ] Owner authorization validation
+- [ ] Bid query with actor details
+- [ ] XML documentation complete
+- [ ] 3 integration tests passing
+
+**Acceptance Criteria**:
+- ✅ Innovation owner receives all bids with full details
+- ✅ Non-owner receives 403 Forbidden
+- ✅ Response includes actor details (name, type) for each bid
+- ✅ Response includes full proposal text
+- ✅ All 3 integration tests passing
+
+**API Contract**:
+```http
+GET /innovations/{innovationId}/bids
+Authorization: Bearer {jwt_token}
+
+Response 200 OK:
+{
+  "bids": [
+    {
+      "bidId": "uuid",
+      "actor": {
+        "actorId": "uuid",
+        "firstName": "Hans",
+        "lastName": "Mueller",
+        "displayName": "Hans Mueller GmbH",
+        "actorType": "Manufacturing"
+      },
+      "location": "Munich, Germany",
+      "participationType": "Manufacturing Partner",
+      "participationProposal": "We have 20 years of experience...",
+      "submittedAt": "2026-02-15T11:00:00Z",
+      "status": "Pending"
+    }
+  ],
+  "totalCount": 1
+}
+```
+
+**Verification**:
+```bash
+# Run integration tests
+dotnet test --filter "FullyQualifiedName~GetBidsTests" --verbosity normal
+
+# Expected: 3 tests passing
+```
+
+---
+
+### T012: Implement PUT /bids/{bidId} (Update Unaccepted Bid)
+**Phase**: Phase 3 - Bid Management
+**Priority**: P1 - Important (UX improvement, not Journey 2 blocker)
+**Estimated Effort**: 3 hours
+**Dependencies**: T010, T011 (bid creation and viewing complete)
+
+**Objective**: Enable actors to refine their partnership proposals before selection occurs.
+
+**Actions**:
+1. Create endpoint file: `src/Innoventity.API/Features/Bids/UpdateBid.cs`
+2. Implement authorization check (R8.2)
+   - Query bid by BidId
+   - Check if authenticated actor ID matches bid ActorId
+   - Return 403 Forbidden if different actor
+   - Return 404 Not Found if bid doesn't exist
+3. Implement status validation (R4.3)
+   - Check bid.Status == Pending
+   - Return 409 Conflict if status == Accepted (bid immutable after selection)
+4. Implement update logic
+   - Update Location (optional)
+   - Update ParticipationType (optional)
+   - Update ParticipationProposal (required, min 200 chars)
+   - Update ModifiedTimestamp
+5. Add XML documentation
+   - Document author-only access
+   - Document immutability of accepted bids
+   - Provide error response examples
+6. Write integration tests
+   - `UpdateBidTests.UpdateBid_Unaccepted_Returns200OK()`
+   - `UpdateBidTests.UpdateBid_Accepted_Returns409Conflict()`
+   - `UpdateBidTests.UpdateBid_NotAuthor_Returns403Forbidden()`
+
+**Deliverables**:
+- [ ] UpdateBid.cs endpoint file with PUT /bids/{bidId}
+- [ ] Author authorization validation
+- [ ] Status validation (Pending only)
+- [ ] XML documentation complete
+- [ ] 3 integration tests passing
+
+**Acceptance Criteria**:
+- ✅ Bid author updates pending bid successfully (200 OK)
+- ✅ Non-author receives 403 Forbidden
+- ✅ Accepted bid update returns 409 Conflict
+- ✅ ModifiedTimestamp updated in database
+- ✅ All 3 integration tests passing
+
+**API Contract**:
+```http
+PUT /bids/{bidId}
+Authorization: Bearer {jwt_token}
+Content-Type: application/json
+
+{
+  "location": "Munich, Germany",
+  "participationType": "Manufacturing Partner",
+  "participationProposal": "UPDATED: We have 20 years... [200+ characters]"
+}
+
+Response 200 OK:
+{
+  "bidId": "uuid",
+  "location": "Munich, Germany",
+  "participationType": "Manufacturing Partner",
+  "participationProposal": "UPDATED: We have 20 years...",
+  "updatedAt": "2026-02-15T12:00:00Z",
+  "status": "Pending"
+}
+```
+
+**Verification**:
+```bash
+# Run integration tests
+dotnet test --filter "FullyQualifiedName~UpdateBidTests" --verbosity normal
+
+# Expected: 3 tests passing
+```
+
+---
+
+## Week 4: Subcutaneous Journey Tests & Documentation (12 hours)
+
+### T013: Build Journey 1 Complete Test Suite (Innovation Submission)
+**Phase**: Phase 4 - Journey Tests
+**Priority**: P0 - CRITICAL (Journey 1 validation)
+**Estimated Effort**: 5 hours
+**Dependencies**: T005, T006, T007, T008 (Innovation CRUD complete)
+
+**Objective**: Validate entire Innovation Submission & Publication journey via end-to-end subcutaneous test.
+
+**Actions**:
+1. Create test class: `tests/Innoventity.API.Tests/Subcutaneous/Journey1_InnovationSubmissionTests.cs`
+2. Create test fixture with helper methods
+   - `RegisterActor(ActorType)`: Register and return actor details
+   - `ActivateAccount(activationToken)`: Activate account
+   - `Login(email, password)`: Login and return access token
+   - `CreateInnovation(token, innovationData)`: Create draft innovation
+   - `UpdateInnovation(innovationId, token, updates)`: Update draft sections
+   - `SubmitInnovation(innovationId, token)`: Publish innovation
+   - `GetInnovation(innovationId, token)`: Retrieve innovation details
+3. Write primary journey test: `Journey1_IdeaGeneratorSubmitsInnovation_PublishedSuccessfully()`
+   - Step 1: Register Idea Generator actor
+   - Step 2: Activate account with activation token
+   - Step 3: Login to obtain JWT token
+   - Step 4: Create innovation draft (POST /innovations)
+   - Step 5: Update innovation sections (PUT /innovations/{id})
+   - Step 6: Submit for publication (PATCH /innovations/{id}/submit)
+   - Step 7: Verify status = Published in database
+   - Step 8: Verify discoverable by Manufacturing actor (GET /innovations)
+4. Write error path tests
+   - `Journey1_SubmitIncompleteInnovation_Returns400WithValidationErrors()`: Missing required fields
+   - `Journey1_NonOwnerCannotSubmitInnovation_Returns403()`: Different user attempts submission
+   - `Journey1_SubmitAlreadyPublished_Returns409()`: Re-submit published innovation
+5. Verify all 4 tests pass
+
+**Deliverables**:
+- [ ] Journey1_InnovationSubmissionTests.cs test class
+- [ ] Test fixture with 7 helper methods
+- [ ] 1 primary journey test (8 steps orchestrated)
+- [ ] 3 error path tests
+- [ ] All 4 tests passing
+
+**Acceptance Criteria**:
+- ✅ Primary journey test orchestrates 8 API calls successfully
+- ✅ Innovation status changes Draft → Published
+- ✅ Published innovation visible to other actors
+- ✅ Error path tests validate business rules (completeness, ownership, immutability)
+- ✅ All 4 tests passing
+
+**Test Structure Example**:
+```csharp
+public class Journey1_InnovationSubmissionTests : IDisposable
+{
+    private readonly TestFixture _fixture;
+
+    public Journey1_InnovationSubmissionTests()
+    {
+        _fixture = new TestFixture("Journey1");
+    }
+
+    [Fact]
+    public async Task Journey1_IdeaGeneratorSubmitsInnovation_PublishedSuccessfully()
+    {
+        // Step 1-3: Register, Activate, Login
+        var actor = await _fixture.RegisterActor(ActorType.IdeaGenerator, "sarah@example.com");
+        await _fixture.ActivateAccount(actor.ActivationToken);
+        var login = await _fixture.Login("sarah@example.com", "TestPassword123!");
+        var token = login.AccessToken;
+
+        // Step 4: Create Draft
+        var draft = await _fixture.CreateInnovation(token, new CreateInnovationRequest { ... });
+        draft.StatusCode.Should().Be(HttpStatusCode.Created);
+        var innovationId = draft.Data.InnovationId;
+
+        // Step 5: Update Sections (optional)
+        // Step 6: Submit for Publication
+        var submit = await _fixture.SubmitInnovation(innovationId, token);
+        submit.StatusCode.Should().Be(HttpStatusCode.OK);
+        submit.Data.Status.Should().Be("Published");
+
+        // Step 7: Verify in Database
+        var innovation = await _fixture.DbContext.Innovations.FindAsync(innovationId);
+        innovation.Status.Should().Be(InnovationStatus.Published);
+
+        // Step 8: Verify Discoverable
+        var manufacturingLogin = await _fixture.LoginAsManufacturing();
+        var discoveries = await _fixture.ListInnovations(manufacturingLogin.AccessToken);
+        discoveries.Data.Items.Should().Contain(i => i.InnovationId == innovationId);
+    }
+}
+```
+
+**Verification**:
+```bash
+# Run Journey 1 tests
+dotnet test --filter "FullyQualifiedName~Journey1_InnovationSubmissionTests" --verbosity normal
+
+# Expected: 4 tests passing
+```
+
+---
+
+### T014: Build Journey 2 Complete Test Suite (Discovery & Bidding)
+**Phase**: Phase 4 - Journey Tests
+**Priority**: P0 - CRITICAL (Journey 2 validation)
+**Estimated Effort**: 4 hours
+**Dependencies**: T010, T011, T012 (Bid management complete)
+
+**Objective**: Validate entire Innovation Discovery & Bid Submission journey via end-to-end subcutaneous test.
+
+**Actions**:
+1. Create test class: `tests/Innoventity.API.Tests/Subcutaneous/Journey2_BiddingTests.cs`
+2. Extend test fixture with bid helper methods
+   - `SubmitBid(innovationId, token, bidData)`: Submit partnership proposal
+   - `GetBidsForInnovation(innovationId, ownerToken)`: Retrieve bids (owner only)
+   - `UpdateBid(bidId, token, updates)`: Update unaccepted bid
+3. Write primary journey test: `Journey2_ManufacturingActorSubmitsBid_BidRecorded()`
+   - Step 1: Seed published innovation (owned by different actor)
+   - Step 2: Register Manufacturing actor
+   - Step 3: Activate and Login
+   - Step 4: Discover innovations (GET /innovations with industry filter)
+   - Step 5: View innovation details (GET /innovations/{id})
+   - Step 6: Submit bid (POST /innovations/{id}/bids)
+   - Step 7: Verify bid in database (Pending status)
+   - Step 8: Verify owner sees bid (GET /innovations/{id}/bids as owner)
+4. Write error path tests
+   - `Journey2_IdeaGeneratorCannotBid_Returns403()`: Idea Generator attempts bid
+   - `Journey2_DuplicateBid_Returns409()`: Actor submits second bid for same innovation
+5. Verify all 3 tests pass
+
+**Deliverables**:
+- [ ] Journey2_BiddingTests.cs test class
+- [ ] Extended test fixture with 3 bid helper methods
+- [ ] 1 primary journey test (8 steps orchestrated)
+- [ ] 2 error path tests
+- [ ] All 3 tests passing
+
+**Acceptance Criteria**:
+- ✅ Primary journey test orchestrates 8 API calls successfully
+- ✅ Bid status recorded as Pending
+- ✅ Innovation owner sees submitted bid
+- ✅ Error path tests validate eligibility rules (actor type, duplicate prevention)
+- ✅ All 3 tests passing
+
+**Verification**:
+```bash
+# Run Journey 2 tests
+dotnet test --filter "FullyQualifiedName~Journey2_BiddingTests" --verbosity normal
+
+# Expected: 3 tests passing
+```
+
+---
+
+### T015: Validate Complete Test Suite (100% Pass Rate)
+**Phase**: Phase 4 - Journey Tests
+**Priority**: P0 - CRITICAL (quality gate)
+**Estimated Effort**: 1 hour
+**Dependencies**: T013, T014 (journey tests complete)
+
+**Objective**: Achieve 100% test pass rate (67/67 tests, excluding 3 Phase 1 domain tests).
+
+**Actions**:
+1. Run full test suite with detailed verbosity
+   - Execute: `dotnet test --verbosity normal`
+   - Capture full output to file for analysis
+2. Generate test coverage report (optional)
+   - Install coverlet: `dotnet tool install --global coverlet.console`
+   - Run with coverage: `dotnet test /p:CollectCoverage=true /p:CoverageOutput=coverage.json`
+   - Analyze line coverage for new endpoints
+3. Verify all subcutaneous tests pass
+   - Phase0JourneyTests: 1 test ✅
+   - GetInnovationTests: 3 tests ✅
+   - Journey1_InnovationSubmissionTests: 4 tests ✅
+   - Journey2_BiddingTests: 3 tests ✅
+   - Total subcutaneous: 11 tests passing ✅
+4. Verify all integration tests pass
+   - CreateInnovationTests: 4 tests ✅
+   - UpdateInnovationTests: 4 tests ✅
+   - SubmitInnovationTests: 4 tests ✅
+   - ListInnovationsTests: 4 tests ✅
+   - GetIndustriesTests: 1 test ✅
+   - SubmitBidTests: 4 tests ✅
+   - GetBidsTests: 3 tests ✅
+   - UpdateBidTests: 3 tests ✅
+   - Total integration: 27 tests passing ✅
+5. Document 3 Phase 1 domain tests as expected failures
+   - Add `[Fact(Skip = "Phase 1 domain validation work - deferred")]` to InnovationTests
+   - Confirm these are NOT included in pass rate calculation
+6. Create comprehensive test execution report
+   - Pass rate: 67/67 (100%)
+   - Execution time: <30 seconds
+   - Coverage by category (subcutaneous, integration, unit)
+
+**Deliverables**:
+- [ ] Test execution report showing 67/67 passing (100%)
+- [ ] Test suite execution time documented (<30 seconds)
+- [ ] 3 Phase 1 tests marked as skipped (not counted)
+- [ ] Coverage report (optional)
+
+**Acceptance Criteria**:
+- ✅ Full test suite pass rate: 100% (67/67 tests)
+- ✅ Subcutaneous tests: 11 passing
+- ✅ Integration tests: 27 passing (new endpoints)
+- ✅ Original tests: 29 passing (authentication, health)
+- ✅ Execution time: <30 seconds
+- ✅ Zero test failures
+
+**Verification**:
+```bash
+# Run full test suite
+dotnet test --verbosity normal | tee test-results.txt
+
+# Check pass count
+grep "Passed!" test-results.txt
+# Expected: "Passed! - Failed: 0, Passed: 67, Skipped: 3, Total: 70"
+
+# Check execution time
+grep "Time: " test-results.txt
+# Expected: <30 seconds
+```
+
+---
+
+### T016: Complete OpenAPI Documentation for All Endpoints
+**Phase**: Phase 5 - Documentation
+**Priority**: P1 - Important (frontend integration readiness)
+**Estimated Effort**: 2 hours
+**Dependencies**: T005-T012 (all endpoints implemented)
+
+**Objective**: Ensure comprehensive OpenAPI documentation for all 8 new endpoints via XML comments.
+
+**Actions**:
+1. Review each new endpoint file for documentation completeness
+   - CreateInnovation.cs
+   - UpdateInnovation.cs
+   - SubmitInnovation.cs
+   - ListInnovations.cs
+   - GetIndustries.cs
+   - SubmitBid.cs
+   - GetBids.cs
+   - UpdateBid.cs
+2. Verify required XML tags present
+   - `<summary>`: Concise endpoint description
+   - `<remarks>`: Business rules, behavior notes
+   - `<param name="...">`: Request body, path parameters, query parameters
+   - `<response code="200">`: Success response with example
+   - `<response code="400">`: Validation errors with example
+   - `<response code="401">`: Unauthorized (if authentication required)
+   - `<response code="403">`: Forbidden (if authorization checks exist)
+   - `<response code="404">`: Not Found (if resource lookup)
+   - `<response code="409">`: Conflict (if duplicate/state validation)
+3. Add missing examples
+   - Request body examples using `<example>` tag
+   - Error response examples with validation errors
+   - Success response examples with realistic data
+4. Build project and verify zero XML documentation warnings
+   - Execute: `dotnet build`
+   - Check for "Missing XML comment" warnings
+   - Ensure all public methods, parameters, responses documented
+5. Launch Swagger UI and validate
+   - Execute: `dotnet run --project src/Innoventity.API`
+   - Navigate to: http://localhost:5000/swagger
+   - Verify all 8 new endpoints visible
+   - Verify descriptions, parameters, responses display correctly
+   - Test "Try it out" functionality (optional)
+
+**Deliverables**:
+- [ ] All 8 endpoint files with comprehensive XML documentation
+- [ ] Zero build warnings
+- [ ] Swagger UI displays all endpoints correctly
+
+**Acceptance Criteria**:
+- ✅ All endpoints have `<summary>` tags
+- ✅ All endpoints with business rules have `<remarks>` tags
+- ✅ All parameters documented with `<param>` tags
+- ✅ All response codes documented with `<response>` tags
+- ✅ Error responses include validation error examples
+- ✅ Build succeeds with zero XML documentation warnings
+- ✅ Swagger UI displays all 14 endpoints (6 existing + 8 new)
+
+**Verification**:
+```bash
+# Build and check for warnings
+dotnet build 2>&1 | grep -i "warning.*xml"
+# Expected: No output (zero warnings)
+
+# Launch Swagger UI
+dotnet run --project src/Innoventity.API
+# Navigate to http://localhost:5000/swagger
+# Verify 14 endpoints visible:
+# - POST /auth/register
+# - POST /auth/login
+# - POST /auth/refresh
+# - POST /auth/activate
+# - GET /health
+# - GET /innovations/{id}
+# - POST /innovations (NEW)
+# - PUT /innovations/{id} (NEW)
+# - PATCH /innovations/{id}/submit (NEW)
+# - GET /innovations (NEW)
+# - GET /industries (NEW)
+# - POST /innovations/{innovationId}/bids (NEW)
+# - GET /innovations/{innovationId}/bids (NEW)
+# - PUT /bids/{bidId} (NEW)
+```
+
+---
+
+### T017: Update Specification Traceability & Documentation
+**Phase**: Phase 5 - Documentation
+**Priority**: P1 - Important (project documentation)
+**Estimated Effort**: 2 hours
+**Dependencies**: T015, T016 (implementation and testing complete)
+
+**Objective**: Document implementation traceability from user stories to endpoints to tests, ensuring project documentation is up-to-date.
+
+**Actions**:
+1. Create implementation traceability matrix
+   - Create: `specs/003-api-completion/traceability.md`
+   - Map each user story to implemented endpoints
+   - Map each endpoint to integration tests
+   - Map each user story to subcutaneous journey tests
+   - Document any deviations or technical debt
+2. Update spec.md with implementation status
+   - Add annotations to each user story: `Status: ✅ IMPLEMENTED`
+   - Add links to endpoint files: `Endpoint: [CreateInnovation.cs](../../src/Innoventity.API/Features/Innovations/CreateInnovation.cs)`
+   - Add links to test files: `Tests: [CreateInnovationTests.cs](../../tests/Innoventity.API.Tests/Integration/CreateInnovationTests.cs)`
+3. Update README.md with Phase 0.6 status
+   - Add Phase 0.6 section to project README
+   - Document new API endpoints (8 endpoints)
+   - Document Journey 1 and Journey 2 coverage
+   - Update test pass rate: 67/67 (100%)
+4. Update tasks.md with completion status
+   - Mark all tasks T001-T017 as ✅ COMPLETE
+   - Document any blockers or technical debt
+   - Add retrospective notes (optional)
+
+**Deliverables**:
+- [ ] Traceability matrix: `specs/003-api-completion/traceability.md`
+- [ ] Updated spec.md with implementation annotations
+- [ ] Updated README.md with Phase 0.6 section
+- [ ] Updated tasks.md with completion status
+
+**Acceptance Criteria**:
+- ✅ All 7 user stories traced to endpoints and tests
+- ✅ Traceability matrix complete with no gaps
+- ✅ spec.md annotated with implementation status
+- ✅ README.md documents Phase 0.6 completion
+- ✅ tasks.md shows 17/17 tasks complete
+
+**Traceability Matrix Example**:
+```markdown
+| User Story | Endpoints | Integration Tests | Journey Tests |
+|-----------|-----------|------------------|---------------|
+| US1: Fix Failing Tests | N/A | Phase0JourneyTests, GetInnovationTests | N/A |
+| US2: Innovation Draft Management | POST /innovations, PUT /innovations/{id} | CreateInnovationTests (4), UpdateInnovationTests (4) | Journey1Tests (Step 4-5) |
+| US3: Innovation Publication | PATCH /innovations/{id}/submit | SubmitInnovationTests (4) | Journey1Tests (Step 6) |
+| US4: Innovation Discovery | GET /innovations | ListInnovationsTests (4) | Journey2Tests (Step 4) |
+| US5: Bid Submission | POST /innovations/{id}/bids | SubmitBidTests (4) | Journey2Tests (Step 6) |
+| US6: Bid Management | GET /innovations/{id}/bids, PUT /bids/{id} | GetBidsTests (3), UpdateBidTests (3) | Journey2Tests (Step 8) |
+| US7: Industry Master List | GET /industries | GetIndustriesTests (1) | Journey1Tests (reference data) |
+```
+
+**Verification**:
+```bash
+# Verify traceability matrix exists
+cat specs/003-api-completion/traceability.md
+
+# Verify spec.md annotations
+grep -i "✅ IMPLEMENTED" specs/003-api-completion/spec.md
+# Expected: 7 matches (one per user story)
+
+# Verify README updated
+grep -i "Phase 0.6" README.md
+# Expected: Phase 0.6 section exists
+
+# Verify tasks.md completion
+grep -c "✅ COMPLETE" specs/003-api-completion/tasks.md
+# Expected: 17 (all tasks complete)
+```
+
+---
+
+## Summary Statistics
+
+**Total Tasks**: 17
+**Total Estimated Effort**: 47 hours (3-4 weeks with 12-15 hours/week)
+
+**By Phase**:
+- Phase 1 (Fix Tests): 4 tasks, 10 hours
+- Phase 2 (Innovation CRUD): 5 tasks, 15 hours
+- Phase 3 (Bid Management): 3 tasks, 10 hours
+- Phase 4 (Journey Tests): 3 tasks, 10 hours
+- Phase 5 (Documentation): 2 tasks, 4 hours
+
+**By Priority**:
+- P0 (CRITICAL): 14 tasks (blocks Journey 1 or Journey 2)
+- P1 (Important): 3 tasks (UX improvements, documentation)
+
+**Expected Outcomes**:
+- ✅ 67/67 tests passing (100% pass rate)
+- ✅ 8 new API endpoints fully implemented and tested
+- ✅ Journey 1 (Innovation Submission) 100% validated via subcutaneous tests
+- ✅ Journey 2 (Discovery & Bidding) 100% validated via subcutaneous tests
+- ✅ Backend API surface complete for frontend integration
+- ✅ Zero build warnings, comprehensive OpenAPI documentation
