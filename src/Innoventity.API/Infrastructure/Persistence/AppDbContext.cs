@@ -227,7 +227,7 @@ public class AppDbContext : DbContext
                 new Industry("TECH-001") { Name = "Technology" },
                 new Industry("ENRG-001") { Name = "Oil & Gas" },  // Includes Renewable Energy subsector
                 new Industry("AUTO-001") { Name = "Consumer Goods" },  // Includes Automobiles subsector
-                
+
                 // Additional industries (production completeness)
                 new Industry("INDU-001") { Name = "Industrials" },
                 new Industry("FIN-001") { Name = "Financials" },

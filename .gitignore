@@ -49,6 +49,10 @@ Thumbs.db
 # EF Core migrations (keep migration files, ignore temporary)
 **/Migrations/*.Designer.cs
 
+# Temporary development files
+commit-*.txt
+test-*.txt
+
 # Node modules (for future frontend)
 node_modules/
 dist/
