@@ -32,6 +32,10 @@ public class Phase0JourneyTests : IDisposable
 
     private WebApplicationFactory<Program> CreateFactory()
     {
+        // FIX (T002): Capture unique database name in closure BEFORE factory creation
+        // This ensures all DbContext instances share the same in-memory database
+        var databaseName = $"TestDb_Phase0Journey_{Guid.NewGuid()}";
+
         return new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
@@ -58,7 +62,9 @@ public class Phase0JourneyTests : IDisposable
 
                     services.AddDbContext<AppDbContext>(options =>
                     {
-                        options.UseInMemoryDatabase($"TestDb_{Guid.NewGuid()}");
+                        // FIX (T002): Use captured database name instead of inline Guid.NewGuid()
+                        // This ensures constructor, test method, and WebApplicationFactory all share the same database
+                        options.UseInMemoryDatabase(databaseName);
                     });
                 });
             });
