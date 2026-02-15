@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Innoventity.API.Domain.Entities;
 using Innoventity.API.Infrastructure.Persistence;
+using Innoventity.API.Tests.TestFixtures;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -41,11 +42,13 @@ public class Phase0JourneyTests : IDisposable
             {
                 builder.ConfigureAppConfiguration((context, config) =>
                 {
+                    // Add JWT configuration for test environment
+                    // Use values that MATCH appsettings.json to ensure token generation and validation agree
                     config.AddInMemoryCollection(new Dictionary<string, string?>
                     {
-                        ["Jwt:SigningKey"] = "test-signing-key-minimum-32-characters-required-for-hs256",
-                        ["Jwt:Issuer"] = "test-issuer",
-                        ["Jwt:Audience"] = "test-audience",
+                        ["Jwt:SigningKey"] = "DEV-ONLY-KEY-REPLACE-IN-PRODUCTION-VIA-CONFIGURATION-MINIMUM-32-CHARACTERS",
+                        ["Jwt:Issuer"] = "Innoventity",
+                        ["Jwt:Audience"] = "Innoventity.API",
                         ["Jwt:AccessTokenExpirationMinutes"] = "60",
                         ["Jwt:RefreshTokenExpirationDays"] = "7"
                     });
@@ -190,16 +193,14 @@ public class Phase0JourneyTests : IDisposable
         var accessToken = loginData.GetProperty("accessToken").GetString();
         Assert.NotNull(accessToken);
 
-        // Step 4: View Innovation
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        var innovationResponse = await _client.GetAsync($"/innovations/{_testInnovationId}");
+        // Step 4: View Innovation (use per-request token attachment - T003 fix)
+        var innovationResponse = await _client.GetWithAuthAsync($"/innovations/{_testInnovationId}", accessToken);
 
         Assert.Equal(HttpStatusCode.OK, innovationResponse.StatusCode);
-        var innovation = await innovationResponse.Content.ReadFromJsonAsync<dynamic>();
-        Assert.NotNull(innovation);
-        Assert.Equal("Quantum Battery Prototype", innovation?.title?.ToString());
-        Assert.Equal("Engineering", innovation?.researchCategory?.ToString());
-        Assert.Equal("Published", innovation?.status?.ToString());
+        var innovation = await innovationResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Quantum Battery Prototype", innovation.GetProperty("title").GetString());
+        Assert.Equal("Engineering", innovation.GetProperty("researchCategory").GetString());
+        Assert.Equal("Published", innovation.GetProperty("status").GetString());
 
         // Verify complete journey success
         Assert.True(true, "Phase 0 Journey completed successfully: Register → Activate → Login → View Innovation");

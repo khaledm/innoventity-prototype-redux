@@ -210,16 +210,18 @@ grep -i "root cause" .specify/analysis/test-context-diagnostic.md
    - Ensure consistent pattern across all test files
 
 **Deliverables**:
-- [ ] Updated Phase0JourneyTests.cs with fixed database context lifecycle
-- [ ] Updated GetInnovationTests.cs with fixed database context lifecycle
-- [ ] Test fixture or base class with consistent database configuration
-- [ ] Code comments documenting database naming strategy
+- [X] Updated Phase0JourneyTests.cs with fixed database context lifecycle
+- [X] GetInnovationTests.cs already uses correct pattern (database name captured in closure)
+- [X] Code comments documenting database naming strategy (inline comments added)
+- [ ] Test fixture or base class with consistent database configuration (deferred - individual test classes use consistent pattern)
 
 **Acceptance Criteria**:
 - ✅ `SeedTestData()` executes in constructor and records are queryable in test methods
-- ✅ Phase0JourneyTests.Phase0Journey_RegisterActivateLoginViewInnovation_Success passes (Expected: HTTP 200 OK, not BadRequest)
+- ✅ Phase0JourneyTests error changed from BadRequest to Unauthorized (database fix verified - innovation now found)
 - ✅ Database context uses unique name per test instance
 - ✅ WebApplicationFactory shares same database as test DbContext
+
+**Note**: Test now returns Unauthorized instead of BadRequest, proving database context fix is successful. The innovation is being found in the database. JWT token issue (Unauthorized) is T003 scope.
 
 **Verification**:
 ```bash
@@ -259,16 +261,22 @@ dotnet test --filter "FullyQualifiedName~Phase0JourneyTests" --verbosity normal
    - Ensure Issuer and Audience match
 
 **Deliverables**:
-- [ ] JWT token helper method in test fixture/base class
-- [ ] Updated GetInnovationTests.cs with correct token attachment
-- [ ] Updated Phase0JourneyTests.cs with correct token attachment
-- [ ] Verified JWT configuration consistency between test and app
+- [X] JWT token helper method in test fixture (HttpClientExtensions.cs created with GetWithAuthAsync, PostWithAuthAsync, etc.)
+- [X] Updated GetInnovationTests.cs with correct token attachment (per-request pattern)
+- [X] Updated Phase0JourneyTests.cs with correct token attachment (per-request pattern)
+- [X] Verified JWT configuration consistency - FIXED: Used matching values (Innoventity/Innoventity.API/DEV-ONLY-KEY)
+- [X] Fixed JSON deserialization (dynamic → JsonElement.GetProperty)
+
+**Root Cause Found**: JWT configuration mismatch between test and appsettings
+- **Issue**: Test used test-issuer/test-audience, app used Innoventity/Innoventity.API
+- **Solution**: Changed test JWT config to match appsettings.Development.json values
+- **Result**: 4/4 GetInnovationTests + 1/1 Phase0JourneyTests passing (5/5 infrastructure tests)
 
 **Acceptance Criteria**:
-- ✅ GetInnovationTests.GetInnovation_WithValidId_ReturnsInnovationData passes (Expected: HTTP 200 OK, not Unauthorized)
-- ✅ GetInnovationTests.GetInnovation_WithNonExistentId_Returns404 passes (Expected: HTTP 404, not Unauthorized)
-- ✅ GetInnovationTests.GetInnovation_CrossActorAccess_Returns200 passes (Expected: HTTP 200 OK, not Unauthorized)
-- ✅ All authenticated requests include `Authorization: Bearer {token}` header
+- ✅ GetInnovationTests.GetInnovation_WithValidId_ReturnsInnovationData passes (HTTP 200 OK)
+- ✅ GetInnovationTests.GetInnovation_WithNonExistentId_Returns404 passes (HTTP 404)
+- ✅ GetInnovationTests.GetInnovation_CrossActorAccess_Returns200 passes (HTTP 200 OK)
+- ✅ All authenticated requests include `Authorization: Bearer {token}` header (per-request pattern)
 
 **Verification**:
 ```bash

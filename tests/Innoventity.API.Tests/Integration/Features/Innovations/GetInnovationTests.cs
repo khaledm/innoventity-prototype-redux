@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Innoventity.API.Domain.Entities;
 using Innoventity.API.Infrastructure.Persistence;
+using Innoventity.API.Tests.TestFixtures;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -38,11 +39,12 @@ public class GetInnovationTests : IDisposable
                 builder.ConfigureAppConfiguration((context, config) =>
                 {
                     // Add JWT configuration for test environment
+                    // Use values that MATCH appsettings.json to ensure token generation and validation agree
                     config.AddInMemoryCollection(new Dictionary<string, string?>
                     {
-                        ["Jwt:SigningKey"] = "test-signing-key-minimum-32-characters-required-for-hs256",
-                        ["Jwt:Issuer"] = "test-issuer",
-                        ["Jwt:Audience"] = "test-audience",
+                        ["Jwt:SigningKey"] = "DEV-ONLY-KEY-REPLACE-IN-PRODUCTION-VIA-CONFIGURATION-MINIMUM-32-CHARACTERS",
+                        ["Jwt:Issuer"] = "Innoventity",
+                        ["Jwt:Audience"] = "Innoventity.API",
                         ["Jwt:AccessTokenExpirationMinutes"] = "60",
                         ["Jwt:RefreshTokenExpirationDays"] = "7"
                     });
@@ -169,19 +171,17 @@ public class GetInnovationTests : IDisposable
     {
         // Arrange
         var token = await GetAccessToken();
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        // Act
-        var response = await _client.GetAsync($"/innovations/{_testInnovationId}");
+        // Act - Use per-request token attachment (T003 fix)
+        var response = await _client.GetWithAuthAsync($"/innovations/{_testInnovationId}", token);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var innovation = await response.Content.ReadFromJsonAsync<dynamic>();
-        Assert.NotNull(innovation);
-        Assert.Equal("Quantum Battery Prototype", innovation?.title?.ToString());
-        Assert.Equal("Engineering", innovation?.researchCategory?.ToString());
-        Assert.Equal("Published", innovation?.status?.ToString());
+        var innovation = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Quantum Battery Prototype", innovation.GetProperty("title").GetString());
+        Assert.Equal("Engineering", innovation.GetProperty("researchCategory").GetString());
+        Assert.Equal("Published", innovation.GetProperty("status").GetString());
     }
 
     [Fact]
@@ -189,11 +189,10 @@ public class GetInnovationTests : IDisposable
     {
         // Arrange
         var token = await GetAccessToken();
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         var nonExistentId = Guid.NewGuid();
 
-        // Act
-        var response = await _client.GetAsync($"/innovations/{nonExistentId}");
+        // Act - Use per-request token attachment (T003 fix)
+        var response = await _client.GetWithAuthAsync($"/innovations/{nonExistentId}", token);
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -253,10 +252,8 @@ public class GetInnovationTests : IDisposable
         var loginData = await loginResponse.Content.ReadFromJsonAsync<JsonElement>();
         var token = loginData.GetProperty("accessToken").GetString() ?? throw new InvalidOperationException("Failed to get token");
 
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-        // Act - Manufacturing actor views IdeaGenerator's innovation
-        var response = await _client.GetAsync($"/innovations/{_testInnovationId}");
+        // Act - Manufacturing actor views IdeaGenerator's innovation (use per-request token attachment - T003 fix)
+        var response = await _client.GetWithAuthAsync($"/innovations/{_testInnovationId}", token);
 
         // Assert - Phase 0 open-discovery: any authenticated user can view
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
