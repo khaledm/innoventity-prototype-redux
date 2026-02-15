@@ -1,6 +1,7 @@
 using System.Text;
 using Innoventity.API.Features.Authentication;
 using Innoventity.API.Features.Health;
+using Innoventity.API.Features.Industries;
 using Innoventity.API.Features.Innovations;
 using Innoventity.API.Infrastructure.Authentication;
 using Innoventity.API.Infrastructure.ErrorHandling;
@@ -90,6 +91,9 @@ app.MapLoginEndpoint();
 app.MapRefreshTokenEndpoint();
 app.MapGetInnovation();
 app.MapCreateInnovation(); // T005: POST /innovations - Create draft innovation
+app.MapUpdateInnovation(); // T006: PUT /innovations/{id} - Update draft innovation
+app.MapListInnovations(); // T008: GET /innovations - List published innovations
+app.MapGetIndustries(); // T009: GET /industries - Industry master list (public, no auth)
 app.MapGet("/", () => "Hello World!");
 
 app.Run();

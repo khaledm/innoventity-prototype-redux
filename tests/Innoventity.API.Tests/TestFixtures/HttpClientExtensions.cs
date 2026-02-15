@@ -16,8 +16,8 @@ public static class HttpClientExtensions
     /// <param name="token">The JWT access token.</param>
     /// <returns>The HTTP response message.</returns>
     public static async Task<HttpResponseMessage> GetWithAuthAsync(
-        this HttpClient client, 
-        string requestUri, 
+        this HttpClient client,
+        string requestUri,
         string token)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
@@ -34,8 +34,8 @@ public static class HttpClientExtensions
     /// <param name="token">The JWT access token.</param>
     /// <returns>The HTTP response message.</returns>
     public static async Task<HttpResponseMessage> PostWithAuthAsync(
-        this HttpClient client, 
-        string requestUri, 
+        this HttpClient client,
+        string requestUri,
         HttpContent content,
         string token)
     {
@@ -56,8 +56,8 @@ public static class HttpClientExtensions
     /// <param name="token">The JWT access token.</param>
     /// <returns>The HTTP response message.</returns>
     public static async Task<HttpResponseMessage> PutWithAuthAsync(
-        this HttpClient client, 
-        string requestUri, 
+        this HttpClient client,
+        string requestUri,
         HttpContent content,
         string token)
     {
@@ -77,8 +77,8 @@ public static class HttpClientExtensions
     /// <param name="token">The JWT access token.</param>
     /// <returns>The HTTP response message.</returns>
     public static async Task<HttpResponseMessage> DeleteWithAuthAsync(
-        this HttpClient client, 
-        string requestUri, 
+        this HttpClient client,
+        string requestUri,
         string token)
     {
         var request = new HttpRequestMessage(HttpMethod.Delete, requestUri);
@@ -95,8 +95,8 @@ public static class HttpClientExtensions
     /// <param name="token">The JWT access token.</param>
     /// <returns>The HTTP response message.</returns>
     public static async Task<HttpResponseMessage> PatchWithAuthAsync(
-        this HttpClient client, 
-        string requestUri, 
+        this HttpClient client,
+        string requestUri,
         HttpContent content,
         string token)
     {

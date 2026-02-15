@@ -217,6 +217,9 @@ public class AppDbContext : DbContext
             entity.Property(i => i.Name)
                   .IsRequired()
                   .HasMaxLength(200);
+
+            // Seed data removed - causes test conflicts with unique database instances
+            // Industries should be seeded via migrations or application startup for production
         });
     }
 }

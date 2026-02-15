@@ -91,7 +91,7 @@ public static class CreateInnovation
                 var industries = await context.Industries
                     .Where(i => request.TargetIndustryIds.Contains(i.Id))
                     .ToListAsync();
-                
+
                 foreach (var industry in industries)
                 {
                     innovation.TargetIndustries.Add(industry);

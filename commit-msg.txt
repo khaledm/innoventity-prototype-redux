@@ -1,0 +1,14 @@
+feat(innovations): implement PUT /innovations/{id} endpoint (T006)
+
+Create UpdateInnovation.cs with ownership and status validation.
+Create UpdateInnovationTests.cs with 4 integration tests.
+Register MapUpdateInnovation() in Program.cs.
+Implement partial update logic (null = no change).
+
+Test Results: 65/68 tests passing (95.6%)
+- UpdateInnovation_AsOwner_Returns200OK
+- UpdateInnovation_AsNonOwner_Returns403Forbidden
+- UpdateInnovation_PublishedInnovation_Returns409Conflict
+- UpdateInnovation_NotFound_Returns404
+
+Spec: US2 Acceptance Scenarios 2-3, R2.2 (ownership)

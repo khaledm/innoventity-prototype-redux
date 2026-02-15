@@ -148,7 +148,7 @@ public class CreateInnovationTests : IDisposable
         }
 
         var loginResponse = await response.Content.ReadFromJsonAsync<JsonElement>();
-        return loginResponse.GetProperty("accessToken").GetString() 
+        return loginResponse.GetProperty("accessToken").GetString()
             ?? throw new InvalidOperationException("Failed to get access token");
     }
 
@@ -161,7 +161,7 @@ public class CreateInnovationTests : IDisposable
     {
         // Arrange
         var token = await GetAccessToken("test-generator@innoventity.dev", "IdeaGenerator");
-        
+
         var request = new
         {
             title = "Quantum Battery Prototype",
@@ -242,7 +242,7 @@ public class CreateInnovationTests : IDisposable
     {
         // Arrange
         var token = await GetAccessToken("test-manufacturing@innoventity.dev", "Manufacturing");
-        
+
         var request = new
         {
             title = "Test Innovation",
@@ -258,7 +258,7 @@ public class CreateInnovationTests : IDisposable
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        
+
         var problemDetails = await response.Content.ReadFromJsonAsync<JsonElement>();
         var detail = problemDetails.GetProperty("detail").GetString();
         Assert.Contains("Idea Generator", detail);
@@ -276,7 +276,7 @@ public class CreateInnovationTests : IDisposable
     {
         // Arrange
         var token = await GetAccessToken("test-generator@innoventity.dev", "IdeaGenerator");
-        
+
         var request = new
         {
             // Missing title, productType, researchCategory, researchBackground
@@ -289,7 +289,7 @@ public class CreateInnovationTests : IDisposable
 
         // Assert - Framework returns 500 for JSON deserialization failures with required properties
         Assert.True(
-            response.StatusCode == HttpStatusCode.BadRequest || 
+            response.StatusCode == HttpStatusCode.BadRequest ||
             response.StatusCode == HttpStatusCode.InternalServerError,
             $"Expected 400 or 500, got {response.StatusCode}");
     }
