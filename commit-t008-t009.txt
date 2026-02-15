@@ -1,0 +1,42 @@
+feat(api): implement GET /innovations and GET /industries endpoints (T008-T009)
+
+T008: Implement innovation discovery with filtering
+- Create ListInnovations.cs with industryId/researchCategory filters
+- Create ListInnovationsTests.cs with 4 integration tests
+- Pagination support (page, pageSize parameters)
+- Only returns Published innovations (excludes Drafts)
+- Ordered by SubmittedAt desc (most recent first)
+- Requires authentication (401 if not authenticated)
+
+T009: Implement industries reference list
+- Create GetIndustries.cs (public endpoint, no auth)
+- Create GetIndustriesTests.cs with 1 integration test
+- Seed 10 industries based on legacy ICB taxonomy (Industry Classification Benchmark)
+- Flat structure for Phase 0 (future: expand to hierarchical SuperSector → Sector → Subsector)
+
+Industry Master List (Legacy SchemaBuilder/GetCommonLookupSql alignment):
+- HLTH-001: Health Care
+- TECH-001: Technology
+- ENRG-001: Oil & Gas (includes Renewable Energy subsector)
+- AUTO-001: Consumer Goods (includes Automobiles subsector)
+- INDU-001: Industrials
+- FIN-001: Financials
+- TCOM-001: Telecommunications
+- CSVC-001: Consumer Services
+- UTIL-001: Utilities
+- MTRL-001: Basic Materials
+
+Technical Details:
+- Fixed parameter ordering in ListInnovations.cs (AppDbContext must be first)
+- Fixed Industry constructor usage (parameterized constructor for seed data)
+- Added using Innoventity.API.Features.Industries to Program.cs
+- AppDbContext.HasData seeds all 10 ICB top-level industries
+- Test manually seeds industries to avoid EF Core in-memory conflicts
+
+Test Results: 70/73 tests passing (96.0%)
+- 4/4 ListInnovationsTests passing (filter, pagination, published-only)
+- 1/1 GetIndustriesTests passing (10 ICB industries returned)
+- 3 Phase 1 domain validation failures (expected Phase 1 scope)
+
+Spec: §US4 Innovation Discovery, §T008-T009
+Legacy Reference: innoventity-prototype-development/legacy-mvc/src/SchemaBuilder/Program.cs::GetCommonLookupSql()

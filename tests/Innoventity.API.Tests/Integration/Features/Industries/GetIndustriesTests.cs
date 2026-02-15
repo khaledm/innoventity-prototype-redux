@@ -37,7 +37,7 @@ public class GetIndustriesTests : IClassFixture<WebApplicationFactory<Program>>
     {
         // Arrange: Create test-specific database to avoid conflicts with other tests
         var testDbName = $"TestDb_GetIndustries_{Guid.NewGuid()}";
-        
+
         var testFactory = _factory.WithWebHostBuilder(builder =>
         {
             builder.ConfigureServices(services =>
@@ -65,18 +65,25 @@ public class GetIndustriesTests : IClassFixture<WebApplicationFactory<Program>>
             var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             await context.Database.EnsureCreatedAsync();
 
-            // Seed required industries (T009 specification)
-            context.Industries.AddRange(
-                new Industry("ELEC-001") { Name = "Electronics" },
-                new Industry("ENRG-001") { Name = "Renewable Energy" },
-                new Industry("AUTO-001") { Name = "Automotive" },
-                new Industry("HLTH-001") { Name = "Healthcare" },
-                new Industry("FIN-001") { Name = "Finance" },
-                new Industry("AGRI-001") { Name = "Agriculture" },
-                new Industry("MFG-001") { Name = "Manufacturing" },
-                new Industry("IT-001") { Name = "IT Services" }
-            );
-            await context.SaveChangesAsync();
+            // Check if industries already exist (from HasData seed)
+            if (!await context.Industries.AnyAsync())
+            {
+                // Seed industries matching AppDbContext seed data
+                // Based on legacy SchemaBuilder/GetCommonLookupSql ICB taxonomy
+                context.Industries.AddRange(
+                    new Industry("HLTH-001") { Name = "Health Care" },
+                    new Industry("TECH-001") { Name = "Technology" },
+                    new Industry("ENRG-001") { Name = "Oil & Gas" },
+                    new Industry("AUTO-001") { Name = "Consumer Goods" },
+                    new Industry("INDU-001") { Name = "Industrials" },
+                    new Industry("FIN-001") { Name = "Financials" },
+                    new Industry("TCOM-001") { Name = "Telecommunications" },
+                    new Industry("CSVC-001") { Name = "Consumer Services" },
+                    new Industry("UTIL-001") { Name = "Utilities" },
+                    new Industry("MTRL-001") { Name = "Basic Materials" }
+                );
+                await context.SaveChangesAsync();
+            }
         }
 
         // Act: Request industries without authentication
@@ -92,12 +99,12 @@ public class GetIndustriesTests : IClassFixture<WebApplicationFactory<Program>>
         // Verify ≥4 industries returned
         Assert.True(industries.Count >= 4, $"Expected at least 4 industries, got {industries.Count}");
 
-        // Verify required industry IDs present
+        // Verify required industry IDs present (Phase 0 minimum + ICB top-level)
         var industryIds = industries.Select(i => i.IndustryId).ToList();
-        Assert.Contains("ELEC-001", industryIds);
-        Assert.Contains("ENRG-001", industryIds);
-        Assert.Contains("AUTO-001", industryIds);
-        Assert.Contains("HLTH-001", industryIds);
+        Assert.Contains("HLTH-001", industryIds);  // Health Care
+        Assert.Contains("TECH-001", industryIds);  // Technology
+        Assert.Contains("ENRG-001", industryIds);  // Oil & Gas (includes Renewable Energy)
+        Assert.Contains("AUTO-001", industryIds);  // Consumer Goods (includes Automobiles)
 
         // Verify each industry has required fields
         foreach (var industry in industries)
@@ -106,18 +113,18 @@ public class GetIndustriesTests : IClassFixture<WebApplicationFactory<Program>>
             Assert.False(string.IsNullOrEmpty(industry.Name), "Name should not be empty");
         }
 
-        // Verify specific industry names
-        var electronics = industries.First(i => i.IndustryId == "ELEC-001");
-        Assert.Equal("Electronics", electronics.Name);
+        // Verify specific industry names (ICB top-level taxonomy)
+        var healthCare = industries.First(i => i.IndustryId == "HLTH-001");
+        Assert.Equal("Health Care", healthCare.Name);
 
-        var renewableEnergy = industries.First(i => i.IndustryId == "ENRG-001");
-        Assert.Equal("Renewable Energy", renewableEnergy.Name);
+        var technology = industries.First(i => i.IndustryId == "TECH-001");
+        Assert.Equal("Technology", technology.Name);
 
-        var automotive = industries.First(i => i.IndustryId == "AUTO-001");
-        Assert.Equal("Automotive", automotive.Name);
+        var oilAndGas = industries.First(i => i.IndustryId == "ENRG-001");
+        Assert.Equal("Oil & Gas", oilAndGas.Name);
 
-        var healthcare = industries.First(i => i.IndustryId == "HLTH-001");
-        Assert.Equal("Healthcare", healthcare.Name);
+        var consumerGoods = industries.First(i => i.IndustryId == "AUTO-001");
+        Assert.Equal("Consumer Goods", consumerGoods.Name);
 
         // Cleanup: Delete test database
         using (var scope = testFactory.Services.CreateScope())

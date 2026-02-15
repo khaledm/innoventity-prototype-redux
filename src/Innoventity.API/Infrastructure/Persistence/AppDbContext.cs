@@ -218,8 +218,24 @@ public class AppDbContext : DbContext
                   .IsRequired()
                   .HasMaxLength(200);
 
-            // Seed data removed - causes test conflicts with unique database instances
-            // Industries should be seeded via migrations or application startup for production
+            // Seed industry master list (Phase 0 - flat structure)
+            // Based on legacy SchemaBuilder/GetCommonLookupSql ICB taxonomy
+            // Future: Expand to hierarchical SuperSector → Sector → Subsector structure
+            entity.HasData(
+                // Core industries (Phase 0 minimum requirement)
+                new Industry("HLTH-001") { Name = "Health Care" },
+                new Industry("TECH-001") { Name = "Technology" },
+                new Industry("ENRG-001") { Name = "Oil & Gas" },  // Includes Renewable Energy subsector
+                new Industry("AUTO-001") { Name = "Consumer Goods" },  // Includes Automobiles subsector
+                
+                // Additional industries (production completeness)
+                new Industry("INDU-001") { Name = "Industrials" },
+                new Industry("FIN-001") { Name = "Financials" },
+                new Industry("TCOM-001") { Name = "Telecommunications" },
+                new Industry("CSVC-001") { Name = "Consumer Services" },
+                new Industry("UTIL-001") { Name = "Utilities" },
+                new Industry("MTRL-001") { Name = "Basic Materials" }
+            );
         });
     }
 }
