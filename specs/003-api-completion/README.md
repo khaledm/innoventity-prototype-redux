@@ -184,7 +184,6 @@ Complete the backend API with **subcutaneous testing** (Martin Fowler pattern) t
 ### Testing Resources
 - **EF Core In-Memory Testing**: https://learn.microsoft.com/en-us/ef/core/testing/choosing-a-testing-strategy
 - **WebApplicationFactory**: https://learn.microsoft.com/en-us/aspnet/core/test/integration-tests
-- **FluentAssertions**: https://fluentassertions.com/introduction
 - **xUnit Documentation**: https://xunit.net/
 
 ---

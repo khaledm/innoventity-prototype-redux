@@ -634,7 +634,6 @@ public async Task Journey1_NonOwnerCannotSubmitInnovation_Returns403()
 - **EF Core In-Memory Database**: https://learn.microsoft.com/en-us/ef/core/testing/choosing-a-testing-strategy
 - **WebApplicationFactory**: https://learn.microsoft.com/en-us/aspnet/core/test/integration-tests
 - **xUnit Test Patterns**: http://xunitpatterns.com/
-- **FluentAssertions**: https://fluentassertions.com/introduction
 
 ### Team Knowledge Transfer
 

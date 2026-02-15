@@ -222,7 +222,7 @@ All technical decisions are **already resolved** from Phase 0 and Phase 0.5:
 - ✅ Language/Framework: C# 12 / .NET 8.0 / ASP.NET Core Minimal APIs (Phase 0)
 - ✅ Database: EF Core with In-Memory provider for tests (Phase 0)
 - ✅ Architecture: Vertical Slice Architecture (Phase 0)
-- ✅ Testing: xUnit + WebApplicationFactory + FluentAssertions (Phase 0)
+- ✅ Testing: xUnit + WebApplicationFactory (Phase 0)
 - ✅ Domain Model: EntityBase, Address, Actor, Innovation entities (Phase 0.5)
 - ✅ Authentication: JWT tokens, BCrypt password hashing (Phase 0)
 

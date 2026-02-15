@@ -7,6 +7,132 @@
 
 ---
 
+## Pre-Task Setup Checklist
+
+**⚠️ CRITICAL**: Complete this checklist before starting T001.
+
+### Environment Verification
+- [ ] On correct branch: `git branch --show-current` returns `003-api-completion`
+- [ ] Branch is up-to-date with parent: `git fetch origin && git merge origin/001-platform-core`
+- [ ] No uncommitted changes: `git status` shows clean working directory
+- [ ] Build succeeds: `dotnet build` (zero errors)
+- [ ] Test suite runs: `dotnet test --verbosity normal` (captures baseline pass rate)
+- [ ] IDE/Editor configured: XML documentation warnings enabled
+
+### Development Tools
+- [ ] .NET 8.0 SDK installed: `dotnet --version` (should show 8.0.x)
+- [ ] EF Core tools installed: `dotnet tool list -g` (should include dotnet-ef)
+- [ ] Git configured: `git config user.name` and `git config user.email` set
+- [ ] Text editor/IDE: VS Code, Visual Studio, or Rider
+
+### Documentation Access
+- [ ] Read [spec.md](spec.md) (989 lines) - understand 7 user stories
+- [ ] Read [plan.md](plan.md) (564 lines) - understand technical approach
+- [ ] Read [tasks.md](tasks.md) (this file) - understand acceptance criteria
+- [ ] Read [subcutaneous-test-requirements.md](subcutaneous-test-requirements.md) - understand testing patterns
+- [ ] Review [constitution.md](../../.specify/memory/constitution.md) (principles 2, 3, 4, 5, 6)
+
+### Knowledge Prerequisites
+- [ ] Understand **Vertical Slice Architecture** (feature folders, not layered)
+- [ ] Understand **ASP.NET Core Minimal APIs** pattern (no controllers)
+- [ ] Understand **xUnit + WebApplicationFactory** testing approach
+- [ ] Understand **EF Core In-Memory provider** behavior (database scoping)
+- [ ] Understand **JWT authentication** flow (token acquisition and attachment)
+
+### Risk Awareness
+- [ ] T001-T002 are **HIGH RISK** (database context) - allocate 3 full days if blocked
+- [ ] T007 is **COMPLEX** (13 validation rules) - may need 5-6 hours instead of 4
+- [ ] T013 is **COMPLEX** (first journey test) - template for all future journey tests
+- [ ] Contingency: Switch to SQLite if EF Core In-Memory provider insufficient (see plan.md Risk Assessment)
+
+---
+
+## Post-Task Commit Guidelines
+
+**📋 IMPORTANT**: Follow this checklist after completing each task (T001-T017).
+
+### Before Committing
+- [ ] All acceptance criteria met (review task section above)
+- [ ] Verification command executed successfully (see task "Verification" section)
+- [ ] Build succeeds with **zero warnings**: `dotnet build`
+- [ ] Tests pass: `dotnet test` (task-specific tests + full suite)
+- [ ] Code formatted: Follow existing code style conventions
+- [ ] No commented-out code or debug statements left in production code
+- [ ] No TODO/FIXME comments without GitHub issue reference
+
+### Commit Message Format
+
+Use **Conventional Commits** format:
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+**Types**: `feat`, `fix`, `test`, `docs`, `refactor`, `chore`  
+**Scope**: endpoint name or component (e.g., `CreateInnovation`, `TestFixture`, `database-context`)  
+**Subject**: Imperative mood, lowercase, no period, max 72 characters  
+**Body**: What and why (not how), wrap at 80 characters  
+**Footer**: `Closes #issue` or `BREAKING CHANGE` (if applicable)
+
+### Commit Message Examples
+
+**T001 Example**:
+```bash
+git add .specify/analysis/test-context-diagnostic.md
+git commit -m "docs(test-infrastructure): diagnose database context lifecycle issue
+
+Root cause identified: EF Core In-Memory provider creates separate database 
+instances when DbContext instances differ between test constructor and 
+WebApplicationFactory. Proposed solution: unique database naming strategy 
+with shared configuration.
+
+Related to Phase 0.6 T001."
+```
+
+**T005 Example**:
+```bash
+git add src/Innoventity.API/Features/Innovations/CreateInnovation.cs
+git add tests/Innoventity.API.Tests/Integration/Innovations/CreateInnovationTests.cs
+git commit -m "feat(CreateInnovation): implement POST /innovations endpoint
+
+- Add CreateInnovation.cs with request validation
+- Implement authorization (JWT + ActorType = IdeaGenerator)
+- Add CreateInnovationTests.cs with 4 integration tests
+- All acceptance criteria met (T005)
+
+Tests: CreateInnovationTests (4/4 passing)"
+```
+
+**T007 Example**:
+```bash
+git add src/Innoventity.API/Features/Innovations/SubmitInnovation.cs
+git add tests/Innoventity.API.Tests/Integration/Innovations/SubmitInnovationTests.cs
+git commit -m "feat(SubmitInnovation): implement PATCH /innovations/{id}/submit endpoint
+
+- Add SubmitInnovation.cs with 13-rule completeness validation (R2.1)
+- Implement status transition (Draft → Published)
+- Add SubmitInnovationTests.cs with 4 integration tests
+- All acceptance criteria met (T007)
+
+Validation rules: Title, ProductType, ResearchCategory, ResearchBackground (min 50 chars),
+HasIPR, HasRightToUse, ProductDescription, TechnologyDescription, TargetBeneficiaries,
+RelevantMarketSize > 0, PotentialMarketSize > 0, ≥1 TargetIndustry, ≥1 PartnersNeeded.
+
+Tests: SubmitInnovationTests (4/4 passing)"
+```
+
+### After Committing
+- [ ] Commit message follows Conventional Commits format above
+- [ ] Commit is **atomic** (one task, one commit)
+- [ ] Commit hash recorded (optional, for detailed project tracking)
+- [ ] Push to remote branch: `git push origin 003-api-completion`
+
+---
+
 ## Week 1: Fix Failing Subcutaneous Tests (10 hours)
 
 ### T001: Diagnose Database Context Lifecycle Issues
@@ -1277,6 +1403,131 @@ grep -i "Phase 0.6" README.md
 # Verify tasks.md completion
 grep -c "✅ COMPLETE" specs/003-api-completion/tasks.md
 # Expected: 17 (all tasks complete)
+```
+
+---
+
+## Merge Readiness Checklist
+
+**🚀 CRITICAL**: Complete this checklist before merging `003-api-completion` into `001-platform-core`.
+
+### Code Quality Gates
+- [ ] **67/67 tests passing** (100% pass rate)
+- [ ] **Test suite executes in <30 seconds**
+- [ ] **Zero build warnings**: `dotnet build` produces no warnings
+- [ ] Zero code analysis warnings (if enabled)
+- [ ] All endpoints return correct HTTP status codes (verified in integration tests)
+- [ ] All endpoints have comprehensive XML documentation
+
+### Test Coverage Validation
+- [ ] **11 subcutaneous tests passing**:
+  - Phase0JourneyTests: 1 test ✅
+  - GetInnovationTests: 3 tests ✅
+  - Journey1_InnovationSubmissionTests: 4 tests ✅
+  - Journey2_BiddingTests: 3 tests ✅
+- [ ] **27 integration tests passing** (8 endpoints × ~3 tests each):
+  - CreateInnovationTests: 4 tests ✅
+  - UpdateInnovationTests: 4 tests ✅
+  - SubmitInnovationTests: 4 tests ✅
+  - ListInnovationsTests: 4 tests ✅
+  - GetIndustriesTests: 1 test ✅
+  - SubmitBidTests: 4 tests ✅
+  - GetBidsTests: 3 tests ✅
+  - UpdateBidTests: 3 tests ✅
+- [ ] **29 original tests passing** (authentication, health, domain)
+- [ ] **Error paths tested**: 401, 403, 404, 409 responses validated
+
+### Documentation Complete
+- [ ] [spec.md](spec.md): All 7 user stories marked `✅ IMPLEMENTED`
+- [ ] [tasks.md](tasks.md): All 17 tasks marked `✅ COMPLETE`
+- [ ] [plan.md](plan.md): Implementation complete, risks resolved
+- [ ] [traceability.md](traceability.md): All user stories traced to endpoints and tests
+- [ ] [README.md](../../README.md): Phase 0.6 section added
+- [ ] **OpenAPI/Swagger**: All 14 endpoints documented (6 existing + 8 new)
+
+### Git Hygiene
+- [ ] Branch up-to-date with parent: `git fetch origin && git merge origin/001-platform-core`
+- [ ] **No merge conflicts**: `git status` shows clean merge
+- [ ] **Commit history is clean**: 17 atomic commits for T001-T017 (one per task)
+- [ ] **No uncommitted changes**: `git status` shows clean working directory
+- [ ] **All commits pushed to remote**: `git push origin 003-api-completion`
+
+### Code Review
+- [ ] **Pull request created** on GitHub
+- [ ] PR description references [spec.md](spec.md) and highlights key changes:
+  - 8 new API endpoints (Innovation CRUD, Bid management, Industries)
+  - 67/67 tests passing (100% pass rate)
+  - Journey 1 & 2 validated via subcutaneous tests
+  - Database context lifecycle fix applied
+- [ ] **At least one reviewer assigned**
+- [ ] **All review comments addressed**
+- [ ] **Reviewer approval obtained**
+
+### CI/CD Validation (if applicable)
+- [ ] GitHub Actions build passes (or equivalent CI)
+- [ ] All CI tests pass
+- [ ] No deployment blockers identified
+
+### Constitutional Compliance
+- [ ] **Principle 2 (Quality)**: 100% test pass rate ✅
+- [ ] **Principle 3 (Simplicity)**: Uses standard patterns (Minimal APIs, Vertical Slice) ✅
+- [ ] **Principle 4 (Specification Drives)**: Spec-first workflow followed ✅
+- [ ] **Principle 5 (Tests Prove)**: Test-first discipline maintained ✅
+- [ ] **Principle 6 (Architecture Supports Evolution)**: Backend-first validation ✅
+- [ ] **Principle 7 (Incremental)**: 4-week timeline, weekly milestones ✅
+- [ ] **Overall**: 6/6 gates passing - 99/100 constitutional rating maintained
+
+### Team Communication
+- [ ] Stand-up announcement: "Phase 0.6 ready for merge"
+- [ ] Frontend team notification: "Backend API complete and stable - ready for integration"
+- [ ] Documentation team notification: "API documentation updated in Swagger UI"
+
+### Final Verification Commands
+
+```bash
+# 1. Verify test pass rate
+dotnet test --verbosity normal | tee merge-test-results.txt
+grep "Passed!" merge-test-results.txt
+# Expected: "Passed! - Failed: 0, Passed: 67, Skipped: 3, Total: 70"
+
+# 2. Verify test execution time
+grep "Time: " merge-test-results.txt
+# Expected: <30 seconds
+
+# 3. Verify zero build warnings
+dotnet build 2>&1 | grep -i "warning"
+# Expected: No output (zero warnings)
+
+# 4. Verify all endpoints documented in Swagger
+dotnet run --project src/Innoventity.API &
+sleep 5
+curl http://localhost:5000/swagger/v1/swagger.json | jq '.paths | keys | length'
+# Expected: 14 endpoints
+
+# 5. Verify clean git status
+git status
+# Expected: "nothing to commit, working tree clean"
+
+# 6. Verify merge with parent
+git fetch origin
+git merge origin/001-platform-core --no-commit --no-ff
+git diff --name-only
+# Expected: No conflicts, only 003-api-completion changes
+git merge --abort  # Abort test merge
+```
+
+### Decision Point
+- [ ] ✅ **MERGE APPROVED** - All gates passed, ready to merge
+- [ ] ❌ **MERGE BLOCKED** - Document blockers below and create remediation plan
+
+**Blockers** (if any):
+```
+[Document any blocking issues here - delete if none]
+```
+
+**Remediation Plan** (if blocked):
+```
+[Document remediation steps here - delete if not blocked]
 ```
 
 ---
