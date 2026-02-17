@@ -583,10 +583,13 @@ dotnet test --filter "FullyQualifiedName~UpdateInnovationTests" --verbosity norm
    - `SubmitInnovationTests.SubmitInnovation_AsNonOwner_Returns403Forbidden()`
 
 **Deliverables**:
-- [ ] SubmitInnovation.cs endpoint file with PATCH /innovations/{id}/submit
-- [ ] Completeness validation logic (13 rules)
-- [ ] XML documentation with validation error examples
-- [ ] 4 integration tests passing
+- [X] SubmitInnovation.cs endpoint file with PATCH /innovations/{id}/submit
+- [X] Completeness validation logic (13 rules)
+- [X] XML documentation with validation error examples
+- [X] 4 integration tests passing (SubmitInnovationTests.cs)
+- [X] Added missing fields to Innovation entity (TechnologyDescription, TargetBeneficiaries, RelevantMarketSize, PotentialMarketSize, PartnersNeeded)
+- [X] Database migration created (AddInnovationSubmissionFields)
+- [X] Updated CreateInnovation and UpdateInnovation to handle new fields
 
 **Acceptance Criteria**:
 - ✅ Complete innovation publishes successfully (status Draft → Published)
@@ -595,6 +598,28 @@ dotnet test --filter "FullyQualifiedName~UpdateInnovationTests" --verbosity norm
 - ✅ Already published innovation returns 409 Conflict
 - ✅ Non-owner receives 403 Forbidden
 - ✅ All 4 integration tests passing
+
+**Result**: T007 COMPLETE - Innovation submission endpoint with 13-rule completeness validation fully implemented
+
+**Implementation Notes** (2026-02-17):
+- **Entity Enhancement**: Added 5 missing fields to Innovation entity that were present in request DTOs but not persisted to database
+- **Migration**: Created AddInnovationSubmissionFields migration for schema update
+- **Endpoint Updates**: Updated CreateInnovation.cs and UpdateInnovation.cs to save all submission-related fields
+- **Seed Data Fix**: Updated SeedData.cs to include new required fields for test data
+- **13 Validation Rules** implemented as per Spec §R2.1:
+  1. Title not empty and not placeholder
+  2. ProductType provided
+  3. ResearchCategory selected (enum enforced)
+  4. ResearchBackground min 50 characters
+  5. HasIPR declared (IprStatus field)
+  6. HasRightToUse validated during creation
+  7. ProductDescription provided
+  8. TechnologyDescription provided
+  9. TargetBeneficiaries provided
+  10. RelevantMarketSize > 0
+  11. PotentialMarketSize > 0
+  12. TargetIndustries count ≥ 1
+  13. PartnersNeeded count ≥ 1
 
 **API Contract**:
 ```http
@@ -879,11 +904,27 @@ curl http://localhost:5000/industries
    - `SubmitBidTests.SubmitBid_ShortProposal_Returns400BadRequest()`
 
 **Deliverables**:
-- [ ] SubmitBid.cs endpoint file with POST /innovations/{innovationId}/bids
-- [ ] Bid eligibility validation (R4.1)
-- [ ] Bid content validation (R4.2)
-- [ ] XML documentation complete
-- [ ] 4 integration tests passing
+- [X] SubmitBid.cs endpoint file with POST /innovations/{innovationId}/bids
+- [X] Bid eligibility validation (R4.1)
+- [X] Bid content validation (R4.2)
+- [X] XML documentation complete
+- [X] 4 integration tests passing (SubmitBidTests.cs)
+- [X] BidStatus enum created (Pending, Accepted, Rejected)
+- [X] Bid entity created with all required fields
+- [X] EF Core migration AddBidEntity generated
+- [X] AppDbContext updated with Bids DbSet and configuration
+- [X] Program.cs updated to register MapSubmitBid endpoint
+- [X] ListInnovationsTests updated with missing Innovation fields (TechnologyDescription, TargetBeneficiaries)
+
+**Result**: T010 COMPLETE - Bid submission endpoint with eligibility validation (R4.1) and proposal requirements (R4.2) fully implemented
+
+**Implementation Notes** (2026-02-17):
+- **Entity Creation**: Created BidStatus enum and Bid entity following EntityOfGuid pattern
+- **Database Setup**: Added Bids DbSet to AppDbContext with unique constraint on ActorId + InnovationId (R4.1 duplicate prevention)
+- **Eligibility Rules**: All 7 R4.1 rules implemented (authenticated, correct actor type, published innovation, ownership check, duplicate check)
+- **Content Validation**: All 3 R4.2 rules enforced (Location, ParticipationType, ParticipationProposal min 200 chars)
+- **Integration Tests**: 4 tests cover success case (Manufacturing), forbidden case (IdeaGenerator), duplicate prevention (409), and validation (400)
+- **Test Fixes**: Updated ListInnovationsTests to include TechnologyDescription and TargetBeneficiaries fields added in T007
 
 **Acceptance Criteria**:
 - ✅ Manufacturing actor submits bid successfully (201 Created)
@@ -1005,8 +1046,18 @@ Response 200 OK:
 # Run integration tests
 dotnet test --filter "FullyQualifiedName~GetBidsTests" --verbosity normal
 
-# Expected: 3 tests passing
+# Expected: 6 tests passing
 ```
+
+**✅ COMPLETED**: 2026-02-17 (T011 implementation complete)
+- Implementation: 177-line GetBids.cs endpoint with owner authorization check
+- Tests: 505-line GetBidsTests.cs with 6 integration tests
+- Test Coverage: Owner access, non-owner forbidden, actor type grouping, empty list, unauthenticated, non-existent innovation
+- Notable: Returns bids ordered by SubmittedAt descending (newest first)
+- Notable: Full actor details included (FirstName, LastName, DisplayName, ActorType)
+- Notable: Full proposal text visible to innovation owner only
+- Spec Reference: §US6 Bid Management, §R6.1 Owner Visibility, §R8.2 Non-Owner Forbidden
+
 
 ---
 

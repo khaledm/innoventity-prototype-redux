@@ -103,6 +103,57 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                     b.ToTable("Actors");
                 });
 
+            modelBuilder.Entity("Innoventity.API.Domain.Entities.Bid", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("AcceptedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("InnovationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ParticipationProposal")
+                        .IsRequired()
+                        .HasMaxLength(5000)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ParticipationType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset>("SubmittedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InnovationId");
+
+                    b.HasIndex("ActorId", "InnovationId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Bid_ActorId_InnovationId");
+
+                    b.ToTable("Bids");
+                });
+
             modelBuilder.Entity("Innoventity.API.Domain.Entities.Industry", b =>
                 {
                     b.Property<string>("Id")
@@ -117,6 +168,58 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Industries");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = "HLTH-001",
+                            Name = "Health Care"
+                        },
+                        new
+                        {
+                            Id = "TECH-001",
+                            Name = "Technology"
+                        },
+                        new
+                        {
+                            Id = "ENRG-001",
+                            Name = "Oil & Gas"
+                        },
+                        new
+                        {
+                            Id = "AUTO-001",
+                            Name = "Consumer Goods"
+                        },
+                        new
+                        {
+                            Id = "INDU-001",
+                            Name = "Industrials"
+                        },
+                        new
+                        {
+                            Id = "FIN-001",
+                            Name = "Financials"
+                        },
+                        new
+                        {
+                            Id = "TCOM-001",
+                            Name = "Telecommunications"
+                        },
+                        new
+                        {
+                            Id = "CSVC-001",
+                            Name = "Consumer Services"
+                        },
+                        new
+                        {
+                            Id = "UTIL-001",
+                            Name = "Utilities"
+                        },
+                        new
+                        {
+                            Id = "MTRL-001",
+                            Name = "Basic Materials"
+                        });
                 });
 
             modelBuilder.Entity("Innoventity.API.Domain.Entities.Innovation", b =>
@@ -156,6 +259,13 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("PartnersNeeded")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal?>("PotentialMarketSize")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("ProductAdvantages")
                         .IsRequired()
                         .HasMaxLength(2000)
@@ -176,6 +286,9 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<decimal?>("RelevantMarketSize")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("ResearchBackground")
                         .IsRequired()
                         .HasMaxLength(2000)
@@ -192,6 +305,11 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("SubmittedAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<string>("TargetBeneficiaries")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
                     b.Property<string>("TargetCustomerBase")
                         .IsRequired()
                         .HasMaxLength(2000)
@@ -206,6 +324,11 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("TechnologyDescription")
+                        .IsRequired()
+                        .HasMaxLength(5000)
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -280,6 +403,25 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         });
 
                     b.Navigation("ContactAddress");
+                });
+
+            modelBuilder.Entity("Innoventity.API.Domain.Entities.Bid", b =>
+                {
+                    b.HasOne("Innoventity.API.Domain.Entities.Actor", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Innoventity.API.Domain.Entities.Innovation", "Innovation")
+                        .WithMany()
+                        .HasForeignKey("InnovationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Actor");
+
+                    b.Navigation("Innovation");
                 });
 
             modelBuilder.Entity("Innoventity.API.Domain.Entities.Innovation", b =>

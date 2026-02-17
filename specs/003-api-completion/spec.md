@@ -51,6 +51,78 @@ After merging Phase 0.5 (Domain Model Refactoring) into `001-platform-core`, we 
 
 ---
 
+## Phase 0.6 Scope Boundaries *(critical context)*
+
+### What's IN Scope
+
+**Infrastructure & API Patterns**:
+✅ Subcutaneous testing approach (API-level E2E tests)
+✅ Database context lifecycle fixes (constructor vs method scope)
+✅ JWT token attachment patterns (per-request headers)
+✅ Authentication/authorization validation (401/403 responses)
+
+**Innovation Management**:
+✅ Draft creation (POST /innovations)
+✅ Draft editing (PUT /innovations/{id})
+✅ Draft submission (PATCH /innovations/{id}/submit with state transition)
+✅ Innovation discovery (GET /innovations with filtering)
+✅ Industry reference data (GET /industries for dropdown UI)
+
+**Bid Management**:
+✅ Bid submission with basic validation (R4.1 eligibility, R4.2 content)
+✅ Bid viewing (innovation owner can see all bids)
+✅ Bid updating (bidder can modify before acceptance)
+✅ Generic Bid entity with free-text proposal
+✅ Simple status tracking (Pending/Accepted/Rejected)
+
+**Testing**:
+✅ Journey 1 test suite (innovation submission workflow)
+✅ Journey 2 test suite (discovery and bidding workflow)
+✅ 67 total tests (authentication, innovation CRUD, bid CRUD, E2E journeys)
+
+---
+
+### What's OUT OF SCOPE - Intentional Deferrals to Phase 1
+
+**Innovation Entity Architecture**:
+❌ Domain composition (IdeaSummary, Product, Market, CollaborationRequirement owned entities)
+❌ Rich validation methods (IsReadyForSubmission(), IsIdeaSummaryComplete(), etc.)
+❌ Submission workflow state machine (Draft → Submitted with validation gates)
+❌ Multi-step submission forms (progressive disclosure of child entities)
+
+**Bid Entity Architecture**:
+❌ Polymorphic FormalResponse hierarchy (ManufacturingResponse, SalesMarketingResponse, ResearchDevelopmentResponse, InvestorResponse)
+❌ Financial projection structures (YearlyManufacturingCosts, YearlySales dictionaries with rationale fields)
+❌ Type-specific validation (e.g., ManufacturingResponse requires ≥1 year of projections)
+❌ NPV calculation support (IProjectValuationService domain service)
+
+**Partner Selection Workflow**:
+❌ Partner selection command (SelectPartners with validation rules)
+❌ Minimum bids validation (HasReceivedEnoughOfFormalResponses)
+❌ Irreversibility enforcement (HasPartnerSelectionCompleted)
+❌ State transition to InCollaboration status
+
+**Rationale for Deferral**:
+Phase 0.6 focuses on **API infrastructure** and **authentication patterns**. The current flat `Innovation` and generic `Bid` entities are **intentionally simplified** to:
+1. Validate authentication and authorization flows quickly
+2. Test API endpoint structure (Minimal APIs approach)
+3. Prove integration testing approach (WebApplicationFactory patterns)
+4. Deliver MVP functionality without over-engineering
+
+Rich domain modeling (composition, polymorphism, workflow validation) requires:
+- Business plan integration (Phase 3)
+- Virtual incubator workspace (Phase 3)
+- Financial modeling domain service (Phase 2+)
+
+See [../ROADMAP.md](../ROADMAP.md#phase-1-domain-richness--rich-behavior) for Phase 1 refactoring plan and [../../.specify/analysis/innovation-bid-domain-gap-analysis.md](../../.specify/analysis/innovation-bid-domain-gap-analysis.md) for comprehensive legacy system comparison.
+
+**Constitutional Compliance**: ✅ ACCEPTABLE
+- **Principle 3 (Simplicity Over Cleverness)**: Flat model is simplest for MVP validation
+- **Principle 4 (Specification Drives Implementation)**: Spec explicitly defers composition to Phase 1
+- **Principle 6 (Incremental & Sustainable)**: Infrastructure first, domain richness second
+
+---
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Fix Failing Subcutaneous Tests (Priority: P0 - CRITICAL)

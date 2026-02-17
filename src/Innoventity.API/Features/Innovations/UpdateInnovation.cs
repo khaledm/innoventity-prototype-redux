@@ -93,6 +93,9 @@ public static class UpdateInnovation
             if (request.ProductDescription != null)
                 innovation.ProductDescription = request.ProductDescription;
 
+            if (request.TechnologyDescription != null)
+                innovation.TechnologyDescription = request.TechnologyDescription;
+
             if (request.ProductAdvantages != null)
                 innovation.ProductAdvantages = request.ProductAdvantages;
 
@@ -108,6 +111,9 @@ public static class UpdateInnovation
             if (request.TargetCustomerBase != null)
                 innovation.TargetCustomerBase = request.TargetCustomerBase;
 
+            if (request.TargetBeneficiaries != null)
+                innovation.TargetBeneficiaries = request.TargetBeneficiaries;
+
             if (request.TargetCustomerType != null)
                 innovation.TargetCustomerType = request.TargetCustomerType;
 
@@ -116,6 +122,17 @@ public static class UpdateInnovation
 
             if (request.AdvantageKeywords != null)
                 innovation.AdvantageKeywords = request.AdvantageKeywords;
+
+            if (request.RelevantMarketSize.HasValue)
+                innovation.RelevantMarketSize = request.RelevantMarketSize;
+
+            if (request.PotentialMarketSize.HasValue)
+                innovation.PotentialMarketSize = request.PotentialMarketSize;
+
+            if (request.PartnersNeeded != null)
+                innovation.PartnersNeeded = request.PartnersNeeded.Any()
+                    ? string.Join(",", request.PartnersNeeded)
+                    : null;
 
             // Update target industries if provided
             if (request.TargetIndustryIds != null)
@@ -205,6 +222,11 @@ public record UpdateInnovationRequest
     public string? ProductDescription { get; init; }
 
     /// <summary>
+    /// Technology description (optional - null = no change)
+    /// </summary>
+    public string? TechnologyDescription { get; init; }
+
+    /// <summary>
     /// Product advantages (optional - null = no change)
     /// </summary>
     public string? ProductAdvantages { get; init; }
@@ -230,9 +252,24 @@ public record UpdateInnovationRequest
     public string? TargetCustomerBase { get; init; }
 
     /// <summary>
+    /// Target beneficiaries (optional - null = no change)
+    /// </summary>
+    public string? TargetBeneficiaries { get; init; }
+
+    /// <summary>
     /// Target customer type: B2B, B2C, B2G (optional - null = no change)
     /// </summary>
     public string? TargetCustomerType { get; init; }
+
+    /// <summary>
+    /// Relevant market size in USD (optional - null = no change)
+    /// </summary>
+    public decimal? RelevantMarketSize { get; init; }
+
+    /// <summary>
+    /// Potential market size in USD (optional - null = no change)
+    /// </summary>
+    public decimal? PotentialMarketSize { get; init; }
 
     /// <summary>
     /// Product keywords for discoverability (optional - null = no change)

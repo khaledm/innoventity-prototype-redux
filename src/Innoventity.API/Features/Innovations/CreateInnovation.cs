@@ -72,14 +72,21 @@ public static class CreateInnovation
                 ResearchCategory = researchCategory,
                 IprStatus = request.HasIPR ? "Patent Pending" : "None",
                 ProductDescription = request.ProductDescription ?? string.Empty,
+                TechnologyDescription = request.TechnologyDescription ?? string.Empty,
                 ProductAdvantages = request.ProductAdvantages ?? string.Empty,
                 DevelopmentPhase = request.DevelopmentPhase ?? string.Empty,
                 DevelopmentProcess = request.DevelopmentProcess ?? string.Empty,
                 TargetMarket = request.TargetMarket ?? string.Empty,
                 TargetCustomerBase = request.TargetCustomerBase ?? string.Empty,
+                TargetBeneficiaries = request.TargetBeneficiaries ?? string.Empty,
                 TargetCustomerType = request.TargetCustomerType ?? "B2B",
                 ProductKeywords = request.ProductKeywords ?? string.Empty,
                 AdvantageKeywords = request.AdvantageKeywords ?? string.Empty,
+                RelevantMarketSize = request.RelevantMarketSize,
+                PotentialMarketSize = request.PotentialMarketSize,
+                PartnersNeeded = request.PartnersNeeded != null && request.PartnersNeeded.Any()
+                    ? string.Join(",", request.PartnersNeeded)
+                    : null,
                 Status = InnovationStatus.Draft, // Initial status is Draft (Spec §US2)
                 CreatedAt = DateTimeOffset.UtcNow,
                 SubmittedAt = null // Not published yet
