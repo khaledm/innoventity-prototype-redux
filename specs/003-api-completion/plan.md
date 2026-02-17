@@ -95,6 +95,62 @@
 
 **Overall Constitutional Compliance**: ✅ 6/6 gates passing - **99/100 rating maintained**
 
+## Critical Path Analysis
+
+### Sequential Execution Order
+
+The implementation follows a strict dependency chain with clear blocking relationships:
+
+```
+WEEK 1: Infrastructure Fixes (CRITICAL - BLOCKS ALL)
+├── T001: Diagnose Database Context Lifecycle Issues (3h)
+│   └── Deliverable: Root cause diagnostic report
+├── T002: Implement Database Context Lifecycle Fix (4h) [DEPENDS: T001]
+│   └── Deliverable: Fixed test infrastructure
+├── T003: Fix JWT Token Attachment Issues (2h) [DEPENDS: T002]
+│   └── Deliverable: JWT helper methods
+└── T004: Validate Subcutaneous Test Infrastructure Complete (1h) [DEPENDS: T001-T003]
+    └── Deliverable: 57/60 tests passing (95% pass rate)
+    └── GATE: Must pass before Week 2 begins
+
+WEEK 2: Innovation CRUD (Journey 1 API Surface)
+├── T005: Implement POST /innovations (3h) [DEPENDS: T004]
+├── T006: Implement PUT /innovations/{id} (3h) [DEPENDS: T005]
+├── T007: Implement PATCH /innovations/{id}/submit (4h) [DEPENDS: T006]
+├── T008: Implement GET /innovations (3h) [DEPENDS: T007]
+└── T009: Implement GET /industries (2h) [DEPENDS: T008]
+    └── GATE: 5 endpoints + 16 integration tests passing
+
+WEEK 3: Bid Management (Journey 2 API Surface)
+├── T010: Implement POST /innovations/{innovationId}/bids (4h) [DEPENDS: T009]
+├── T011: Implement GET /innovations/{innovationId}/bids (3h) [DEPENDS: T010]
+└── T012: Implement PUT /bids/{bidId} (3h) [DEPENDS: T011]
+    └── GATE: 3 endpoints + 10 integration tests passing
+
+WEEK 4: Journey Tests + Documentation
+├── T013: Build Journey 1 Complete Test Suite (5h) [DEPENDS: T005-T009]
+├── T014: Build Journey 2 Complete Test Suite (4h) [DEPENDS: T010-T012]
+├── T015: Validate Complete Test Suite (1h) [DEPENDS: T013-T014]
+│   └── GATE: 67/67 tests passing (100% pass rate)
+├── T016: Complete OpenAPI Documentation (2h) [DEPENDS: T015]
+└── T017: Update Specification Traceability (2h) [DEPENDS: T016]
+    └── GATE: Phase 0.6 Complete, Ready for Merge
+```
+
+**Blocking Chain**: T001 → T002 → T003 → T004 → BLOCKS ALL
+
+**Explanation**: Week 1 infrastructure fixes are the critical path. Until database context and JWT issues are resolved, no new endpoints can be reliably tested. This is correctly identified as P0-CRITICAL in tasks.
+
+**Parallel Opportunities**: 
+- T005-T009 can be parallelized if multiple developers available
+- T010-T012 can be parallelized if multiple developers available
+- T016 and T017 could potentially run in parallel (minor time savings)
+
+**Risk Hotspots**:
+- **T001-T002** (7 hours): If database context fix takes longer than estimated, entire timeline shifts
+- **T007** (4 hours): Most complex validation logic (13 completeness rules)
+- **T013** (5 hours): First comprehensive journey test - template for T014
+
 ## Project Structure
 
 ### Documentation (this feature)
@@ -485,20 +541,9 @@ T015 (100% Pass Rate) → T016-T017 (Documentation)
 
 ### Success Criteria
 
-**Phase 0.6 Complete When**:
-- ✅ 67/67 tests passing (100% pass rate)
-- ✅ 8 new API endpoints fully implemented and documented
-- ✅ Journey 1 validated via subcutaneous tests (Innovation Submission)
-- ✅ Journey 2 validated via subcutaneous tests (Discovery & Bidding)
-- ✅ Zero build warnings
-- ✅ Test suite executes in <30 seconds
-- ✅ Backend API surface complete for frontend integration
+**Phase 0.6 Complete When**: See [spec.md](spec.md#success-metrics) for detailed acceptance criteria. In summary: 67/67 tests passing (100%), 8 new endpoints implemented, Journey 1-2 validated, zero warnings, <30s test execution.
 
-**Merge Criteria**:
-- All success criteria met
-- Code review approved
-- No merge conflicts with 001-platform-core
-- Build passes on CI/CD
+**Merge Criteria**: All success criteria met, code review approved, no merge conflicts, CI/CD passing.
 
 ---
 

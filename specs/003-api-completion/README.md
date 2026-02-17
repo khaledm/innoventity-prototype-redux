@@ -45,91 +45,15 @@ Complete the backend API with **subcutaneous testing** (Martin Fowler pattern) t
 
 ---
 
-## 🎯 Success Criteria
+## 🎯 Quick Reference
 
-**Phase 0.6 is COMPLETE when**:
-- ✅ **67/67 tests passing** (100% pass rate, excluding 3 Phase 1 domain tests)
-- ✅ **8 new API endpoints** fully implemented and documented
-- ✅ **Journey 1 validated** via subcutaneous tests (Innovation Submission & Publication)
-- ✅ **Journey 2 validated** via subcutaneous tests (Innovation Discovery & Bid Submission)
-- ✅ **Zero build warnings**
-- ✅ **Test suite executes in <30 seconds**
-- ✅ **Backend API surface complete** for frontend integration
+**Success Criteria**: Phase 0.6 is complete when 67/67 tests pass (100%), 8 new endpoints implemented, Journey 1-2 validated. See [spec.md](spec.md) for detailed success criteria.
 
----
+**Timeline**: 47 hours over 4 weeks (Week 1: Infrastructure fixes, Week 2: Innovation CRUD, Week 3: Bid management, Week 4: Journey tests). See [plan.md](plan.md#timeline--effort) for details.
 
-## 📅 Timeline & Effort
+**API Endpoints**: 14 total endpoints (6 existing from Phase 0, 8 new in Phase 0.6). See [spec.md](spec.md#api-contracts) for complete endpoint specifications.
 
-**Total Estimated Effort**: 47 hours (3-4 weeks at 12-15 hours/week)
-
-### Week 1: Fix Failing Subcutaneous Tests (10 hours)
-- **T001-T004**: Diagnose and fix database context lifecycle issues
-- **Goal**: 95% pass rate (57/60 tests passing)
-
-### Week 2: Innovation CRUD API (15 hours)
-- **T005-T009**: Implement 5 Innovation endpoints (POST, PUT, PATCH, GET, GET /industries)
-- **Goal**: Journey 1 API surface complete
-
-### Week 3: Bid Submission API (10 hours)
-- **T010-T012**: Implement 3 Bid endpoints (POST, GET, PUT)
-- **Goal**: Journey 2 API surface complete
-
-### Week 4: Journey Tests & Documentation (12 hours)
-- **T013-T017**: Build Journey1Tests, Journey2Tests, complete documentation
-- **Goal**: 100% pass rate (67/67), comprehensive journey validation
-
----
-
-## 🚀 API Endpoints (Phase 0.6 Deliverables)
-
-### Existing Endpoints (Phase 0 + Phase 0.5)
-- ✅ POST /auth/register
-- ✅ POST /auth/login
-- ✅ POST /auth/refresh
-- ✅ POST /auth/activate
-- ✅ GET /innovations/{id}
-- ✅ GET /health
-
-### New Endpoints (Phase 0.6)
-- ➕ **POST /innovations** - Create innovation draft (T005)
-- ➕ **PUT /innovations/{id}** - Update draft innovation (T006)
-- ➕ **PATCH /innovations/{id}/submit** - Publish innovation (T007)
-- ➕ **GET /innovations** - List innovations with filters (T008)
-- ➕ **GET /industries** - Industry master list (T009)
-- ➕ **POST /innovations/{innovationId}/bids** - Submit bid (T010)
-- ➕ **GET /innovations/{innovationId}/bids** - List bids for innovation (T011)
-- ➕ **PUT /bids/{bidId}** - Update unaccepted bid (T012)
-
-**Total Endpoints After Phase 0.6**: 14 endpoints (6 existing + 8 new)
-
----
-
-## 🧪 Test Coverage (Phase 0.6 Deliverables)
-
-### Existing Tests (Phase 0 + Phase 0.5)
-- ✅ **Unit Tests**: 29 tests (authentication, domain models)
-- ⚠️ **Integration Tests**: 24 tests (4 failing due to infrastructure)
-- ⚠️ **Phase 1 Domain Tests**: 3 tests (expected failures, deferred to Phase 1)
-
-### New Tests (Phase 0.6)
-- ➕ **Infrastructure Fixes**: 4 tests fixed (Phase0JourneyTests, GetInnovationTests)
-- ➕ **Innovation CRUD Tests**: 16 tests (CreateInnovation, UpdateInnovation, SubmitInnovation, ListInnovations)
-- ➕ **Bid Management Tests**: 10 tests (SubmitBid, GetBids, UpdateBid)
-- ➕ **Journey 1 Tests**: 4 tests (1 complete journey + 3 error paths)
-- ➕ **Journey 2 Tests**: 3 tests (1 complete journey + 2 error paths)
-
-**Total Tests After Phase 0.6**: 67 tests passing (100% pass rate)
-
----
-
-## 📊 API Completeness Progression
-
-| Journey | Steps | Endpoints Required | Before Phase 0.6 | After Phase 0.6 | Coverage |
-|---------|-------|-------------------|------------------|-----------------|----------|
-| **Journey 1** (Innovation Submission) | 7 steps | 6 endpoints | 1 endpoint (17%) | 6 endpoints (100%) | ✅ Complete |
-| **Journey 2** (Discovery & Bidding) | 6 steps | 3 endpoints | 0 endpoints (0%) | 3 endpoints (100%) | ✅ Complete |
-| **Journey 3** (Partner Selection) | 5 steps | 1+ endpoint | 0 endpoints | 0 endpoints | ⏳ Phase 0.7+ |
-| **Overall** | 18 steps | 14 endpoints | 6 endpoints (43%) | 14 endpoints (100%) | ✅ Complete |
+**Test Coverage**: 67 tests total (29 unit, 38 integration, 7 journey tests). See [PHASE-06-COMPLETION-CHECKLIST.md](PHASE-06-COMPLETION-CHECKLIST.md) for current progress.
 
 ---
 
@@ -192,29 +116,7 @@ Complete the backend API with **subcutaneous testing** (Martin Fowler pattern) t
 
 ## 🎓 Constitutional Alignment
 
-Phase 0.6 aligns with these constitutional principles:
-
-### Principle 2: Quality is Non-Negotiable
-- **100% test pass rate required** (no failing tests allowed)
-- Zero build warnings enforced
-- Comprehensive validation before merge
-
-### Principle 4: Specification Drives Implementation
-- Complete specification created before implementation (this document)
-- Tasks breakdown with acceptance criteria (tasks.md)
-- Traceability from user stories to endpoints to tests
-
-### Principle 5: Test-First Discipline
-- **Subcutaneous tests as first-class deliverables** (not afterthought)
-- Test infrastructure fixes prioritized (T001-T004)
-- Journey tests validate complete flows, not just individual endpoints
-
-### Principle 6: Incremental & Sustainable
-- **Complete each layer fully before advancing** to next layer
-- Backend API surface 100% complete before frontend work
-- Subcutaneous tests prove backend completeness without UI dependency
-
-**Constitutional Impact**: Maintains 99/100 rating (same as Phase 0.5)
+**Constitutional Compliance**: Phase 0.6 maintains 99/100 rating through 100% test pass rate requirement, test-first discipline, and complete backend validation before frontend work. See [plan.md](plan.md#constitution-check) for detailed gate assessment.
 
 ---
 

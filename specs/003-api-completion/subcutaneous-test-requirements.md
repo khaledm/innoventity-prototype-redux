@@ -579,39 +579,7 @@ public async Task Journey1_NonOwnerCannotSubmitInnovation_Returns403()
 
 ## Success Criteria Summary
 
-### Phase 0.6 Complete When:
-
-**Infrastructure Fixed** (T001-T004):
-- ✅ Database context lifecycle issue resolved
-- ✅ JWT token attachment working correctly
-- ✅ All 4 existing subcutaneous tests passing (Phase0JourneyTests, GetInnovationTests)
-
-**Journey 1 Complete** (T005-T009, T013):
-- ✅ POST /innovations implemented and tested
-- ✅ PUT /innovations/{id} implemented and tested
-- ✅ PATCH /innovations/{id}/submit implemented and tested
-- ✅ GET /innovations implemented and tested
-- ✅ GET /industries implemented and tested
-- ✅ Journey1Tests with 4 tests passing (1 primary + 3 error paths)
-
-**Journey 2 Complete** (T010-T012, T014):
-- ✅ POST /innovations/{innovationId}/bids implemented and tested
-- ✅ GET /innovations/{innovationId}/bids implemented and tested
-- ✅ PUT /bids/{bidId} implemented and tested
-- ✅ Journey2Tests with 3 tests passing (1 primary + 2 error paths)
-
-**Documentation Complete** (T015-T017):
-- ✅ 100% test pass rate (67/67 tests)
-- ✅ All endpoints have comprehensive XML documentation
-- ✅ Traceability matrix complete (user stories → endpoints → tests)
-- ✅ README.md updated with Phase 0.6 completion
-
-**Quality Gates**:
-- ✅ Zero build warnings
-- ✅ Test suite executes in <30 seconds
-- ✅ All endpoints follow Vertical Slice architecture pattern
-- ✅ Manual validation (no FluentValidation dependency)
-- ✅ Backend API surface complete before frontend work begins
+**Phase 0.6 Success Criteria**: See [spec.md](spec.md#success-metrics) for complete acceptance criteria and [PHASE-06-COMPLETION-CHECKLIST.md](PHASE-06-COMPLETION-CHECKLIST.md) for current progress tracking.
 
 ---
 
