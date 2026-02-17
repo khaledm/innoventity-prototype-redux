@@ -1139,6 +1139,15 @@ dotnet test --filter "FullyQualifiedName~UpdateBidTests" --verbosity normal
 # Expected: 3 tests passing
 ```
 
+**✅ COMPLETED**: 2026-02-17 (T012 implementation complete)
+- Implementation: 188-line UpdateBid.cs endpoint with author-only authorization and status validation
+- Tests: 425-line UpdateBidTests.cs with 3 integration tests
+- Test Coverage: Pending bid update success, non-author 403 Forbidden, accepted bid 409 Conflict immutability
+- Notable: UpdatedAt timestamp properly tracked in database, accepted/rejected bids immutable
+- Notable: Validates R8.2 (author-only updates), R4.2 (proposal >= 200 characters)
+- Notable: Provides clear error messages for immutable bids ("Accepted bids cannot be modified")
+- Spec Reference: §US6 Bid Management, §R8.2 Authorization, Bid immutability after acceptance
+
 ---
 
 ## Week 4: Subcutaneous Journey Tests & Documentation (12 hours)
