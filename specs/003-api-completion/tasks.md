@@ -1193,11 +1193,11 @@ dotnet test --filter "FullyQualifiedName~UpdateBidTests" --verbosity normal
 5. Verify all 4 tests pass
 
 **Deliverables**:
-- [ ] Journey1_InnovationSubmissionTests.cs test class
-- [ ] Test fixture with 7 helper methods
-- [ ] 1 primary journey test (8 steps orchestrated)
-- [ ] 3 error path tests
-- [ ] All 4 tests passing
+- [X] Journey1_InnovationSubmissionTests.cs test class
+- [X] Test fixture with 8 helper methods (RegisterActor, ActivateAccount, Login, CreateInnovation, UpdateInnovation, SubmitInnovation, GetInnovation, ListInnovations)
+- [X] 1 primary journey test (8 steps orchestrated)
+- [X] 3 error path tests
+- [X] All 4 tests passing (Journey1_IdeaGeneratorSubmitsInnovation_PublishedSuccessfully, Journey1_SubmitIncompleteInnovation_Returns400WithValidationErrors, Journey1_NonOwnerCannotSubmitInnovation_Returns403, Journey1_SubmitAlreadyPublished_Returns409)
 
 **Acceptance Criteria**:
 - ✅ Primary journey test orchestrates 8 API calls successfully
