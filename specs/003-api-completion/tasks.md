@@ -1147,6 +1147,12 @@ dotnet test --filter "FullyQualifiedName~UpdateBidTests" --verbosity normal
 - Notable: Validates R8.2 (author-only updates), R4.2 (proposal >= 200 characters)
 - Notable: Provides clear error messages for immutable bids ("Accepted bids cannot be modified")
 - Spec Reference: §US6 Bid Management, §R8.2 Authorization, Bid immutability after acceptance
+- **Post-Implementation Fix (2026-02-17)**: Discovered and resolved JWT authentication issue
+  - Root cause: JWT tokens missing standard 'sub' claim required by bid endpoints
+  - Solution: Added `JwtRegisteredClaimNames.Sub` claim to JwtTokenService.GenerateAccessToken
+  - Fixed GetAccessToken in SubmitBidTests and GetBidsTests to include required actorType parameter
+  - Result: All 3 UpdateBidTests passing, overall test suite 86/90 pass (95.6%)
+  - Commit: a1c8c26
 
 ---
 
