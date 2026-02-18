@@ -182,13 +182,23 @@ public class UpdateBidTests : IDisposable
         db.SaveChanges();
     }
 
-    private async Task<string> GetAccessToken(string email, string password)
+    private async Task<string> GetAccessToken(string email, string actorType, string password = "Password123!")
     {
-        var loginRequest = new { email, password };
-        var loginResponse = await _client.PostAsJsonAsync("/auth/login", loginRequest);
-        loginResponse.EnsureSuccessStatusCode();
+        var loginRequest = new
+        {
+            email,
+            actorType,
+            password
+        };
 
-        var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
+        var response = await _client.PostAsJsonAsync("/auth/login", loginRequest);
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"Login failed with status {response.StatusCode}: {errorContent}");
+        }
+
+        var loginResult = await response.Content.ReadFromJsonAsync<LoginResponse>();
         return loginResult?.AccessToken ?? throw new InvalidOperationException("Failed to obtain access token");
     }
 
@@ -208,7 +218,7 @@ public class UpdateBidTests : IDisposable
     public async Task UpdateBid_PendingBidByAuthor_Returns200OK()
     {
         // Arrange
-        var token = await GetAccessToken("manufacturer@test.com", "Password123!");
+        var token = await GetAccessToken("manufacturer@test.com", "Manufacturing");
         var updateRequest = new UpdateBidRequest
         {
             Location = "Berlin, Germany",
@@ -253,8 +263,8 @@ public class UpdateBidTests : IDisposable
     [Fact]
     public async Task UpdateBid_NonAuthor_Returns403Forbidden()
     {
-        // Arrange
-        var token = await GetAccessToken("researcher@test.com", "Password123!"); // Different actor
+        // Arrange - login as different actor (not the bid author)
+        var token = await GetAccessToken("researcher@test.com", "RD"); // Different actor
         var updateRequest = new UpdateBidRequest
         {
             Location = "Tokyo, Japan",
@@ -262,12 +272,11 @@ public class UpdateBidTests : IDisposable
             ParticipationProposal = "Malicious actor attempting to modify someone else's bid. This should fail with 403 Forbidden as only the bid author (manufacturing actor) can update this bid. Authorization rules must prevent cross-actor bid modifications to maintain proposal integrity."
         };
 
-        var request = new HttpRequestMessage(HttpMethod.Put, $"/bids/{_pendingBidId}");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        request.Content = JsonContent.Create(updateRequest);
-
-        // Act
-        var response = await _client.SendAsync(request);
+        // Act - try to update someone else's bid
+        var response = await _client.PutWithAuthAsync(
+            $"/bids/{_pendingBidId}",
+            JsonContent.Create(updateRequest),
+            token);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -289,7 +298,7 @@ public class UpdateBidTests : IDisposable
     public async Task UpdateBid_AcceptedBid_Returns409Conflict()
     {
         // Arrange
-        var token = await GetAccessToken("researcher@test.com", "Password123!");
+        var token = await GetAccessToken("researcher@test.com", "RD");
         var updateRequest = new UpdateBidRequest
         {
             Location = "Cambridge, MA, USA",
@@ -297,12 +306,11 @@ public class UpdateBidTests : IDisposable
             ParticipationProposal = "Attempting to update an accepted bid. This should fail with 409 Conflict because accepted bids are immutable to preserve the integrity of partnership agreements. Once a bid is accepted, the terms are locked and cannot be changed to prevent disputes."
         };
 
-        var request = new HttpRequestMessage(HttpMethod.Put, $"/bids/{_acceptedBidId}");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        request.Content = JsonContent.Create(updateRequest);
-
         // Act
-        var response = await _client.SendAsync(request);
+        var response = await _client.PutWithAuthAsync(
+            $"/bids/{_acceptedBidId}",
+            JsonContent.Create(updateRequest),
+            token);
 
         // Assert
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);

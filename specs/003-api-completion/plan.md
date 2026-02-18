@@ -141,7 +141,7 @@ WEEK 4: Journey Tests + Documentation
 
 **Explanation**: Week 1 infrastructure fixes are the critical path. Until database context and JWT issues are resolved, no new endpoints can be reliably tested. This is correctly identified as P0-CRITICAL in tasks.
 
-**Parallel Opportunities**: 
+**Parallel Opportunities**:
 - T005-T009 can be parallelized if multiple developers available
 - T010-T012 can be parallelized if multiple developers available
 - T016 and T017 could potentially run in parallel (minor time savings)

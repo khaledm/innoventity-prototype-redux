@@ -129,7 +129,6 @@ public class SubmitBidTests : IDisposable
         db.Actors.AddRange(ideaGenerator, manufacturingActor, rdActor, existingBidActor);
 
         // Create published innovation (owned by idea generator)
-        _publishedInnovationId = Guid.NewGuid();
         var publishedInnovation = new Innovation(_publishedInnovationId)
         {
             OwnerId = _ideaGeneratorId,
@@ -157,7 +156,6 @@ public class SubmitBidTests : IDisposable
         };
 
         // Create draft innovation (not accepting bids)
-        _draftInnovationId = Guid.NewGuid();
         var draftInnovation = new Innovation(_draftInnovationId)
         {
             OwnerId = _ideaGeneratorId,
@@ -167,11 +165,13 @@ public class SubmitBidTests : IDisposable
             ResearchCategory = ResearchCategory.Engineering,
             IprStatus = "None",
             ProductDescription = "Draft product description",
+            TechnologyDescription = "Draft technology description for testing purposes",
             ProductAdvantages = "Draft advantages",
             DevelopmentPhase = "Concept",
             DevelopmentProcess = "Early stage",
             TargetMarket = "Test market",
             TargetCustomerBase = "Test customers",
+            TargetBeneficiaries = "Test beneficiaries and early adopters",
             TargetCustomerType = "B2B",
             ProductKeywords = "draft, test",
             AdvantageKeywords = "testing",

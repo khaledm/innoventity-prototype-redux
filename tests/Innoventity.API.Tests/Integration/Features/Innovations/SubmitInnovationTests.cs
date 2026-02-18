@@ -252,12 +252,11 @@ public class SubmitInnovationTests : IDisposable
     {
         // Arrange
         var token = await GetAccessToken("test-generator@innoventity.dev", "IdeaGenerator");
+        var request = new HttpRequestMessage(HttpMethod.Patch, $"/innovations/{_completeInnovationId}/submit");
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
         // Act
-        var response = await _client.PatchAsync(
-            $"/innovations/{_completeInnovationId}/submit",
-            null,
-            token);
+        var response = await _client.SendAsync(request);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -281,12 +280,11 @@ public class SubmitInnovationTests : IDisposable
     {
         // Arrange
         var token = await GetAccessToken("test-generator@innoventity.dev", "IdeaGenerator");
+        var request = new HttpRequestMessage(HttpMethod.Patch, $"/innovations/{_incompleteInnovationId}/submit");
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
         // Act
-        var response = await _client.PatchAsync(
-            $"/innovations/{_incompleteInnovationId}/submit",
-            null,
-            token);
+        var response = await _client.SendAsync(request);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -309,12 +307,11 @@ public class SubmitInnovationTests : IDisposable
     {
         // Arrange
         var token = await GetAccessToken("test-generator@innoventity.dev", "IdeaGenerator");
+        var request = new HttpRequestMessage(HttpMethod.Patch, $"/innovations/{_publishedInnovationId}/submit");
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
         // Act
-        var response = await _client.PatchAsync(
-            $"/innovations/{_publishedInnovationId}/submit",
-            null,
-            token);
+        var response = await _client.SendAsync(request);
 
         // Assert
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
@@ -328,12 +325,11 @@ public class SubmitInnovationTests : IDisposable
     {
         // Arrange - login as different actor
         var token = await GetAccessToken("test-other@innoventity.dev", "IdeaGenerator");
+        var request = new HttpRequestMessage(HttpMethod.Patch, $"/innovations/{_completeInnovationId}/submit");
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
         // Act - try to submit someone else's innovation
-        var response = await _client.PatchAsync(
-            $"/innovations/{_completeInnovationId}/submit",
-            null,
-            token);
+        var response = await _client.SendAsync(request);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
