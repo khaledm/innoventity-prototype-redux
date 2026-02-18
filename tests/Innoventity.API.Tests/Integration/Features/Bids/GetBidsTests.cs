@@ -303,7 +303,7 @@ public class GetBidsTests : IDisposable
     public async Task GetBids_AsOwner_ReturnsAllBids()
     {
         // Arrange
-        var token = await GetAccessToken("owner@test.com", "Password123!");
+        var token = await GetAccessToken("owner@test.com", "IdeaGenerator");
 
         // Act
         var response = await _client.GetWithAuthAsync(
@@ -351,7 +351,7 @@ public class GetBidsTests : IDisposable
     public async Task GetBids_AsNonOwner_Returns403Forbidden()
     {
         // Arrange
-        var token = await GetAccessToken("nonowner@test.com", "Password123!");
+        var token = await GetAccessToken("nonowner@test.com", "IdeaGenerator");
 
         // Act
         var response = await _client.GetWithAuthAsync(
@@ -373,7 +373,7 @@ public class GetBidsTests : IDisposable
     public async Task GetBids_GroupedByActorType_CorrectCounts()
     {
         // Arrange
-        var token = await GetAccessToken("owner@test.com", "Password123!");
+        var token = await GetAccessToken("owner@test.com", "IdeaGenerator");
 
         // Act
         var response = await _client.GetWithAuthAsync(
@@ -408,7 +408,7 @@ public class GetBidsTests : IDisposable
     public async Task GetBids_InnovationWithNoBids_ReturnsEmptyList()
     {
         // Arrange
-        var token = await GetAccessToken("owner@test.com", "Password123!");
+        var token = await GetAccessToken("owner@test.com", "IdeaGenerator");
 
         // Act
         var response = await _client.GetWithAuthAsync(
@@ -450,7 +450,7 @@ public class GetBidsTests : IDisposable
     public async Task GetBids_NonExistentInnovation_Returns404NotFound()
     {
         // Arrange
-        var token = await GetAccessToken("owner@test.com", "Password123!");
+        var token = await GetAccessToken("owner@test.com", "IdeaGenerator");
         var nonExistentInnovationId = Guid.NewGuid();
 
         // Act
@@ -468,11 +468,12 @@ public class GetBidsTests : IDisposable
     /// <summary>
     /// Helper method to get JWT access token for authentication
     /// </summary>
-    private async Task<string> GetAccessToken(string email, string password)
+    private async Task<string> GetAccessToken(string email, string actorType, string password = "Password123!")
     {
         var loginRequest = new
         {
             email = email,
+            actorType = actorType,
             password = password
         };
 

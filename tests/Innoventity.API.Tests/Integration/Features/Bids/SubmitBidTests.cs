@@ -211,7 +211,7 @@ public class SubmitBidTests : IDisposable
     public async Task SubmitBid_ValidManufacturing_Returns201Created()
     {
         // Arrange
-        var token = await GetAccessToken("manufacturer@test.com", "Password123!");
+        var token = await GetAccessToken("manufacturer@test.com", "Manufacturing");
         var request = new SubmitBid.SubmitBidRequest
         {
             Location = "Munich, Germany",
@@ -266,7 +266,7 @@ public class SubmitBidTests : IDisposable
     public async Task SubmitBid_IdeaGeneratorAttempt_Returns403Forbidden()
     {
         // Arrange
-        var token = await GetAccessToken("innovator@test.com", "Password123!");
+        var token = await GetAccessToken("innovator@test.com", "IdeaGenerator");
         var request = new SubmitBid.SubmitBidRequest
         {
             Location = "San Francisco, USA",
@@ -300,7 +300,7 @@ public class SubmitBidTests : IDisposable
     public async Task SubmitBid_DuplicateBid_Returns409Conflict()
     {
         // Arrange
-        var token = await GetAccessToken("investor@test.com", "Password123!");
+        var token = await GetAccessToken("investor@test.com", "Investor");
         var request = new SubmitBid.SubmitBidRequest
         {
             Location = "Boston, USA",
@@ -334,7 +334,7 @@ public class SubmitBidTests : IDisposable
     public async Task SubmitBid_ShortProposal_Returns400BadRequest()
     {
         // Arrange
-        var token = await GetAccessToken("researcher@test.com", "Password123!");
+        var token = await GetAccessToken("researcher@test.com", "RD");
         var request = new SubmitBid.SubmitBidRequest
         {
             Location = "Cambridge, UK",
@@ -363,11 +363,12 @@ public class SubmitBidTests : IDisposable
     /// <summary>
     /// Helper method to get JWT access token for authentication
     /// </summary>
-    private async Task<string> GetAccessToken(string email, string password)
+    private async Task<string> GetAccessToken(string email, string actorType, string password = "Password123!")
     {
         var loginRequest = new
         {
             email = email,
+            actorType = actorType,
             password = password
         };
 
