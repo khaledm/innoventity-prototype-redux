@@ -25,6 +25,11 @@ public class AppDbContext : DbContext
     /// </summary>
     public DbSet<Industry> Industries => Set<Industry>();
 
+    /// <summary>
+    /// Bids (partnership proposals) submitted by actors for innovations
+    /// </summary>
+    public DbSet<Bid> Bids => Set<Bid>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -217,6 +222,67 @@ public class AppDbContext : DbContext
             entity.Property(i => i.Name)
                   .IsRequired()
                   .HasMaxLength(200);
+
+            // Seed industry master list (Phase 0 - flat structure)
+            // Based on legacy SchemaBuilder/GetCommonLookupSql ICB taxonomy
+            // Future: Expand to hierarchical SuperSector → Sector → Subsector structure
+            entity.HasData(
+                // Core industries (Phase 0 minimum requirement)
+                new Industry("HLTH-001") { Name = "Health Care" },
+                new Industry("TECH-001") { Name = "Technology" },
+                new Industry("ENRG-001") { Name = "Oil & Gas" },  // Includes Renewable Energy subsector
+                new Industry("AUTO-001") { Name = "Consumer Goods" },  // Includes Automobiles subsector
+
+                // Additional industries (production completeness)
+                new Industry("INDU-001") { Name = "Industrials" },
+                new Industry("FIN-001") { Name = "Financials" },
+                new Industry("TCOM-001") { Name = "Telecommunications" },
+                new Industry("CSVC-001") { Name = "Consumer Services" },
+                new Industry("UTIL-001") { Name = "Utilities" },
+                new Industry("MTRL-001") { Name = "Basic Materials" }
+            );
+        });
+
+        // Configure Bid entity
+        modelBuilder.Entity<Bid>(entity =>
+        {
+            entity.HasKey(b => b.Id);
+
+            entity.Property(b => b.Location)
+                  .IsRequired()
+                  .HasMaxLength(200);
+
+            entity.Property(b => b.ParticipationType)
+                  .IsRequired()
+                  .HasMaxLength(100);
+
+            entity.Property(b => b.ParticipationProposal)
+                  .IsRequired()
+                  .HasMaxLength(5000);
+
+            entity.Property(b => b.Status)
+                  .IsRequired()
+                  .HasConversion<string>();
+
+            entity.Property(b => b.SubmittedAt)
+                  .IsRequired();
+
+            // Configure relationship with Innovation
+            entity.HasOne(b => b.Innovation)
+                  .WithMany()
+                  .HasForeignKey(b => b.InnovationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure relationship with Actor (bidder)
+            entity.HasOne(b => b.Actor)
+                  .WithMany()
+                  .HasForeignKey(b => b.ActorId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            // R4.1: Unique constraint - one bid per actor per innovation
+            entity.HasIndex(b => new { b.ActorId, b.InnovationId })
+                  .IsUnique()
+                  .HasDatabaseName("IX_Bid_ActorId_InnovationId");
         });
     }
 }

@@ -80,6 +80,13 @@ public class Innovation : EntityOfGuid
     public required string ProductDescription { get; set; }
 
     /// <summary>
+    /// Technology description (Spec §US3 R2.1)
+    /// </summary>
+    [Required]
+    [MaxLength(5000)]
+    public required string TechnologyDescription { get; set; }
+
+    /// <summary>
     /// Product advantages (Spec §6)
     /// </summary>
     [Required]
@@ -115,11 +122,28 @@ public class Innovation : EntityOfGuid
     public required string TargetCustomerBase { get; set; }
 
     /// <summary>
+    /// Target beneficiaries (Spec §US3 R2.1)
+    /// </summary>
+    [Required]
+    [MaxLength(2000)]
+    public required string TargetBeneficiaries { get; set; }
+
+    /// <summary>
     /// Target customer type (Spec §6)
     /// </summary>
     [Required]
     [MaxLength(100)]
     public required string TargetCustomerType { get; set; }
+
+    /// <summary>
+    /// Relevant market size in USD (Spec §US3 R2.1)
+    /// </summary>
+    public decimal? RelevantMarketSize { get; set; }
+
+    /// <summary>
+    /// Potential market size in USD (Spec §US3 R2.1)
+    /// </summary>
+    public decimal? PotentialMarketSize { get; set; }
 
     /// <summary>
     /// Product keywords for discoverability (Spec §6)
@@ -161,4 +185,11 @@ public class Innovation : EntityOfGuid
     /// Target industries for this innovation (many-to-many relationship)
     /// </summary>
     public ICollection<Industry> TargetIndustries { get; set; } = new List<Industry>();
+
+    /// <summary>
+    /// Partners needed: RD, Manufacturing, SalesMarketing, Investor (Spec §US3 R2.1)
+    /// Stored as comma-separated string
+    /// </summary>
+    [MaxLength(500)]
+    public string? PartnersNeeded { get; set; }
 }

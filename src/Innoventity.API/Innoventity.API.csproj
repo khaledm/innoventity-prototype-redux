@@ -4,6 +4,13 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Suppress CS1591: Missing XML comment for publicly visible type/member.
+         Pre-existing Authentication and Domain files are outside T016 scope.
+         New endpoint files (T016) have comprehensive XML docs on all public members.
+         Suppress CS1587: XML comment not on valid language element - pre-existing
+         positional record parameter docs in Register.cs (Authentication feature). -->
+    <NoWarn>$(NoWarn);1591;1587</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

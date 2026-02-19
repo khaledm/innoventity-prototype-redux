@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Innoventity.API.Domain.Entities;
 using Innoventity.API.Infrastructure.Persistence;
+using Innoventity.API.Tests.TestFixtures;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -32,16 +33,22 @@ public class Phase0JourneyTests : IDisposable
 
     private WebApplicationFactory<Program> CreateFactory()
     {
+        // FIX (T002): Capture unique database name in closure BEFORE factory creation
+        // This ensures all DbContext instances share the same in-memory database
+        var databaseName = $"TestDb_Phase0Journey_{Guid.NewGuid()}";
+
         return new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
                 builder.ConfigureAppConfiguration((context, config) =>
                 {
+                    // Add JWT configuration for test environment
+                    // Use values that MATCH appsettings.json to ensure token generation and validation agree
                     config.AddInMemoryCollection(new Dictionary<string, string?>
                     {
-                        ["Jwt:SigningKey"] = "test-signing-key-minimum-32-characters-required-for-hs256",
-                        ["Jwt:Issuer"] = "test-issuer",
-                        ["Jwt:Audience"] = "test-audience",
+                        ["Jwt:SigningKey"] = "DEV-ONLY-KEY-REPLACE-IN-PRODUCTION-VIA-CONFIGURATION-MINIMUM-32-CHARACTERS",
+                        ["Jwt:Issuer"] = "Innoventity",
+                        ["Jwt:Audience"] = "Innoventity.API",
                         ["Jwt:AccessTokenExpirationMinutes"] = "60",
                         ["Jwt:RefreshTokenExpirationDays"] = "7"
                     });
@@ -58,7 +65,9 @@ public class Phase0JourneyTests : IDisposable
 
                     services.AddDbContext<AppDbContext>(options =>
                     {
-                        options.UseInMemoryDatabase($"TestDb_{Guid.NewGuid()}");
+                        // FIX (T002): Use captured database name instead of inline Guid.NewGuid()
+                        // This ensures constructor, test method, and WebApplicationFactory all share the same database
+                        options.UseInMemoryDatabase(databaseName);
                     });
                 });
             });
@@ -142,6 +151,8 @@ public class Phase0JourneyTests : IDisposable
                 ResearchCategory = ResearchCategory.Engineering,
                 IprStatus = "Patent Pending",
                 ProductDescription = "Next-generation battery technology for electric vehicles enabling 1000-mile range.",
+                TechnologyDescription = "Quantum tunneling mechanism enables unprecedented energy density through advanced material science",
+                TargetBeneficiaries = "Electric vehicle manufacturers, renewable energy storage providers, grid operators",
                 ProductAdvantages = "10x energy density, 50% faster charging time, 20-year operational lifespan",
                 DevelopmentPhase = "Prototype",
                 DevelopmentProcess = "Laboratory validation complete, seeking partners for commercial scale production",
@@ -184,16 +195,14 @@ public class Phase0JourneyTests : IDisposable
         var accessToken = loginData.GetProperty("accessToken").GetString();
         Assert.NotNull(accessToken);
 
-        // Step 4: View Innovation
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        var innovationResponse = await _client.GetAsync($"/innovations/{_testInnovationId}");
+        // Step 4: View Innovation (use per-request token attachment - T003 fix)
+        var innovationResponse = await _client.GetWithAuthAsync($"/innovations/{_testInnovationId}", accessToken);
 
         Assert.Equal(HttpStatusCode.OK, innovationResponse.StatusCode);
-        var innovation = await innovationResponse.Content.ReadFromJsonAsync<dynamic>();
-        Assert.NotNull(innovation);
-        Assert.Equal("Quantum Battery Prototype", innovation?.title?.ToString());
-        Assert.Equal("Engineering", innovation?.researchCategory?.ToString());
-        Assert.Equal("Published", innovation?.status?.ToString());
+        var innovation = await innovationResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Quantum Battery Prototype", innovation.GetProperty("title").GetString());
+        Assert.Equal("Engineering", innovation.GetProperty("researchCategory").GetString());
+        Assert.Equal("Published", innovation.GetProperty("status").GetString());
 
         // Verify complete journey success
         Assert.True(true, "Phase 0 Journey completed successfully: Register → Activate → Login → View Innovation");
