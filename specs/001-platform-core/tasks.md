@@ -139,13 +139,13 @@
 
 ## Phase 6: Polish & Deployment
 
-- [ ] T058 [P] Create README.md with setup instructions at repository root
+- [X] T058 [P] Create README.md with setup instructions at repository root
 - [ ] T059 [P] Verify quickstart.md validation steps in specs/001-platform-core/quickstart.md
 - [X] T060 [P] Document API endpoints in Scalar/OpenAPI at /scalar route
 - [ ] T061 Configure CORS policy for development in Program.cs
 - [ ] T062 Add structured logging with correlation IDs in Infrastructure/Logging/
-- [ ] T063 Verify all integration tests pass with clean database
-- [ ] T064 Verify E2E test passes end-to-end journey
+- [X] T063 Verify all integration tests pass with clean database
+- [X] T064 Verify E2E test passes end-to-end journey
 - [ ] T065 Create deployment configuration for Azure App Service in infrastructure/ (includes App Service Configuration for JWT signing key, database connection string; SendGrid API key config deferred to Phase 1+ when email notifications implemented)
 - [ ] T079 Run Stryker.NET mutation tests on Infrastructure/Authentication/JwtTokenService.cs and PasswordHasher.cs, verify ≥70% mutation score per CHK031 requirement
 
@@ -286,3 +286,7 @@ For each user story:
 - **Entity Validation**: Business rules R1.1-R8.4 enforced at entity and endpoint layers
 - **Commit Frequency**: After each logical task or small task group
 - **Epistemic Honesty**: If test passes unexpectedly, investigate before proceeding
+- **⚠️ FluentValidation**: PROHIBITED. Manual inline validation only in all endpoint handlers. See `plan.md §Implementation Patterns P004`.
+- **⚠️ Industry IDs**: Use ICB taxonomy only (`TECH-001`, `HLTH-001`, `ENRG-001`, `AUTO-001`, `INDU-001`, `FIN-001`, `TCOM-001`, `CSVC-001`, `UTIL-001`, `MTRL-001`). `ELEC-001` is not a valid ID and does not exist in the production dataset.
+- **⚠️ DbContext Isolation**: Tests must use a unique Guid-based database name shared between the test DbContext and WebApplicationFactory. See `plan.md §Implementation Patterns P001-P002` for required patterns.
+- **Phase 0.6 Coverage**: `specs/003-api-completion/tasks.md` T001-T017 implement Innovation CRUD (R2.1), Bid management (R4.1-R4.4), and Journey 1-2 subcutaneous tests. Cross-reference before planning Phase 1+ tasks to avoid duplication.

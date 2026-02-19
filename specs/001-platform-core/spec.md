@@ -246,6 +246,8 @@ The platform creates a **multi-sided marketplace** for research-based innovation
    - Confirms account via activation token
    - Status changes from `PendingActivation` to `Active`
 
+   > **Phase 0 Implementation Note**: Email delivery (SendGrid) is deferred to Phase 1+. In Phase 0, `POST /auth/register` returns `activationToken` directly in the response body. The test client reads this value and calls `POST /auth/activate` programmatically. This is an intentional shortcut, not a bug. See `plan.md §CHK071`.
+
 2. **Innovation Draft Creation**
    - User initiates new innovation submission
    - System generates unique `IdeaToken` for tracking
@@ -1451,9 +1453,9 @@ These journeys are important for full platform value but can be tested with inte
 - **IdeaToken**: Fixed GUID `33333333-3333-3333-3333-333333333333` for tracking
 - **Status**: Published (accepting proposals)
 - **ResearchCategory**: Engineering
-- **Target Industries**: Electronics, Energy (2 industries from master list)
-  - Industry 1: "Electronics" (IndustryId: `ELEC-001`)
-  - Industry 2: "Renewable Energy" (IndustryId: `ENRG-001`)
+- **Target Industries**: Technology, Oil & Gas (2 industries from ICB master list)
+  - Industry 1: "Technology" (IndustryId: `TECH-001`)
+  - Industry 2: "Oil & Gas" (IndustryId: `ENRG-001`) *(covers Renewable Energy subsector — full hierarchy in Phase 1+)*
 - **IPR Status**: Patent Pending
 - **Research Background**: "Lithium-air battery leveraging quantum tunneling for 10x energy density improvement over conventional Li-ion batteries. Based on 3 years of R&D at Advanced Energy Lab."
 - **Product Type**: "Energy Storage Device"
@@ -1470,11 +1472,19 @@ These journeys are important for full platform value but can be tested with inte
 - **Submission Timestamp**: Fixed date `2026-01-15T14:30:00Z` for deterministic assertions
 - **Collaboration Requirements**: Requires R&D Organization, Manufacturing Company, Sales & Marketing Company (no Investor for Phase 0)
 
-**Industry Master List** (Partial for Phase 0):
-- Electronics (IndustryId: `ELEC-001`)
-- Renewable Energy (IndustryId: `ENRG-001`)
-- Automotive (IndustryId: `AUTO-001`)
-- Healthcare (IndustryId: `HLTH-001`)
+**Industry Master List** (Full Phase 0 — ICB Top-Level Taxonomy, aligned with legacy MVC system):
+- Technology (IndustryId: `TECH-001`)
+- Health Care (IndustryId: `HLTH-001`)
+- Oil & Gas (IndustryId: `ENRG-001`) *(includes Renewable Energy subsector — Phase 1+ hierarchical expansion)*
+- Consumer Goods (IndustryId: `AUTO-001`) *(includes Automobiles subsector)*
+- Industrials (IndustryId: `INDU-001`)
+- Financials (IndustryId: `FIN-001`)
+- Telecommunications (IndustryId: `TCOM-001`)
+- Consumer Services (IndustryId: `CSVC-001`)
+- Utilities (IndustryId: `UTIL-001`)
+- Basic Materials (IndustryId: `MTRL-001`)
+
+> **⚠️ CRITICAL**: Industry IDs and names MUST match this ICB taxonomy (sourced from legacy MVC `SchemaBuilder/Program.cs::GetCommonLookupSql()`). Generic placeholder IDs such as `ELEC-001` **do not exist** in the production dataset and will cause constraint violations. See `specs/003-api-completion/implementation-lessons.md §L3`.
 
 **Validation**:
 - Integration test T048 retrieves innovation by ID `22222222-2222-2222-2222-222222222222` and asserts all fields match specification

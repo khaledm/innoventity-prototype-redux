@@ -44,12 +44,138 @@ Build an open innovation platform enabling research-based innovation originators
 - Test-first development (TDD: red → green → refactor)
 - No data migration (fresh database, reference legacy for business rules only)
 - v2.0 extensibility required (multi-tenancy, new actor types, organization features)
+- **⚠️ NO FluentValidation**: All validation is manual inline code (see Implementation Patterns §P004). FluentValidation library MUST NOT be added. Rationale: Principle 3 (Simplicity Over Cleverness).
+- **⚠️ Industry taxonomy**: All industry IDs/names MUST match ICB taxonomy from legacy MVC system. Generic placeholder IDs (e.g. `ELEC-001`) are invalid — they do not exist in the production dataset. Reference: `SchemaBuilder/Program.cs::GetCommonLookupSql()` in the legacy-mvc repo.
 
 **Scale/Scope**:
 - v1.0 Target: 100 concurrent users (load tested)
 - 5 actor types, 3 P0 user journeys (innovation submission, bid submission, partner selection)
 - Phase 0: Registration + authentication + view single innovation (1-2 weeks)
 - Full v1.0: ~10 months solo development
+
+## Implementation Patterns
+
+> Patterns discovered during Phase 0 and Phase 0.6 implementation. These MUST be followed in all subsequent phases to avoid known failure modes (see `specs/003-api-completion/implementation-lessons.md` for full context).
+
+### P001: EF Core In-Memory Database Isolation (CRITICAL)
+
+**Problem**: EF Core in-memory provider creates **separate database instances** even with the same name string used in different `DbContextOptionsBuilder` calls. Data seeded in the test constructor is invisible when `WebApplicationFactory` is configured independently.
+
+**Required Pattern** (unique Guid-based name, shared between test `DbContext` AND factory):
+```csharp
+_databaseName = $"TestDb_{GetType().Name}_{Guid.NewGuid()}";
+var options = new DbContextOptionsBuilder<AppDbContext>()
+    .UseInMemoryDatabase(_databaseName).Options;
+_dbContext = new AppDbContext(options);
+_dbContext.Database.EnsureCreated();
+SeedTestData(_dbContext);
+
+_factory = new WebApplicationFactory<Program>()
+    .WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+    {
+        services.Remove(services.Single(d => d.ServiceType == typeof(DbContextOptions<AppDbContext>)));
+        services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(_databaseName));
+    }));
+_client = _factory.CreateClient();
+```
+**Reference**: All `tests/Innoventity.API.Tests/E2E/Journeys/` and `Integration/Features/` classes.
+
+---
+
+### P002: HasData() + Manual Test Seeding — AnyAsync() Guard (CRITICAL)
+
+**Problem**: `EnsureCreated()` triggers EF Core `HasData()` seed migrations automatically. If tests then manually insert the same reference entities (e.g., Industries), SQL Server throws PRIMARY KEY constraint violations.
+
+**Required Pattern**:
+```csharp
+await context.Database.EnsureCreatedAsync();
+if (!await context.Industries.AnyAsync())  // ✅ ALWAYS guard
+{
+    context.Industries.AddRange(/* ... */);
+    await context.SaveChangesAsync();
+}
+```
+**Reference**: `tests/Innoventity.API.Tests/Integration/Features/Industries/GetIndustriesTests.cs`.
+
+---
+
+### P003: JWT Claims — Sub Claim Required (CRITICAL)
+
+**Problem**: Resource-ownership authorization policies (`InnovationOwnerRequirement`, `BidActorRequirement`, etc.) resolve the caller’s `actorId` via `ClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier)`. This returns `null` if `JwtRegisteredClaimNames.Sub` is absent, causing silent failures or wrong actor lookups.
+
+**Required claims in `JwtTokenService`**:
+```csharp
+new Claim(JwtRegisteredClaimNames.Sub, actor.Id.ToString()),
+new Claim(ClaimTypes.NameIdentifier, actor.Id.ToString()),
+new Claim("actorType", actor.ActorType.ToString()),
+new Claim(JwtRegisteredClaimNames.Email, actor.Email),
+```
+**Reference**: `src/Innoventity.API/Infrastructure/Authentication/JwtTokenService.cs`.
+
+---
+
+### P004: Manual Inline Validation — FluentValidation Prohibited
+
+**Requirement**: All endpoint request validation MUST use **manual inline validation**. FluentValidation is **explicitly prohibited** (Principle 3: Simplicity Over Cleverness).
+
+```csharp
+// ✅ CORRECT
+if (string.IsNullOrWhiteSpace(request.Title))
+    return Results.BadRequest(new { error = "Title is required" });
+if (request.Title.Length > 200)
+    return Results.BadRequest(new { error = "Title cannot exceed 200 characters" });
+
+// ❌ PROHIBITED
+// using FluentValidation; public class Validator : AbstractValidator<T> { }
+```
+
+---
+
+### P005: Minimal API Parameter Ordering
+
+**Requirement**: Injected services (`AppDbContext`, `ClaimsPrincipal`) MUST precede `[FromQuery]` parameters in Minimal API handlers to avoid dependency injection failures.
+
+```csharp
+// ✅ CORRECT
+public static async Task<IResult> Handle(
+    AppDbContext context,
+    ClaimsPrincipal user,
+    [FromQuery] string? filter)
+
+// ❌ INCORRECT — query param before injected service
+public static async Task<IResult> Handle(
+    [FromQuery] string? filter,
+    AppDbContext context)
+```
+
+---
+
+### P006: Program.Public.cs — WebApplicationFactory Test Access
+
+`WebApplicationFactory<Program>` in the test project requires `Program` to be public. `src/Innoventity.API/Program.Public.cs` contains:
+```csharp
+public partial class Program { }
+```
+This file MUST NOT be deleted. Every test class using `WebApplicationFactory<Program>` depends on it.
+
+---
+
+### P007: Subcutaneous Tests — Preferred Over Playwright for J1-J3
+
+**Decision** (validated in Phase 0.6): Subcutaneous tests (HTTP-level journey orchestration via `WebApplicationFactory`) are the **preferred** E2E strategy for Journey 1, 2, and 3 — not Playwright browser automation.
+
+| | Subcutaneous | Playwright |
+|---|---|---|
+| Execution time | ~20 seconds | ~2-5 minutes |
+| Stability | High (no DOM) | Lower (selectors, rendering) |
+| Frontend dependency | None | Requires Angular client |
+| J1-J3 coverage | Full API coverage | Full UI coverage |
+
+**Architecture**:
+- `tests/Innoventity.API.Tests/E2E/Journeys/` — subcutaneous journey tests (J1, J2 complete)
+- `tests/Innoventity.Client.Tests/e2e/` — Playwright tests (deferred until Angular client complete)
+
+**Playwright remains required for**: J4 (Virtual Incubator) multi-party collaboration UX once Angular client is built.
 
 ## Phase 0 Authorization
 
@@ -448,6 +574,7 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
 - **Phase 0 Decision**: **Defer to Phase 1** due to implementation complexity vs. value trade-off
   - **Complexity**: Requires Actor lookup by email + ActorType, additional endpoint security (rate limiting to prevent spam)
   - **Workaround**: User can re-register with same email/ActorType - backend should allow overwriting PendingActivation accounts
+  - **Phase 0 Activation UX**: `POST /auth/register` response body includes `activationToken` directly (no email sent). The test client reads this value and immediately calls `POST /auth/activate`. This is an intentional Phase 0 shortcut — do NOT treat the token-in-response as a bug. See `spec.md §Journey 1 Step 1` for the in-spec note.
 - **Phase 1 Implementation Requirements**:
   - **Endpoint**: `POST /auth/resend-activation`
   - **Request Body**: `{ "email": "user@example.com", "actorType": "IdeaGenerator" }`
