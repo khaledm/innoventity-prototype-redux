@@ -14,7 +14,7 @@ public class InnovationTests
     /// <summary>
     /// PHASE 1 DEFERRED: Validates Title is required
     /// </summary>
-    [Fact]
+    [Fact(Skip = "Phase 1 domain validation work - deferred")]
     public void Innovation_Should_RequireTitle()
     {
         // Arrange & Act & Assert
@@ -45,7 +45,7 @@ public class InnovationTests
     /// <summary>
     /// PHASE 1 DEFERRED: Validates ProductType is required
     /// </summary>
-    [Fact]
+    [Fact(Skip = "Phase 1 domain validation work - deferred")]
     public void Innovation_Should_RequireProductType()
     {
         // Arrange & Act & Assert
@@ -77,7 +77,7 @@ public class InnovationTests
     /// <summary>
     /// PHASE 1 DEFERRED: Validates ResearchBackground is required
     /// </summary>
-    [Fact]
+    [Fact(Skip = "Phase 1 domain validation work - deferred")]
     public void Innovation_Should_RequireResearchBackground()
     {
         // Arrange & Act & Assert

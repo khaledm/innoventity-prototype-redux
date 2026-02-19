@@ -154,7 +154,7 @@ public class Journey2_BiddingTests : IDisposable
     {
         var response = await _client.PostWithAuthAsync("/innovations",
             JsonContent.Create(request), token);
-        
+
         if (response.IsSuccessStatusCode)
         {
             var data = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -179,7 +179,7 @@ public class Journey2_BiddingTests : IDisposable
     {
         var response = await _client.PatchWithAuthAsync($"/innovations/{innovationId}/submit",
             JsonContent.Create(new { }), token);
-        
+
         if (response.IsSuccessStatusCode)
         {
             var data = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -221,7 +221,7 @@ public class Journey2_BiddingTests : IDisposable
     {
         var response = await _client.PostWithAuthAsync($"/innovations/{innovationId}/bids",
             JsonContent.Create(request), token);
-        
+
         if (response.IsSuccessStatusCode)
         {
             var data = await response.Content.ReadFromJsonAsync<JsonElement>();

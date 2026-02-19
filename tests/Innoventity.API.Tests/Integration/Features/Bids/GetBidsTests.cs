@@ -321,11 +321,11 @@ public class GetBidsTests : IDisposable
         Assert.Equal(5, result.Bids.Count);
 
         // Verify bids are ordered by SubmittedAt descending (newest first)
-        Assert.Equal(_investorBidderId, result.Bids[0].Actor.ActorId); // Most recent
-        Assert.Equal(_salesBidderId, result.Bids[1].Actor.ActorId);
-        Assert.Equal(_rdBidderId, result.Bids[2].Actor.ActorId);
-        Assert.Equal(_manufacturingBidder2Id, result.Bids[3].Actor.ActorId);
-        Assert.Equal(_manufacturingBidder1Id, result.Bids[4].Actor.ActorId); // Oldest
+        Assert.Equal(_investorBidderId, result.Bids[0].Actor.ActorId); // Most recent (-1 day)
+        Assert.Equal(_salesBidderId, result.Bids[1].Actor.ActorId); // -2 days
+        Assert.Equal(_manufacturingBidder2Id, result.Bids[2].Actor.ActorId); // -3 days
+        Assert.Equal(_rdBidderId, result.Bids[3].Actor.ActorId); // -3 days -2 hours
+        Assert.Equal(_manufacturingBidder1Id, result.Bids[4].Actor.ActorId); // Oldest (-4 days)
 
         // Verify actor details are included
         var firstBid = result.Bids[0];
