@@ -2,7 +2,7 @@
 
 **Feature Branch**: `003-api-completion` (Phase 0.6)
 **Created**: February 15, 2026
-**Status**: Draft
+**Status**: ✅ IMPLEMENTED (17/17 tasks complete, 94/97 tests passing)
 **Parent Branch**: `001-platform-core` (includes Phase 0 + Phase 0.5)
 **Constitutional Impact**: Maintains 99/100 (completes backend API surface before frontend work)
 
@@ -127,6 +127,9 @@ See [../ROADMAP.md](../ROADMAP.md#phase-1-domain-richness--rich-behavior) for Ph
 
 ### User Story 1 - Fix Failing Subcutaneous Tests (Priority: P0 - CRITICAL)
 
+**Status**: ✅ IMPLEMENTED
+**Tests**: [Phase0JourneyTests.cs](../../tests/Innoventity.API.Tests/E2E/Journeys/Phase0JourneyTests.cs) · [GetInnovationTests.cs](../../tests/Innoventity.API.Tests/Integration/Features/Innovations/GetInnovationTests.cs)
+
 As a **developer**, I need all existing subcutaneous tests to pass so that I can trust the test suite as a quality gate and build new features on a stable foundation.
 
 **Why this priority**: CRITICAL - Cannot proceed with new API endpoints until existing tests are reliable. Database context issues and JWT token problems indicate infrastructure bugs that will affect all future work.
@@ -149,6 +152,11 @@ As a **developer**, I need all existing subcutaneous tests to pass so that I can
 ---
 
 ### User Story 2 - Innovation Draft Management (Priority: P0 - CRITICAL)
+
+**Status**: ✅ IMPLEMENTED
+**Endpoints**: `POST /innovations` · `PUT /innovations/{id}`
+**Endpoint Files**: [CreateInnovation.cs](../../src/Innoventity.API/Features/Innovations/CreateInnovation.cs) · [UpdateInnovation.cs](../../src/Innoventity.API/Features/Innovations/UpdateInnovation.cs)
+**Tests**: [CreateInnovationTests.cs](../../tests/Innoventity.API.Tests/Integration/Features/Innovations/CreateInnovationTests.cs) · [UpdateInnovationTests.cs](../../tests/Innoventity.API.Tests/Integration/Features/Innovations/UpdateInnovationTests.cs)
 
 As an **Idea Generator**, I need to create and edit innovation drafts via API so that I can incrementally build my innovation submission before publishing.
 
@@ -201,6 +209,11 @@ Response 201 Created:
 ---
 
 ### User Story 3 - Innovation Publication (Priority: P0 - CRITICAL)
+
+**Status**: ✅ IMPLEMENTED
+**Endpoints**: `PATCH /innovations/{id}/submit`
+**Endpoint File**: [SubmitInnovation.cs](../../src/Innoventity.API/Features/Innovations/SubmitInnovation.cs)
+**Tests**: [SubmitInnovationTests.cs](../../tests/Innoventity.API.Tests/Integration/Features/Innovations/SubmitInnovationTests.cs)
 
 As an **Idea Generator**, I need to publish my completed innovation via API so that it becomes visible to potential partners for bidding.
 
@@ -258,6 +271,11 @@ Response 400 Bad Request (incomplete):
 
 ### User Story 4 - Innovation Discovery (Priority: P0 - CRITICAL)
 
+**Status**: ✅ IMPLEMENTED
+**Endpoints**: `GET /innovations`
+**Endpoint File**: [ListInnovations.cs](../../src/Innoventity.API/Features/Innovations/ListInnovations.cs)
+**Tests**: [ListInnovationsTests.cs](../../tests/Innoventity.API.Tests/Integration/Features/Innovations/ListInnovationsTests.cs)
+
 As a **Manufacturing/R&D/Sales actor**, I need to discover published innovations via API with industry filtering so that I can find relevant opportunities to bid on.
 
 **Why this priority**: CRITICAL - Completes first half of Journey 2 (Innovation Discovery). Without discovery endpoint, actors cannot find innovations to bid on.
@@ -305,6 +323,11 @@ Response 200 OK:
 ---
 
 ### User Story 5 - Bid Submission (Priority: P0 - CRITICAL)
+
+**Status**: ✅ IMPLEMENTED
+**Endpoints**: `POST /innovations/{id}/bids`
+**Endpoint File**: [SubmitBid.cs](../../src/Innoventity.API/Features/Bids/SubmitBid.cs)
+**Tests**: [SubmitBidTests.cs](../../tests/Innoventity.API.Tests/Integration/Features/Bids/SubmitBidTests.cs)
 
 As a **Manufacturing Company**, I need to submit formal partnership proposals via API so that I can express my interest in collaborating on an innovation.
 
@@ -366,6 +389,11 @@ Response 409 Conflict (duplicate):
 
 ### User Story 6 - Bid Management (Priority: P1 - Important)
 
+**Status**: ✅ IMPLEMENTED
+**Endpoints**: `GET /innovations/{id}/bids` · `PUT /bids/{id}`
+**Endpoint Files**: [GetBids.cs](../../src/Innoventity.API/Features/Bids/GetBids.cs) · [UpdateBid.cs](../../src/Innoventity.API/Features/Bids/UpdateBid.cs)
+**Tests**: [GetBidsTests.cs](../../tests/Innoventity.API.Tests/Integration/Features/Bids/GetBidsTests.cs) · [UpdateBidTests.cs](../../tests/Innoventity.API.Tests/Integration/Features/Bids/UpdateBidTests.cs)
+
 As a **Manufacturing Company**, I need to view and update my submitted bids via API so that I can refine my proposal before partner selection occurs.
 
 **Why this priority**: Important but not blocking Journey 2 completion. Actors can submit once and wait for selection. Edit capability improves UX but not required for basic marketplace function.
@@ -404,6 +432,11 @@ Response 200 OK:
 ---
 
 ### User Story 7 - Industry Master List (Priority: P0 - CRITICAL)
+
+**Status**: ✅ IMPLEMENTED
+**Endpoints**: `GET /industries`
+**Endpoint File**: [GetIndustries.cs](../../src/Innoventity.API/Features/Industries/GetIndustries.cs)
+**Tests**: [GetIndustriesTests.cs](../../tests/Innoventity.API.Tests/Integration/Features/Industries/GetIndustriesTests.cs)
 
 As a **frontend developer**, I need the industry master list via API so that users can select target industries when creating innovations and setting actor affiliations.
 
