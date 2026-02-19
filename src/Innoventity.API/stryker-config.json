@@ -1,0 +1,16 @@
+{
+  "stryker-config": {
+    "project": "Innoventity.API.csproj",
+    "test-projects": [ "../../tests/Innoventity.API.Tests/Innoventity.API.Tests.csproj" ],
+    "mutate": [
+      "Infrastructure/Authentication/JwtTokenService.cs",
+      "Infrastructure/Authentication/PasswordHasher.cs"
+    ],
+    "reporters": [ "html", "json", "progress" ],
+    "thresholds": {
+      "high": 80,
+      "low": 70,
+      "break": 0
+    }
+  }
+}

@@ -147,7 +147,8 @@
 - [X] T063 Verify all integration tests pass with clean database
 - [X] T064 Verify E2E test passes end-to-end journey
 - [ ] T065 Create deployment configuration for Azure App Service in infrastructure/ (includes App Service Configuration for JWT signing key, database connection string; SendGrid API key config deferred to Phase 1+ when email notifications implemented)
-- [ ] T079 Run Stryker.NET mutation tests on Infrastructure/Authentication/JwtTokenService.cs and PasswordHasher.cs, verify ≥70% mutation score per CHK031 requirement
+- [X] T079 Run Stryker.NET mutation tests on Infrastructure/Authentication/JwtTokenService.cs and PasswordHasher.cs, verify ≥70% mutation score per CHK031 requirement
+  <!-- Result (2026-02-19): Score = 80% (16 killed / 18 tested). 2 survivors both in JwtTokenService.cs — null-coalescing ?? throw paths at lines 19 and 49 (missing SigningKey guard) not exercised. ≥70% threshold MET. -->
 - [X] T080 Update contracts/openapi.yaml to document all Phase 0.6 endpoints: GET /health, GET /industries, POST /innovations, GET /innovations, PUT /innovations/{id}, PATCH /innovations/{id}/submit, GET /innovations/{innovationId}/bids, POST /innovations/{innovationId}/bids, PUT /bids/{bidId} — including auth requirements, request/response schemas, and all documented status codes (200/201/400/401/403/404/409/500 where applicable)
 
 ---
