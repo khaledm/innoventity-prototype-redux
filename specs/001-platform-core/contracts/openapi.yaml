@@ -48,9 +48,9 @@ paths:
         - Authentication
       summary: Register new actor account
       description: |
-        Creates a new actor account with PendingActivation status. 
+        Creates a new actor account with PendingActivation status.
         Sends activation email with token (R1.1).
-        
+
         **Business Rule**: Email must be unique per ActorType (R1.3)
       operationId: registerActor
       security: []
@@ -187,7 +187,7 @@ paths:
       description: |
         Authenticates actor using email, actor type, and password (R1.2).
         Returns access token (1 hour) and refresh token (7 days).
-        
+
         **Note**: Email uniqueness is per ActorType, so actorType is required.
       operationId: login
       security: []
@@ -328,8 +328,8 @@ paths:
       description: |
         Retrieves innovation details for Phase 0 view.
         Requires authentication but no ownership check (public discovery).
-        
-        **Phase 0 Scope**: Displays idea summary only (title, product type, research background,  
+
+        **Phase 0 Scope**: Displays idea summary only (title, product type, research background,
         research category, IPR status, author info). Full details in Phase 1.
       operationId: getInnovationById
       parameters:

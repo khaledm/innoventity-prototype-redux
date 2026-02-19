@@ -56,3 +56,4 @@ test-*.txt
 # Node modules (for future frontend)
 node_modules/
 dist/
+.specify/memory/constitution.md.bak

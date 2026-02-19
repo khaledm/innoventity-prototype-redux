@@ -7,6 +7,7 @@ using Innoventity.API.Features.Industries;
 using Innoventity.API.Features.Innovations;
 using Innoventity.API.Infrastructure.Authentication;
 using Innoventity.API.Infrastructure.ErrorHandling;
+using Innoventity.API.Infrastructure.Logging;
 using Innoventity.API.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,27 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Configure Application Insights
 builder.Services.AddApplicationInsightsTelemetry();
+
+// Configure CORS policy (T061 / CHK092)
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowCredentials()
+                  .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                  .WithHeaders("Content-Type", "Authorization");
+        }
+        else
+        {
+            // No origins configured — block all cross-origin requests
+            policy.SetIsOriginAllowed(_ => false);
+        }
+    });
+});
 
 // Configure OpenAPI documentation (T060)
 builder.Services.AddEndpointsApiExplorer();
@@ -105,6 +127,9 @@ var app = builder.Build();
 // Configure error handling
 app.ConfigureExceptionHandler();
 
+// Propagate / generate X-Correlation-ID for every request (T062 / FR7.6)
+app.UseCorrelationId();
+
 // Configure Swagger and Scalar API documentation (T060) - Development only
 if (app.Environment.IsDevelopment())
 {
@@ -123,6 +148,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
 }
 
+app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 
