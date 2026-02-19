@@ -343,7 +343,7 @@ This checklist acts as **unit tests for requirements writing** — validating th
 - **Conclusion**: Formation trigger explicitly defined as partner selection confirmation → workspace creation + status transition
 
 **CHK040 - Email Notification Content Requirements** - ✅ RESOLVED:
-- **Legacy App Templates** located at `C:\Users\mahmu\source\repos\innoventity-prototype-development\doc\Email Templates\`:
+- **Templates created at** `specs/001-platform-core/email-templates/` (adapted from legacy app originals):
   - `Account Activation.txt` - Activation email with link ✅
   - `Welcome Email upon Activation - IdeaAuthor.txt` - IdeaGenerator onboarding ✅
   - `Welcome Email upon Activation - R&D.txt` - R&D organization onboarding ✅
@@ -481,7 +481,7 @@ This checklist acts as **unit tests for requirements writing** — validating th
 - [ ] CHK002 - Are request body schemas defined for all POST/PUT endpoints? [Completeness, Contracts]
 - [ ] CHK003 - Are response schemas defined for all success cases (200, 201, 204)? [Completeness, Contracts]
 - [x] CHK004 - Are error response schemas defined for all failure cases (400, 401, 403, 404, 500)? ⚠️ PARTIAL - Investigated February 2026: Most endpoints complete, but **2 minor gaps identified**: (1) POST /auth/login missing 400 response for request validation errors (malformed JSON, missing required fields); (2) POST /auth/refresh-token missing 400 response for validation errors. **Recommendation**: Add 400 ValidationProblemDetails responses to both endpoints. All other error cases documented (401, 404, 500 where applicable). [Completeness, Contracts]
-- [x] CHK005 - Are authentication requirements specified for each endpoint? ✅ RESOLVED - Investigated February 2026: All 5 Phase 0 endpoints have clear auth specifications: (1) Auth endpoints (register/activate/login/refresh-token) use security: [] (explicitly no auth required); (2) GET /innovations/{id} uses global security: BearerAuth with description "Requires authentication". **Complete for Phase 0**. [Completeness, Contracts Security]
+- [x] CHK005 - Are authentication requirements specified for each endpoint? ✅ RESOLVED - Updated 2026-02-19: All Phase 0/0.6 endpoints have auth specifications: Auth endpoints (register/activate/login/refresh-token) use security: [] (explicitly no auth required). Health and Industries use security: [] (public reference data). All Innovation and Bid endpoints use BearerAuth (RequireAuthorization()). **Full re-validation required after T080 documents all 14 endpoints in openapi.yaml.** [Completeness, Contracts Security]
 
 ### Data Model Requirements
 
@@ -521,7 +521,7 @@ This checklist acts as **unit tests for requirements writing** — validating th
 ### Vague Terms Requiring Quantification
 
 - [x] CHK030 - Is "fast" response time quantified with specific metrics (p95 <200ms per Plan)? ✅ RESOLVED - Plan §Performance Goals specifies p95 <200ms API response, <100ms DB queries, <2s page load. Industry-standard percentile-based metrics. [Clarity, Plan §Performance Goals]
-- [x] CHK031 - Is "production-ready" defined with measurable criteria? ⚠️ PARTIAL - Mentioned in Plan §Constraints (line 43, 910) but lacks explicit checklist. Security/observability/deployment covered (CHK088-093, FR7.6, FR7.1), but need test coverage thresholds and consolidated release criteria checklist. [Ambiguity, Plan §Constraints]
+- [x] CHK031 - Is "production-ready" defined with measurable criteria? ✅ RESOLVED - Updated 2026-02-19: Plan §CHK031 Production-Ready Checklist documents all pass/fail criteria: test coverage thresholds (unit/integration/E2E), mutation score ≥70% (T079), CI/CD pipeline gates (T076-T078), performance benchmarks (p95 <200ms), security scan, health check validation. Security/observability/deployment all covered (CHK088-093, FR7.5, FR7.6, FR7.1, FR7.8). [Ambiguity, Plan §CHK031]
 - [x] CHK032 - Is "sufficient bids" quantified (≥1 per required actor type per Spec R5.1)? ✅ RESOLVED - Spec R5.5 explicitly defines: ≥1 Manufacturing + ≥1 Sales/Marketing + ≥1 R&D bid (Investor optional). Gherkin acceptance test validates enforcement. [Clarity, Spec R5.1]
 - [x] CHK033 - Is "qualified actor" defined with measurable criteria? ⚠️ PARTIAL - Spec §2 describes personas but no credential verification requirements. Design decision: "qualified" means "typed actor with detailed proposal" (R4.2 requires 200+ chars) not "pre-verified credentials". Phase 0 intentionally permissive, owner evaluates qualifications from bid content. [Ambiguity, Spec §2]
 - [x] CHK034 - Is "active account" status clearly defined vs suspended/pending? ✅ RESOLVED - Data Model §Enums defines AccountStatus: PendingActivation, Active, Suspended. Spec R1.1 specifies activation flow. Validated in CHK044 cross-document consistency check. [Clarity, Data Model §Enums]
@@ -533,7 +533,7 @@ This checklist acts as **unit tests for requirements writing** — validating th
 - [x] CHK037 - Are "collaboration requirements" validation rules quantified (≥1 actor type required)? ✅ RESOLVED - Spec J1 Step 6 shows actor type selection (RD, Manufacturing, Sales/Marketing, Investor). R2.1 requires "≥1 target industry selected". R5.5 enforces ≥1 bid per required actor type. Validation rule: ≥1 actor type must be marked as needed. [Clarity, Spec R2.1]
 - [x] CHK038 - Is "irreversible partner selection" mechanism clearly specified? ✅ RESOLVED - Spec R5.3 thoroughly specifies: PERMANENT operation, confirmation prompt with partner list, "cannot be undone" UI warnings, error on retry, Gherkin acceptance tests validate enforcement. CHK115 validated no conflict with optional business plan. [Clarity, Spec R6.2]
 - [x] CHK039 - Is "virtual incubator formation" trigger and state transition defined? ✅ RESOLVED - Spec J3 Step 5 + R6.1 acceptance test: Partner selection confirmed → Bids marked accepted → "Virtual incubator workspace is created" (line 909) → Status becomes PartnersSelected → Access control enforced (owner + selected partners only). [Ambiguity, Spec §3 J4]
-- [x] CHK040 - Are email notification content requirements specified? ✅ RESOLVED - Legacy app email templates provide reference content structure: Account Activation.txt (subject, body with activation link, greeting, signature), Welcome Email templates for each actor type (IdeaGenerator, RD, Manufacturing, SalesMarketing, Investor) with personalized onboarding instructions. Templates located at `C:\Users\mahmu\source\repos\innoventity-prototype-development\doc\Email Templates\`. **ADAPTATION REQUIRED**: Phase 0 templates must remove payment/monetization features (£20 submission fee, £100 membership), simplify workflow instructions (3-step process → Phase 0 scope), update domain from innovemtuty.com/innoventity.com, modernize tone. Core structure (greeting, activation link, call-to-action, signature) reusable. [Gap]
+- [x] CHK040 - Are email notification content requirements specified? ✅ RESOLVED - Legacy app email templates provide reference content structure: Account Activation.txt (subject, body with activation link, greeting, signature), Welcome Email templates for each actor type (IdeaGenerator, RD, Manufacturing, SalesMarketing, Investor) with personalized onboarding instructions. Templates created in specs/001-platform-core/email-templates/: activation-email.md, welcome-idea-generator.md, welcome-investor.md, welcome-manufacturing.md, welcome-rd-organization.md, welcome-sales-marketing.md. Payment/monetization references (£20/£100 fees) removed. Domain updated. Phase 0 activation token workaround documented (token returned in response body, not emailed — see plan.md §CHK071). [Gap — RESOLVED 2026-02-19]
 
 ---
 
@@ -542,7 +542,7 @@ This checklist acts as **unit tests for requirements writing** — validating th
 ### Cross-Document Consistency
 
 - [x] CHK041 - Do API contract schemas match data model entity definitions? ✅ VALIDATED - Contracts expose appropriate subsets of entity fields for Phase 0 scope. IdeaSummary (6 fields) is subset of Innovation entity (25+ fields). Actor schemas (RegisterActorRequest, ActorInfo) expose only necessary fields, never PasswordHash (R8.3). Schema design follows API security best practices. [Consistency, Contracts vs Data Model]
-- [x] CHK042 - Do user journey steps (Spec §3) align with API endpoints (Contracts)? ✅ VALIDATED - All Phase 0-scoped journey steps map to API endpoints: J1 Step 1 (registration) → POST /auth/register, J1 Step 1 (activation) → POST /auth/activate, J1 Step 1 (login) → POST /auth/login, J2 Step 3 (view innovation) → GET /innovations/{id}. Journey steps beyond Phase 0 (draft creation, bid submission) correctly not in Phase 0 contracts. [Consistency]
+- [x] CHK042 - Do user journey steps (Spec §3) align with API endpoints (Contracts)? ⚠️ STALE - Updated 2026-02-19: Phase 0.6 implemented J1 Steps 2-7 (CreateInnovation, UpdateInnovation, SubmitInnovation, ListInnovations) and J2 bid management (GetBids, SubmitBid, UpdateBid). The previous validation "Journey steps beyond Phase 0 correctly not in contracts" is now factually incorrect — all J1 steps and J2 bid steps are implemented. **Re-validate after T080 (openapi.yaml update) is complete.** [Consistency — needs re-validation post-T080]
 - [x] CHK043 - Do business rules (Spec R1-R8) map to database constraints (Data Model)? ✅ VALIDATED - All Phase 0 business rules enforced: R1.1 (activation) → AccountStatus enum + activation endpoint, R1.3 (email uniqueness per ActorType) → validation error documented, R2.1 constraints → IdeaSummary minLength/maxLength, R8.3 (password never exposed) → no password in response schemas, R8.4 (complexity) → validation error examples. Future phase rules (R4-R7) not yet in API as expected. [Consistency]
 - [x] CHK044 - Are actor type enums consistent across spec, data model, and contracts? ✅ CONSISTENT - ActorType enum values identical: IdeaGenerator, RD, Manufacturing, SalesMarketing, Investor. Note: spec.md line 106 uses "RDOrganization" as display name for Persona 2, while technical enum value is "RD" - this is correct design (display name vs enum value). AccountStatus (3 values) and ResearchCategory (3 values) also consistent. [Consistency]
 - [x] CHK045 - Are innovation status values consistent across all documents? ✅ CONSISTENT - InnovationStatus enum matches exactly across all documents: Draft, AwaitingBids, ReceivingBids, SufficientBids, PartnersSelected, BusinessPlanInProgress, BusinessPlanComplete (7 values). Usage verified in spec.md user journeys, data-model.md entity definition, contracts/openapi.yaml response schemas. [Consistency, Data Model §Enums vs Spec R2.2]
@@ -578,9 +578,9 @@ This checklist acts as **unit tests for requirements writing** — validating th
 
 ### Primary Flow Coverage
 
-- [x] CHK058 - Are requirements defined for all 5 user journeys (J1-J5)? ⚠️ PHASE 3 PARTIAL: J1 Steps 1a-1b (registration, activation) fully implemented with tests; J1 Steps 2-7 and J2-J5 pending implementation. Phase 0 scope: J1 Step 1 + J2 Step 3 (view innovation) [Coverage, Spec §3]
+- [x] CHK058 - Are requirements defined for all 5 user journeys (J1-J5)? ✅ PHASE 0.6 EXPANDED - Updated 2026-02-19: J1 Steps 1-7 fully implemented (registration → activation → login → create draft → edit draft → submit for bidding). J2 implemented (list innovations, view innovation, bid placement/update). J2 bid viewing (owner perspective) implemented. J3-J5 deferred to Phase 1+. All implemented journey steps have corresponding subcutaneous integration tests in specs/003-api-completion/. [Coverage, Spec §3]
 - [x] CHK059 - Are success outcomes specified for each journey step? ✅ PHASE 3: J1 Step 1a success outcome (actor created with PendingActivation, activation token generated), J1 Step 1b success outcome (account status changed to Active) validated via integration tests [Completeness, Spec §3]
-- [x] CHK060 - Are API endpoints mapped to journey steps? ✅ PHASE 3: J1 Step 1a→POST /auth/register, J1 Step 1b→POST /auth/activate, J1 Step 1c→POST /auth/login (pending Phase 4), implicit refresh→POST /auth/refresh-token (pending Phase 4) [Traceability, Contracts vs Spec §3]
+- [x] CHK060 - Are API endpoints mapped to journey steps? ✅ PHASE 0.6 COMPLETE - Updated 2026-02-19: J1 Step 1a→POST /auth/register ✅, J1 Step 1b→POST /auth/activate ✅, J1 Step 1c→POST /auth/login ✅, J1 token refresh→POST /auth/refresh-token ✅, J1 Step 2→POST /innovations ✅, J1 Steps 3-6→PUT /innovations/{id} ✅, J1 Step 7→PATCH /innovations/{id}/submit ✅, J2 Step 1→GET /innovations ✅, J2 Step 3→GET /innovations/{id} ✅, J2 bid→POST /innovations/{id}/bids ✅, J2 bid update→PUT /bids/{bidId} ✅. J3-J5 steps deferred. [Traceability, Contracts vs Spec §3]
 
 ### Alternate Flow Coverage
 
@@ -610,7 +610,7 @@ This checklist acts as **unit tests for requirements writing** — validating th
 
 ### Boundary Conditions
 
-- [x] CHK074 - Are requirements defined for zero-state scenarios (no innovations exist)? ✅ RESOLVED - Plan §Edge Case Requirements §CHK074 (Phase 0: N/A, Phase 1: empty state UI) [Edge Case, Gap]
+- [x] CHK074 - Are requirements defined for zero-state scenarios (no innovations exist)? ✅ RESOLVED - Updated 2026-02-19: GET /api/innovations (Phase 0.6) returns empty array [] when no innovations exist — zero-state API response handled correctly. Zero-state UI rendering (empty state component) deferred to Phase 1 frontend (T071-T075). [Edge Case, Plan §Edge Case Requirements]
 - [x] CHK075 - Are requirements specified for exactly 1 bid (minimum sufficient)? ✅ RESOLVED - Plan §Edge Case Requirements §CHK075 [Edge Case, Spec R5.1]
 - [x] CHK076 - Are requirements defined for maximum concurrent bids per innovation? ✅ RESOLVED - Plan §Edge Case Requirements §CHK076 (uncapped in Phase 0, rate limit in Phase 1) [Edge Case, Gap]
 - [x] CHK077 - Are string length boundary validations specified (min/max)? ✅ RESOLVED - Plan §Edge Case Requirements §CHK077 (comprehensive table with Data Model references) [Edge Case, Data Model]
@@ -713,14 +713,14 @@ This checklist acts as **unit tests for requirements writing** — validating th
 
 ### Requirement Traceability
 
-- [x] CHK121 - Are all business rules (R1-R8) traceable to data model constraints? ✅ PHASE 3 PARTIAL: R1.1 (activation)→AccountStatus enum + Activate endpoint, R1.3 (email uniqueness per ActorType)→composite unique index IX_Actor_Email_ActorType, R8.4 (password complexity)→BCrypt work factor 12 + complexity validation in Register endpoint. R2-R7 pending Phase 1+ implementation [Traceability, Spec §4 vs Data Model §Validation Rules]
-- [ ] CHK122 - Are all user journey steps (J1-J5) traceable to API endpoints? [Traceability, Spec §3 vs Contracts]
+- [x] CHK121 - Are all business rules (R1-R8) traceable to data model constraints? ✅ PHASE 0.6 EXPANDED - Updated 2026-02-19: R1.1 (activation)→AccountStatus enum + Activate endpoint ✅. R1.3 (email uniqueness per ActorType)→composite unique index IX_Actor_Email_ActorType ✅. R2.1 (innovation completeness)→13-rule validation in SubmitInnovation + field constraints ✅. R2.2 (ownership)→OwnerId claim validation in CreateInnovation/UpdateInnovation/SubmitInnovation ✅. R4.1-R4.4 (bid rules)→SubmitBid/UpdateBid/GetBids endpoint enforcement ✅. R8.4 (password complexity)→BCrypt work factor 12 + Register validation ✅. R5 (partner selection), R6 (virtual incubator), R7 (business plan) remain Phase 1+. [Traceability, Spec §4 vs Data Model §Validation Rules]
+- [ ] CHK122 - Are all user journey steps (J1-J5) traceable to API endpoints? [Traceability, Spec §3 vs Contracts] ⚠️ **Note 2026-02-19**: Phase 0.6 significantly expands coverage (J1 Steps 1-7 + J2 bid flow). Validate against 14-endpoint baseline after T080 completes openapi.yaml.
 - [ ] CHK123 - Are all acceptance tests (Gherkin scenarios) traceable to test implementations? [Traceability, Spec §4]
-- [ ] CHK124 - Are Phase 0 requirements (Spec §6) traceable to Phase 0 API contracts? [Traceability, Spec §6 vs Contracts]
+- [ ] CHK124 - Are Phase 0 requirements (Spec §6) traceable to Phase 0 API contracts? [Traceability, Spec §6 vs Contracts] ⚠️ **Note 2026-02-19**: Validate against full Phase 0.6 scope (14 endpoints) after T080 completes openapi.yaml — do not assess against 5-endpoint Phase 0 baseline.
 
 ### Documentation Completeness
 
-- [x] CHK125 - Are all API endpoints documented in OpenAPI spec (Contracts)? ✅ PHASE 3 PARTIAL: POST /auth/register (201, 400, 409, 500 documented with examples), POST /auth/activate (200, 400, 500 documented). POST /auth/login and POST /auth/refresh-token documented but not yet implemented (Phase 4 pending) [Completeness, Contracts]
+- [x] CHK125 - Are all API endpoints documented in OpenAPI spec (Contracts)? ⚠️ PARTIAL - Updated 2026-02-19: All original Phase 0 endpoints now documented including POST /auth/login ✅ and POST /auth/refresh-token ✅ (implemented, no longer pending). **NEW GAP (S01)**: 9 Phase 0.6 endpoints implemented but not yet in openapi.yaml: GET /health, GET /industries, POST/GET /innovations, PUT /innovations/{id}, PATCH /innovations/{id}/submit, GET/POST /innovations/{innovationId}/bids, PUT /bids/{bidId}. Tracked as T080. [Completeness, Contracts]
 - [ ] CHK126 - Are developer setup instructions complete and testable (Quickstart)? [Completeness, Quickstart]
 - [ ] CHK127 - Are migration instructions documented for Phase 0 → Phase 1 schema? [Completeness, Data Model §Migration Strategy]
 - [ ] CHK128 - Are deployment prerequisites explicitly listed (Quickstart §Prerequisites)? [Completeness, Quickstart]
@@ -755,7 +755,7 @@ This checklist acts as **unit tests for requirements writing** — validating th
 ## Summary Statistics
 
 - **Total Checklist Items**: 139 (123 original + 15 infrastructure requirements + 1 from CHK115 investigation)
-- **Resolved Items**: 73 (52.5% of 139 items) - **Updated February 9, 2026 (Phase 3 complete)**
+- **Resolved Items**: 79 (56.8% of 139 items) - **Updated February 19, 2026 (Phase 0.6 complete)** — +6 from Phase 0.6: CHK031 ✅, CHK040 ✅, CHK058 ✅, CHK060 ✅, CHK074 updated, CHK121 expanded
   - CHK005, CHK013-024: Authentication specs, password complexity, token expiration, UX requirements ✅
   - CHK007-009, CHK011: Data model entities, validation rules, indexes, audit fields ✅ **NEW**
   - CHK016: Account activation requirements fully specified ✅ **NEW**
@@ -819,6 +819,7 @@ This checklist acts as **unit tests for requirements writing** — validating th
 9. **✅ Business Logic Conflict Resolution (CHK115)**: Investigated "irreversible partner selection vs optional business plan" - NO CONFLICT - Both requirements can coexist logically; Virtual Incubator workspaces can exist indefinitely without completed business plans. **GAP IDENTIFIED**: Added CHK144 for innovation lifecycle terminal states definition.
 10. **✅ Authentication Requirements (CHK005)**: Validated all 5 Phase 0 endpoints have clear authentication specifications - Auth endpoints use security: [], Innovation endpoint uses BearerAuth with description
 11. **⚠️ Error Response Schemas (CHK004)**: PARTIAL - Most endpoints complete, identified 2 minor gaps requiring 400 ValidationProblemDetails responses in login/refresh-token endpoints
+12. **✅ Phase 0.6 API Completion** (February 2026, specs/003-api-completion/): Innovation CRUD (R2.1, R2.2 — CreateInnovation, UpdateInnovation, SubmitInnovation, ListInnovations), Bid management (R4.1-R4.4 — SubmitBid, UpdateBid, GetBids), Industries reference data. 97 tests (94 passing, 3 skipped). J1 Steps 1-7 and J2 bid flow fully implemented via subcutaneous integration tests. CHK042/CHK058/CHK060/CHK074/CHK121 status updated accordingly.
 
 ### High-Priority Gaps (Address Before TASKS Phase)
 
@@ -828,7 +829,7 @@ This checklist acts as **unit tests for requirements writing** — validating th
    - **Low Impact**: ASP.NET Core model validation will handle these automatically; documenting in OpenAPI spec ensures API consumer clarity
 
 2. **API Contract Completeness** (CHK001-003):
-   - Verify all Phase 0 endpoints listed (5 endpoints identified: register, activate, login, refresh-token, get innovation by ID)
+   - Verify all Phase 0/0.6 endpoints listed (14 endpoints implemented: register, activate, login, refresh-token, health, industries, GET/POST innovations, GET/PUT innovations/{id}, PATCH innovations/{id}/submit, GET/POST innovations/{id}/bids, PUT bids/{bidId}) — **T080 tracks this work**
    - Confirm request body schemas complete for all POST endpoints (validated in CHK004-005 investigation - all complete ✅)
    - Validate success response schemas (200, 201) documented (validated in CHK041 investigation - all complete ✅)
 
@@ -848,7 +849,7 @@ This checklist acts as **unit tests for requirements writing** — validating th
 2. **Acceptance Criteria Measurability** (CHK049-057): Validate Gherkin tests executable, metrics instrumented
 3. **Performance/Scalability** (CHK084-087, CHK094-096): Connection pooling, caching strategy decisions
 4. **Innovation Lifecycle Definition (CHK144)** - **NEW from CHK115 investigation**: Define terminal states (completed/abandoned/archived) and workspace closure mechanism
-5. **Email Template Adaptation (CHK040)** - **RESOLVED with adaptations needed**: Create `specs/001-platform-core/email-templates/` directory, adapt legacy templates for Phase 0 scope (remove £20/£100 fees, update domain, modernize tone), document HTML/plain text format requirements in plan.md. Reference templates at `C:\Users\mahmu\source\repos\innoventity-prototype-development\doc\Email Templates\`
+5. **Email Template Adaptation (CHK040)** - **RESOLVED (2026-02-19)**: Templates created at `specs/001-platform-core/email-templates/` (activation-email.md + 5 actor-type welcome templates). Payment/monetization references (£20/£100 fees) removed. Domain and tone updated. Activation token workaround documented in plan.md §CHK071.
 6. **Qualified Actor Criteria (CHK033)** - **PARTIAL from CHK030-040**: Document design decision explicitly in plan.md - "qualified" means "typed actor with detailed proposal" (R4.2 requires 200+ chars) not "pre-verified credentials". Defer credential verification to Phase 1+ if needed.
 
 ### Low-Priority (Defer to Phase 1+)
