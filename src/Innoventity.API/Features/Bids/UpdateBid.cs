@@ -26,6 +26,8 @@ public static class UpdateBid
     /// </remarks>
     /// <param name="bidId">The bid to update</param>
     /// <param name="request">Updated bid details</param>
+    /// <param name="user">Authenticated user principal (injected by ASP.NET Core)</param>
+    /// <param name="db">Database context (injected by ASP.NET Core)</param>
     /// <response code="200">Bid successfully updated</response>
     /// <response code="400">Validation errors (proposal too short, invalid data)</response>
     /// <response code="401">Unauthorized - authentication required</response>
@@ -176,10 +178,21 @@ public record UpdateBidRequest
 /// </summary>
 public record UpdateBidResponse
 {
+    /// <summary>Unique identifier of the updated bid</summary>
     public required Guid BidId { get; init; }
+
+    /// <summary>Updated geographic location of the bidding organization</summary>
     public required string Location { get; init; }
+
+    /// <summary>Updated type of partnership being proposed</summary>
     public required string ParticipationType { get; init; }
+
+    /// <summary>Updated partnership proposal text (minimum 200 characters)</summary>
     public required string ParticipationProposal { get; init; }
+
+    /// <summary>Timestamp when the bid was last updated</summary>
     public required DateTimeOffset UpdatedAt { get; init; }
+
+    /// <summary>Current bid status (Pending, Accepted, or Rejected)</summary>
     public required string Status { get; init; }
 }

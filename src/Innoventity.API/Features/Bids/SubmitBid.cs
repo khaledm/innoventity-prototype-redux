@@ -27,6 +27,8 @@ public static class SubmitBid
     /// </remarks>
     /// <param name="innovationId">The innovation to bid on</param>
     /// <param name="request">Bid submission details</param>
+    /// <param name="user">Authenticated user principal (injected by ASP.NET Core)</param>
+    /// <param name="db">Database context (injected by ASP.NET Core)</param>
     /// <response code="201">Bid successfully submitted</response>
     /// <response code="400">Validation errors (proposal too short, missing required fields)</response>
     /// <response code="401">Unauthorized - authentication required</response>
@@ -186,17 +188,30 @@ public static class SubmitBid
     /// </summary>
     public record SubmitBidResponse
     {
+        /// <summary>Unique identifier of the newly created bid</summary>
         public Guid BidId { get; init; }
+
+        /// <summary>Innovation this bid was submitted for</summary>
         public Guid InnovationId { get; init; }
+
+        /// <summary>Actor who submitted the bid</summary>
         public Guid ActorId { get; init; }
+
+        /// <summary>Geographic location of the bidding organization</summary>
         public string Location { get; init; } = string.Empty;
+
+        /// <summary>Type of partnership being proposed</summary>
         public string ParticipationType { get; init; } = string.Empty;
+
+        /// <summary>Timestamp when the bid was submitted</summary>
         public DateTimeOffset SubmittedAt { get; init; }
+
+        /// <summary>Current bid status (always "Pending" for new submissions)</summary>
         public string Status { get; init; } = string.Empty;
     }
 
     /// <summary>
-    /// Register the endpoint with the application
+    /// Register the POST /innovations/{innovationId}/bids endpoint
     /// </summary>
     public static void MapSubmitBid(this WebApplication app)
     {
@@ -204,6 +219,12 @@ public static class SubmitBid
             .WithName("SubmitBid")
             .WithTags("Bids")
             .WithOpenApi()
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .Produces<SubmitBidResponse>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
     }
 }

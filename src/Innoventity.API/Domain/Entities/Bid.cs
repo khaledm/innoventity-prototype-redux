@@ -56,7 +56,7 @@ public class Bid : EntityOfGuid
 
     /// <summary>
     /// Type of partnership being proposed (R4.2)
-    /// Example: "Manufacturing Partner", "R&D Collaboration", "Distribution Partner"
+    /// Example: "Manufacturing Partner", "R&amp;D Collaboration", "Distribution Partner"
     /// </summary>
     [Required]
     [MaxLength(100)]

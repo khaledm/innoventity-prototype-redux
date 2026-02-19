@@ -22,6 +22,8 @@ public static class GetBids
     /// - Bids ordered by submission date (newest first)
     /// </remarks>
     /// <param name="innovationId">The innovation to retrieve bids for</param>
+    /// <param name="user">Authenticated user principal (injected by ASP.NET Core)</param>
+    /// <param name="db">Database context (injected by ASP.NET Core)</param>
     /// <response code="200">Bids retrieved successfully</response>
     /// <response code="401">Unauthorized - authentication required</response>
     /// <response code="403">Forbidden - only innovation owner can view bids</response>
@@ -185,7 +187,7 @@ public static class GetBids
     }
 
     /// <summary>
-    /// Register the endpoint with the application
+    /// Register the GET /innovations/{innovationId}/bids endpoint
     /// </summary>
     public static void MapGetBids(this WebApplication app)
     {
@@ -193,6 +195,10 @@ public static class GetBids
             .WithName("GetBids")
             .WithTags("Bids")
             .WithOpenApi()
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .Produces<GetBidsResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound);
     }
 }

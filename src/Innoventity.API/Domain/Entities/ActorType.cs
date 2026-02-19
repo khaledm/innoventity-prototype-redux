@@ -12,7 +12,7 @@ public enum ActorType
     IdeaGenerator = 1,
 
     /// <summary>
-    /// Research & Development partner - provides technical development expertise
+    /// Research &amp; Development partner - provides technical development expertise
     /// </summary>
     RD = 2,
 
