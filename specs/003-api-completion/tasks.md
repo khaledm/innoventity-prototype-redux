@@ -1289,11 +1289,11 @@ dotnet test --filter "FullyQualifiedName~Journey1_InnovationSubmissionTests" --v
 5. Verify all 3 tests pass
 
 **Deliverables**:
-- [ ] Journey2_BiddingTests.cs test class
-- [ ] Extended test fixture with 3 bid helper methods
-- [ ] 1 primary journey test (8 steps orchestrated)
-- [ ] 2 error path tests
-- [ ] All 3 tests passing
+- [X] Journey2_BiddingTests.cs test class (481 lines)
+- [X] Extended test fixture with 8 helper methods (RegisterActor, ActivateAccount, Login, CreateInnovation, SubmitInnovation, ListInnovations, GetInnovation, SubmitBid, GetBidsForInnovation, UpdateBid)
+- [X] 1 primary journey test (8 steps orchestrated) - Journey2_ManufacturingActorSubmitsBid_BidRecorded
+- [X] 2 error path tests (Journey2_IdeaGeneratorCannotBid_Returns403, Journey2_DuplicateBid_Returns409)
+- [X] All 3 tests passing
 
 **Acceptance Criteria**:
 - ✅ Primary journey test orchestrates 8 API calls successfully
