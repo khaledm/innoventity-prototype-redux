@@ -71,7 +71,7 @@
 | [ActorTests.cs](../../tests/Innoventity.API.Tests/Unit/Domain/Entities/ActorTests.cs) | 9 | Domain — Actor entity | ✅ PASSING |
 | [AddressTests.cs](../../tests/Innoventity.API.Tests/Unit/Domain/Entities/AddressTests.cs) | 5 | Domain — Address value object | ✅ PASSING |
 | [EntityBaseTests.cs](../../tests/Innoventity.API.Tests/Unit/Domain/Entities/EntityBaseTests.cs) | 8 | Domain — EntityBase | ✅ PASSING |
-| [InnovationTests.cs](../../tests/Innoventity.API.Tests/Unit/Domain/Entities/InnovationTests.cs) | 2 | Domain — Innovation (3 Phase 1 tests deferred) | ⚠️ 2 PASS / 3 SKIP |
+| [InnovationTests.cs](../../tests/Innoventity.API.Tests/Unit/Domain/Entities/InnovationTests.cs) | 5 | Domain — Innovation (2 active, 3 Phase 1 deferred) | ⚠️ 2 PASS / 3 SKIP |
 | [HealthCheckTests.cs](../../tests/Innoventity.API.Tests/Integration/Features/Health/HealthCheckTests.cs) | 3 | Infrastructure — Health endpoint | ✅ PASSING |
 | [JwtTokenServiceTests.cs](../../tests/Innoventity.API.Tests/Unit/Infrastructure/JwtTokenServiceTests.cs) | 3 | Infrastructure — JWT service | ✅ PASSING |
 | [PasswordHasherTests.cs](../../tests/Innoventity.API.Tests/Unit/Infrastructure/PasswordHasherTests.cs) | 6 | Infrastructure — Password hashing | ✅ PASSING |
@@ -79,7 +79,7 @@
 | [LoginTests.cs](../../tests/Innoventity.API.Tests/Integration/Features/Authentication/LoginTests.cs) | 3 | Authentication — Login | ✅ PASSING |
 | [RegisterActorTests.cs](../../tests/Innoventity.API.Tests/Integration/Features/Authentication/RegisterActorTests.cs) | 7 | Authentication — Register | ✅ PASSING |
 | [RefreshTokenTests.cs](../../tests/Innoventity.API.Tests/Integration/Features/Authentication/RefreshTokenTests.cs) | 2 | Authentication — Refresh Token | ✅ PASSING |
-| **Subtotal** | **51** | | **48/51 passing (3 skipped)** |
+| [UnitTest1.cs](../../tests/Innoventity.API.Tests/UnitTest1.cs) | 1 | Placeholder (default test) | ✅ PASSING |
 
 ### Grand Total
 
@@ -87,12 +87,12 @@
 |----------|-------|---------|---------|---------|
 | Subcutaneous / Journey | 8 | 8 | 0 | 0 |
 | Integration (per-endpoint) | 34 | 34 | 0 | 0 |
-| Unit (domain + infra) | 52 | 49 | 3 | 0 |
-| **Total** | **94** | **91** | **3** | **0** |
+| Unit (domain + infra) | 55 | 52 | 3 | 0 |
+| **Total** | **97** | **94** | **3** | **0** |
 
-> **Note on skipped tests**: 3 tests in `InnovationTests.cs` cover Phase 1 domain validation (rich validation methods, state machine) deferred to Phase 1. Marked with `[Fact(Skip = "Phase 1 domain validation work - deferred")]`. Zero failures.
+> **Note on skipped tests**: 3 tests in `InnovationTests.cs` cover Phase 1 domain validation deferred to Phase 1. Marked with `[Fact(Skip = "Phase 1 domain validation work - deferred")]`. Zero failures.
 >
-> **Note on total discrepancy**: The test runner reports 97 total (94 run + 3 skip). 94/97 is the pass rate metric. 0/94 failing.
+> **Note on unit test count**: `UnitTest1.cs` contains 1 placeholder `[Fact]` (default xUnit template file), which accounts for the count aligning to 55 unit/infra tests. 8 + 34 + 55 = **97 total**.
 
 ---
 

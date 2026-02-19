@@ -17,8 +17,8 @@ After merging Phase 0.5 (Domain Model Refactoring) into `001-platform-core`, we 
 - ✅ **Read Operations**: GetInnovation (1 endpoint)
 - ✅ **Health**: HealthCheck (1 endpoint)
 - ✅ **Domain Model**: EntityBase, Address value object, Actor refactoring complete
-- ✅ **Test Infrastructure**: 60 tests written, including E2E journey tests
-- ⚠️ **Test Status**: 53/60 passing (88.3%) - 4 failing subcutaneous tests, 3 Phase 1 domain tests
+- ✅ **Test Infrastructure**: 97 tests — 94 passing, 3 skipped (Phase 1 deferred), 0 failing *(updated post-Phase 0.6)*
+- ✅ **Test Status**: 94/97 passing (96.9%) — 0 failures; 3 Phase 1 domain validation tests intentionally deferred *(updated post-Phase 0.6)*
 
 ### Problem Statement
 
@@ -40,7 +40,7 @@ After merging Phase 0.5 (Domain Model Refactoring) into `001-platform-core`, we 
 
 **Phase 0.6 Goal**: Complete the backend API surface and fix all subcutaneous tests so that:
 - ✅ All critical user journeys (J1, J2) testable without UI
-- ✅ 100% test pass rate (60/60 tests passing)
+- ✅ Zero test failures (94/97 passing; 3 Phase 1 domain tests intentionally skipped)
 - ✅ Backend validated as complete and working before any frontend/deployment work
 - ✅ Subcutaneous tests serve as living documentation of expected API behavior
 
@@ -78,7 +78,7 @@ After merging Phase 0.5 (Domain Model Refactoring) into `001-platform-core`, we 
 **Testing**:
 ✅ Journey 1 test suite (innovation submission workflow)
 ✅ Journey 2 test suite (discovery and bidding workflow)
-✅ 67 total tests (authentication, innovation CRUD, bid CRUD, E2E journeys)
+✅ 97 total tests — 8 subcutaneous journey tests, 34 integration tests, 55 unit/infra tests *(actual post-implementation)*
 
 ---
 
@@ -708,11 +708,11 @@ public class Journey1_InnovationSubmissionTests : IDisposable
 
 ### Test Quality Metrics
 
-**Test Pass Rate**:
+**Test Pass Rate** *(updated post-implementation)*:
 - Phase 0.6 Start: 53/60 passing (88.3%)
-- Phase 0.6 Target: 67/67 passing (100%)
-  - Fix 7 existing failing tests
-  - Add 7 new subcutaneous tests (Journey 1, Journey 2 coverage)
+- Phase 0.6 Achieved: **94/97 passing** (0 failures; 3 Phase 1 domain tests intentionally skipped)
+  - Fixed 4 failing subcutaneous tests (database context lifecycle + JWT token scope)
+  - Added 37 new tests (integration + journey) exceeding original 7-test estimate
 
 **Subcutaneous Test Coverage**:
 - Journey 1 (Innovation Submission): 1 complete journey test + 3 error path tests
@@ -940,15 +940,15 @@ public class Journey1_InnovationSubmissionTests : IDisposable
 - **Success Criteria**: Complete journey discovers innovation, submits bid, verifies owner sees bid
 
 **T015**: Validate Complete Test Suite
-- **Objective**: Achieve 100% test pass rate (67/67 tests)
+- **Objective**: Achieve zero failures (94/97 tests passing; 3 Phase 1 domain tests intentionally skipped)
 - **Actions**:
   1. Run full test suite: `dotnet test --verbosity normal`
   2. Generate test coverage report
   3. Verify all subcutaneous tests pass
   4. Verify all integration tests pass
-  5. Document 3 Phase 1 domain tests as expected failures (excluded from pass rate)
-- **Deliverable**: Test execution report showing 67/67 passing (excluding 3 Phase 1 tests)
-- **Success Criteria**: 100% pass rate, test suite executes in <30 seconds
+  5. Document 3 Phase 1 domain tests as expected skips (not failures)
+- **Deliverable**: Test execution report showing 94/97 passing (3 Phase 1 tests skipped)
+- **Success Criteria**: Zero failures, test suite executes in <30 seconds (actual: 21.8s)
 
 ---
 
@@ -1083,8 +1083,8 @@ public class Journey1_InnovationSubmissionTests : IDisposable
 ## Success Criteria
 
 Phase 0.6 is **COMPLETE** when:
-1. ✅ **60/60 existing tests passing** (fix 4 failing, 3 Phase 1 tests excluded)
-2. ✅ **7 new journey tests passing** (4 Journey 1, 3 Journey 2)
+1. ✅ **94/97 tests passing** (0 failures; 3 Phase 1 domain tests intentionally skipped with `[Fact(Skip)]`)
+2. ✅ **8 new journey + integration tests per endpoint** (4 Journey 1, 3 Journey 2, plus per-endpoint integration suites)
 3. ✅ **8 new API endpoints implemented** (all documented and tested)
 4. ✅ **Zero build warnings**
 5. ✅ **Backend validated as complete** before any frontend work begins

@@ -1552,51 +1552,52 @@ grep -c "✅ COMPLETE" specs/003-api-completion/tasks.md
 **🚀 CRITICAL**: Complete this checklist before merging `003-api-completion` into `001-platform-core`.
 
 ### Code Quality Gates
-- [ ] **67/67 tests passing** (100% pass rate)
-- [ ] **Test suite executes in <30 seconds**
-- [ ] **Zero build warnings**: `dotnet build` produces no warnings
+- [X] **94/97 tests passing** (0 failures; 3 Phase 1 domain tests intentionally skipped)
+- [X] **Test suite executes in <30 seconds** (actual: 21.8s)
+- [X] **Zero build warnings**: `dotnet build` produces no warnings
 - [ ] Zero code analysis warnings (if enabled)
-- [ ] All endpoints return correct HTTP status codes (verified in integration tests)
-- [ ] All endpoints have comprehensive XML documentation
+- [X] All endpoints return correct HTTP status codes (verified in integration tests)
+- [X] All endpoints have comprehensive XML documentation
 
 ### Test Coverage Validation
-- [ ] **11 subcutaneous tests passing**:
+- [X] **12 subcutaneous tests passing** *(corrected from 11)*:
   - Phase0JourneyTests: 1 test ✅
-  - GetInnovationTests: 3 tests ✅
+  - GetInnovationTests: 4 tests ✅ *(spec said 3; actual is 4)*
   - Journey1_InnovationSubmissionTests: 4 tests ✅
   - Journey2_BiddingTests: 3 tests ✅
-- [ ] **27 integration tests passing** (8 endpoints × ~3 tests each):
+- [X] **34 integration tests passing** *(corrected from 27; GetBids has 6 tests, not 3)*:
   - CreateInnovationTests: 4 tests ✅
   - UpdateInnovationTests: 4 tests ✅
   - SubmitInnovationTests: 4 tests ✅
   - ListInnovationsTests: 4 tests ✅
   - GetIndustriesTests: 1 test ✅
   - SubmitBidTests: 4 tests ✅
-  - GetBidsTests: 3 tests ✅
+  - GetBidsTests: 6 tests ✅ *(spec said 3; actual is 6)*
   - UpdateBidTests: 3 tests ✅
-- [ ] **29 original tests passing** (authentication, health, domain)
-- [ ] **Error paths tested**: 401, 403, 404, 409 responses validated
+  - GetInnovationTests: 4 tests ✅
+- [X] **51 unit/infra tests** *(corrected from 29)* — authentication, health, domain, infrastructure
+- [X] **Error paths tested**: 401, 403, 404, 409 responses validated
 
 ### Documentation Complete
-- [ ] [spec.md](spec.md): All 7 user stories marked `✅ IMPLEMENTED`
-- [ ] [tasks.md](tasks.md): All 17 tasks marked `✅ COMPLETE`
-- [ ] [plan.md](plan.md): Implementation complete, risks resolved
-- [ ] [traceability.md](traceability.md): All user stories traced to endpoints and tests
-- [ ] [README.md](../../README.md): Phase 0.6 section added
-- [ ] **OpenAPI/Swagger**: All 14 endpoints documented (6 existing + 8 new)
+- [X] [spec.md](spec.md): All 7 user stories marked `✅ IMPLEMENTED`
+- [X] [tasks.md](tasks.md): All 17 tasks marked `✅ COMPLETE`
+- [X] [plan.md](plan.md): Implementation complete, risks resolved
+- [X] [traceability.md](traceability.md): All user stories traced to endpoints and tests
+- [X] [README.md](../../README.md): Phase 0.6 section added
+- [X] **OpenAPI/Swagger**: All 14 endpoints documented (6 existing + 8 new)
 
 ### Git Hygiene
 - [ ] Branch up-to-date with parent: `git fetch origin && git merge origin/001-platform-core`
 - [ ] **No merge conflicts**: `git status` shows clean merge
 - [ ] **Commit history is clean**: 17 atomic commits for T001-T017 (one per task)
-- [ ] **No uncommitted changes**: `git status` shows clean working directory
+- [X] **No uncommitted changes**: `git status` shows clean working directory
 - [ ] **All commits pushed to remote**: `git push origin 003-api-completion`
 
 ### Code Review
 - [ ] **Pull request created** on GitHub
 - [ ] PR description references [spec.md](spec.md) and highlights key changes:
   - 8 new API endpoints (Innovation CRUD, Bid management, Industries)
-  - 67/67 tests passing (100% pass rate)
+  - 94/97 tests passing (0 failures; 3 Phase 1 domain tests intentionally skipped)
   - Journey 1 & 2 validated via subcutaneous tests
   - Database context lifecycle fix applied
 - [ ] **At least one reviewer assigned**
@@ -1609,13 +1610,13 @@ grep -c "✅ COMPLETE" specs/003-api-completion/tasks.md
 - [ ] No deployment blockers identified
 
 ### Constitutional Compliance
-- [ ] **Principle 2 (Quality)**: 100% test pass rate ✅
-- [ ] **Principle 3 (Simplicity)**: Uses standard patterns (Minimal APIs, Vertical Slice) ✅
-- [ ] **Principle 4 (Specification Drives)**: Spec-first workflow followed ✅
-- [ ] **Principle 5 (Tests Prove)**: Test-first discipline maintained ✅
-- [ ] **Principle 6 (Architecture Supports Evolution)**: Backend-first validation ✅
-- [ ] **Principle 7 (Incremental)**: 4-week timeline, weekly milestones ✅
-- [ ] **Overall**: 6/6 gates passing - 99/100 constitutional rating maintained
+- [X] **Principle 2 (Quality)**: Zero test failures; 3 Phase 1 tests deliberately deferred with Skip attribute
+- [X] **Principle 3 (Simplicity)**: Uses standard patterns (Minimal APIs, Vertical Slice) ✅
+- [X] **Principle 4 (Specification Drives)**: Spec-first workflow followed ✅
+- [X] **Principle 5 (Tests Prove)**: Test-first discipline maintained ✅
+- [X] **Principle 6 (Architecture Supports Evolution)**: Backend-first validation ✅
+- [X] **Principle 7 (Incremental)**: Weekly milestones, deferred Phase 1 work documented ✅
+- [X] **Overall**: 6/6 gates passing - 99/100 constitutional rating maintained
 
 ### Team Communication
 - [ ] Stand-up announcement: "Phase 0.6 ready for merge"
@@ -1628,7 +1629,7 @@ grep -c "✅ COMPLETE" specs/003-api-completion/tasks.md
 # 1. Verify test pass rate
 dotnet test --verbosity normal | tee merge-test-results.txt
 grep "Passed!" merge-test-results.txt
-# Expected: "Passed! - Failed: 0, Passed: 67, Skipped: 3, Total: 70"
+# Expected: "Passed! - Failed: 0, Passed: 94, Skipped: 3, Total: 97"
 
 # 2. Verify test execution time
 grep "Time: " merge-test-results.txt
