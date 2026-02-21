@@ -99,6 +99,17 @@ Example:
 - [ ] **IaC-A16** — Every `azurerm_*` resource block that supports `tags` includes at minimum: `Environment = var.environment` and `ManagedBy = "Terraform"`
   *[infrastructure.md — all module examples]*
 
+### Pester-Verified Configuration Constraints (added 2026-02-21)
+
+- [ ] **IaC-A17** — Pester `AppService.Tests.ps1` `"alwaysOn is false on B1, true on non-B1 SKUs"` test passes: `az appservice plan show` returns the live SKU; for B1 `alwaysOn = false` is asserted; for all other SKUs `alwaysOn = true` is asserted
+  *[infrastructure.md §App Service Module §Configuration Constraints — alwaysOn conditional]*
+
+- [ ] **IaC-A18** — Pester `AppService.Tests.ps1` `"ASPNETCORE_ENVIRONMENT matches the target environment"` test passes: `ASPNETCORE_ENVIRONMENT = "Production"` in `prod`, `"Development"` in `dev`/`test`; verified via `$env:ENVIRONMENT` set by `validate-environment.ps1`
+  *[infrastructure.md §App Service Module §Configuration Constraints — ASPNETCORE_ENVIRONMENT]*
+
+- [ ] **IaC-A19** — Pester `SqlDatabase.Tests.ps1` `"has no wide-open firewall rule"` test passes in `test`/`prod` environments: no firewall rule with `endIpAddress = 255.255.255.255` exists; test is skipped (not failed) in `dev`
+  *[infrastructure.md §SQL Database Module §Firewall Constraints — no wide-open rule in non-dev]*
+
 ---
 
 ## Category 2: T068 — Split-State Environment Composition
@@ -393,7 +404,7 @@ Example:
 
 ## Summary Statistics
 
-- **Total Items**: 80 (IaC-A01–A16 = 16, IaC-B01–B09 = 9, IaC-C01–C10 = 10, IaC-D01–D08 = 8, IaC-E01–E07 = 7, IaC-F01–F14 = 14, IaC-G01–G16 = 16) + 15 CHK tracker rows
+- **Total Items**: 83 (IaC-A01–A19 = 19, IaC-B01–B09 = 9, IaC-C01–C10 = 10, IaC-D01–D08 = 8, IaC-E01–E07 = 7, IaC-F01–F14 = 14, IaC-G01–G16 = 16) + 15 CHK tracker rows
 - **Resolved at creation**: 2 (CHK135, CHK139 — already satisfied by T062)
 - **Remaining**: 78 items pending implementation of T065, T068, T069, T070, T076, T077, T078
 - **Blocking items** (MUST resolve before marking task complete):

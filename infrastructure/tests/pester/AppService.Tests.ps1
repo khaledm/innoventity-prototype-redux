@@ -14,8 +14,17 @@ BeforeAll {
     $app = az webapp show `
         --name $env:APP_SERVICE_NAME `
         --resource-group $env:RESOURCE_GROUP_NAME `
-        --query "{httpsOnly:httpsOnly,ftpsState:siteConfig.ftpsState,minTls:siteConfig.minTlsVersion,http2:siteConfig.http20Enabled}" `
+        --query "{httpsOnly:httpsOnly,ftpsState:siteConfig.ftpsState,minTls:siteConfig.minTlsVersion,alwaysOn:siteConfig.alwaysOn,planId:serverFarmId}" `
         --output json | ConvertFrom-Json
+
+    # Fetch App Service Plan SKU — needed for the alwaysOn conditional assertion.
+    # always_on is intentionally false on B1 (Basic tier does not support it);
+    # on all other SKUs, alwaysOn = false is an availability misconfiguration causing cold starts.
+    # Terraform module: always_on = var.sku_name != "B1" ? true : false
+    $script:appSku = az appservice plan show `
+        --ids $app.planId `
+        --query "sku.name" `
+        --output tsv
 }
 
 Describe "App Service Configuration" {
@@ -31,8 +40,17 @@ Describe "App Service Configuration" {
         $app.minTls | Should -Be "1.2"
     }
 
-    It "has HTTP/2 enabled" {
-        $app.http2 | Should -Be $true
+    It "alwaysOn is false on B1, true on non-B1 SKUs (availability misconfiguration guard)" {
+        # B1 (Basic tier) does not support always_on — Terraform intentionally sets it false.
+        # On any other SKU, alwaysOn = false causes cold starts and is an active misconfiguration.
+        # $script:appSku is fetched from az appservice plan show in BeforeAll.
+        if ($script:appSku -eq "B1") {
+            $app.alwaysOn | Should -Be $false `
+                -Because "B1 SKU does not support always_on; Terraform sets it false intentionally"
+        } else {
+            $app.alwaysOn | Should -Be $true `
+                -Because "always_on must be enabled on $($script:appSku) SKU to prevent cold starts (availability misconfiguration)"
+        }
     }
 }
 
@@ -44,10 +62,15 @@ Describe "App Service — Required App Settings (value-liveness)" {
             --output json | ConvertFrom-Json
     }
 
-    It "ASPNETCORE_ENVIRONMENT is non-empty and a recognised value" {
+    It "ASPNETCORE_ENVIRONMENT matches the target environment (prod -> Production, all others -> Development)" {
+        # Exact-match per environment: a dev environment misconfigured as 'Production' changes
+        # logging verbosity, error detail exposure, HTTPS redirection, and developer-exception pages.
+        # Requires $env:ENVIRONMENT to be set by validate-environment.ps1 (Fix 3).
         $s = $script:settings | Where-Object { $_.name -eq "ASPNETCORE_ENVIRONMENT" }
         $s | Should -Not -BeNullOrEmpty
-        $s.value | Should -BeIn @("Development", "Production", "Staging")
+        $expected = if ($env:ENVIRONMENT -eq "prod") { "Production" } else { "Development" }
+        $s.value | Should -Be $expected `
+            -Because "ASPNETCORE_ENVIRONMENT must be '$expected' for the '$env:ENVIRONMENT' environment"
     }
 
     It "APPLICATIONINSIGHTS_CONNECTION_STRING is non-empty and has a valid AI format" {

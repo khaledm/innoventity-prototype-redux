@@ -46,6 +46,19 @@ Describe "SQL Server Firewall" {
             $devRule | Should -BeNullOrEmpty -Because "AllowLocalDevelopment (0.0.0.0-255.255.255.255) must not exist in $env:ENVIRONMENT"
         }
     }
+
+    It "has no wide-open firewall rule (any rule with endIpAddress = 255.255.255.255) in non-dev environments" {
+        # Catches any manually-added over-permissive rule, not just AllowLocalDevelopment by name.
+        # A wide-open rule allows all public IPs to reach the SQL Server — a critical security gap.
+        # infrastructure.md §SQL Database: no rule with endIpAddress = 255.255.255.255 in prod/test.
+        if ($env:ENVIRONMENT -eq "dev") {
+            Set-ItResult -Skipped -Because "Wide-open firewall access is intentional in dev for local development"
+        } else {
+            $wideRule = $script:firewallRules | Where-Object { $_.endIpAddress -eq "255.255.255.255" }
+            $wideRule | Should -BeNullOrEmpty `
+                -Because "No firewall rule should permit all public IPs (endIpAddress = 255.255.255.255) in $env:ENVIRONMENT"
+        }
+    }
 }
 
 Describe "SQL Server TLS" {

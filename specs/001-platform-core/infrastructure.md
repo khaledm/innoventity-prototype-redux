@@ -237,7 +237,12 @@ output "server_name" {
 **Recreatability**: ⚠️ **Partial** - Database schema recreated via EF Core migrations (see Database State Management below)
 **Blast Radius**: Data loss if destroyed - mitigated by test data seeding scripts (for dev/test environments)
 **Cost**: Dev $5/month (Basic), Prod $30-150/month (S2 Standard)
-**Validation**: Run EF Core migrations + smoke test queries after creation
+**Validation**: Run EF Core migrations + smoke test queries after creation; Pester `SqlDatabase.Tests.ps1` verifies `AllowAzureServices` rule and confirms no wide-open rule (`endIpAddress = 255.255.255.255`) exists in non-dev environments
+
+**Firewall Constraints**:
+- `AllowAzureServices` rule (`0.0.0.0/0.0.0.0`) MUST exist in all environments — required for App Service connectivity.
+- `AllowLocalDevelopment` rule (`0.0.0.0–255.255.255.255`) is INTENTIONAL in `dev` only; MUST NOT survive a `test` or `prod` apply.
+- **No firewall rule with `endIpAddress = 255.255.255.255` is permitted in `test` or `prod` environments**, regardless of rule name. This constraint covers manually-added portal rules as well as Terraform-managed ones. Verified by Pester `SqlDatabase.Tests.ps1` `"has no wide-open firewall rule"` assertion.
 
 ---
 
@@ -366,7 +371,11 @@ output "staging_hostname" {
 **Recreatability**: ✅ Fully recreatable - stateless application, config injected via Terraform
 **Blast Radius**: API downtime during recreation (~2-3 minutes), no data loss
 **Cost**: Dev $13/month (B1), Prod $100-200/month (P1v3)
-**Validation**: Health check endpoint (`GET /health`) returns 200 after deployment
+**Validation**: Health check endpoint (`GET /health`) returns 200 after deployment; Pester `AppService.Tests.ps1` verifies `alwaysOn` SKU-conditional and `ASPNETCORE_ENVIRONMENT` exact-match per environment
+
+**Configuration Constraints**:
+- `always_on = var.sku_name != "B1" ? true : false` — B1 does not support `always_on`; any other SKU with `alwaysOn = false` is an availability misconfiguration (cold starts). Verified by Pester `AppService.Tests.ps1` against live App Service Plan SKU via `az appservice plan show`.
+- `ASPNETCORE_ENVIRONMENT` MUST equal `"Production"` in `prod`, `"Development"` in all other environments. Deviations alter logging verbosity, error detail exposure, developer-exception pages, and HTTPS redirection behaviour. Verified by Pester `AppService.Tests.ps1` using `$env:ENVIRONMENT` set by `validate-environment.ps1`.
 
 ---
 
@@ -696,7 +705,7 @@ jobs:
 | Component | Recreatability | Blast Radius | Recreation Cost | Validation Method |
 |-----------|----------------|--------------|-----------------|-------------------|
 | **Resource Group** | ✅ Full | High (destroys all children) | $0, 30s | `az group show` returns 200 |
-| **App Service** | ✅ Full | API downtime (2-3 min) | $0.10-0.50, 2 min | `/health` returns 200, AppInsights receives telemetry |
+| **App Service** | ✅ Full | API downtime (2-3 min) | $0.10-0.50, 2 min | `/health` returns 200, AppInsights receives telemetry; Pester: `alwaysOn` SKU-conditional (B1=false, non-B1=true), `ASPNETCORE_ENVIRONMENT` exact-match per env |
 | **SQL Database** | ⚠️ Schema only | Data loss if not backed up | $0.20-2.00, 3 min | EF Core migration check, test query returns expected rows |
 | **Application Insights** | ✅ Full | Historical telemetry loss (30-90d) | $0, 1 min | Query for requests in last 5 min returns >0 results |
 | **Service Plan** | ✅ Full | All hosted apps restart | $0, 2 min | Apps return to healthy state after plan recreation |

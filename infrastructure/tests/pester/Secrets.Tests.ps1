@@ -41,8 +41,8 @@ Describe "App Service — Secret quality and placement" {
         # Iterates each setting individually to avoid PowerShell array-to-string coercion,
         # which causes Should -Not -Match on string[] to join values before comparing.
         foreach ($setting in $settings) {
-            $setting.value | Should -Not -Match "(?i)Password=\S{3,}" `
-                -Because "Setting '$($setting.name)' should not embed a SQL password in app_settings"
+            $setting.value | Should -Not -Match "(?i)(Password|PWD)=\S{3,}" `
+                -Because "Setting '$($setting.name)' should not embed a SQL credential (Password= or PWD= form) in app_settings"
         }
     }
 }
