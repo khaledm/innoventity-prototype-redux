@@ -108,3 +108,9 @@ output "server_fqdn" {
   value       = module.sql.server_fqdn
   description = "SQL Server fully-qualified domain name"
 }
+
+# SQL_SERVER_NAME — required input for SqlDatabase.Tests.ps1 Pester suite
+output "sql_server_name" {
+  value       = "innoventity-${var.environment}-sql"
+  description = "SQL Server resource name — set as SQL_SERVER_NAME env var before running Pester"
+}

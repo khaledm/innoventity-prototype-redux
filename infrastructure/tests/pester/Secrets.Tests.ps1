@@ -18,15 +18,31 @@ BeforeAll {
         --output json | ConvertFrom-Json
 }
 
-Describe "App Service — Secrets not plaintext in response" {
-    It "Jwt__SigningKey value is not the development placeholder" {
+Describe "App Service — Secret quality and placement" {
+    It "Jwt__SigningKey has a valid base64 shape (≥44 chars — Pester defence-in-depth after Terraform validation)" {
+        # Primary control: Terraform variable validation in modules/app-service/main.tf.
+        # This assertion catches portal-originated drift: setting deleted and re-added with a blank
+        # or placeholder value after terraform apply.
         $jwtSetting = $settings | Where-Object { $_.name -eq "Jwt__SigningKey" }
-        $jwtSetting.value | Should -Not -Match "DEV-ONLY-KEY|REPLACE_WITH|placeholder|changeme"
+        $jwtSetting | Should -Not -BeNullOrEmpty
+        $jwtSetting.value | Should -Not -BeNullOrEmpty
+        $jwtSetting.value.Length | Should -BeGreaterOrEqual 44
+        $jwtSetting.value | Should -Match "^[A-Za-z0-9+/]{43,}={0,2}$"
     }
 
-    It "App settings do not contain a raw SQL password" {
-        # Connection string lives in the connection_string block, not app_settings.
-        # This test confirms no one accidentally duplicated it as a plain app setting.
-        $settings.value | Should -Not -Match "Password=P@|Password=p@|Password=Test"
+    It "DefaultConnection does not appear in app_settings (must be in connection_string block only)" {
+        # If this key exists here, a raw SQL password is visible in the appsettings API response.
+        # Connection string must only appear in the dedicated connection_string block (type SQLAzure).
+        $leaked = $settings | Where-Object { $_.name -match "(?i)(DefaultConnection|ConnectionStrings__)" }
+        $leaked | Should -BeNullOrEmpty
+    }
+
+    It "No app setting value embeds a plaintext SQL password" {
+        # Iterates each setting individually to avoid PowerShell array-to-string coercion,
+        # which causes Should -Not -Match on string[] to join values before comparing.
+        foreach ($setting in $settings) {
+            $setting.value | Should -Not -Match "(?i)Password=\S{3,}" `
+                -Because "Setting '$($setting.name)' should not embed a SQL password in app_settings"
+        }
     }
 }

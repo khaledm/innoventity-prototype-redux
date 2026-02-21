@@ -2,7 +2,7 @@
 
 This directory contains the Terraform code for provisioning the Innoventity Platform Core Azure environment.
 
-**Tool**: Terraform 1.6+ with Azure Provider 3.x  
+**Tool**: Terraform 1.6+ with Azure Provider 3.x
 **Design**: Split-state layout — `core/` (stateless) and `data/` (stateful) are independent root modules with independent state backends.
 
 ---

@@ -41,6 +41,19 @@ variable "jwt_secret_key" {
   type        = string
   sensitive   = true
   description = "JWT signing key (base64-encoded, ≥32 bytes) — injected from CI/CD secrets; never stored in source control"
+
+  # Primary control: enforce key strength at plan time so no Azure resource is created
+  # with a weak or empty signing key. 44 chars = 32 bytes base64-encoded (minimum for HS256).
+  # Generate: [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+  validation {
+    condition     = length(var.jwt_secret_key) >= 44
+    error_message = "jwt_secret_key must be at least 32 bytes (44 base64 chars). Generate with: [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))"
+  }
+
+  validation {
+    condition     = can(regex("^[A-Za-z0-9+/]{43,}={0,2}$", var.jwt_secret_key))
+    error_message = "jwt_secret_key must be a valid base64 string. Avoid plaintext passwords or dev placeholder values."
+  }
 }
 
 variable "application_insights_key" {

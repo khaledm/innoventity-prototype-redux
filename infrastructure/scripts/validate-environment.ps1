@@ -31,6 +31,19 @@ $PesterDir = Join-Path $RepoRoot "infrastructure/tests/pester"
 # ─────────────────────────────────────────────────────────────────
 # Collect environment outputs
 # ─────────────────────────────────────────────────────────────────
+
+# data/ outputs: SQL_SERVER_NAME (required by SqlDatabase.Tests.ps1)
+$DataDir = Join-Path $RepoRoot "infrastructure/environments/$Environment/data"
+Write-Host "Reading Terraform outputs from $Environment/data ..." -ForegroundColor Cyan
+Push-Location $DataDir
+try {
+    $env:SQL_SERVER_NAME = terraform output -raw sql_server_name
+}
+finally {
+    Pop-Location
+}
+
+# core/ outputs: APP_SERVICE_NAME, RESOURCE_GROUP_NAME
 Write-Host "Reading Terraform outputs from $Environment/core ..." -ForegroundColor Cyan
 Push-Location $CoreDir
 try {
@@ -41,8 +54,13 @@ finally {
     Pop-Location
 }
 
+# ENVIRONMENT — used by SqlDatabase.Tests.ps1 to conditionally skip/check AllowLocalDevelopment
+$env:ENVIRONMENT = $Environment
+
 Write-Host "  APP_SERVICE_NAME    = $($env:APP_SERVICE_NAME)"
 Write-Host "  RESOURCE_GROUP_NAME = $($env:RESOURCE_GROUP_NAME)"
+Write-Host "  SQL_SERVER_NAME     = $($env:SQL_SERVER_NAME)"
+Write-Host "  ENVIRONMENT         = $($env:ENVIRONMENT)"
 
 # ─────────────────────────────────────────────────────────────────
 # Run Pester -CI

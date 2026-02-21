@@ -36,32 +36,54 @@ Describe "App Service Configuration" {
     }
 }
 
-Describe "App Service — Required App Settings" {
+Describe "App Service — Required App Settings (value-liveness)" {
     BeforeAll {
-        $settings = az webapp config appsettings list `
+        $script:settings = az webapp config appsettings list `
             --name $env:APP_SERVICE_NAME `
             --resource-group $env:RESOURCE_GROUP_NAME `
             --output json | ConvertFrom-Json
-        $settingNames = $settings | ForEach-Object { $_.name }
     }
 
-    It "has ASPNETCORE_ENVIRONMENT set" {
-        $settingNames | Should -Contain "ASPNETCORE_ENVIRONMENT"
+    It "ASPNETCORE_ENVIRONMENT is non-empty and a recognised value" {
+        $s = $script:settings | Where-Object { $_.name -eq "ASPNETCORE_ENVIRONMENT" }
+        $s | Should -Not -BeNullOrEmpty
+        $s.value | Should -BeIn @("Development", "Production", "Staging")
     }
 
-    It "has APPLICATIONINSIGHTS_CONNECTION_STRING set" {
-        $settingNames | Should -Contain "APPLICATIONINSIGHTS_CONNECTION_STRING"
+    It "APPLICATIONINSIGHTS_CONNECTION_STRING is non-empty and has a valid AI format" {
+        $s = $script:settings | Where-Object { $_.name -eq "APPLICATIONINSIGHTS_CONNECTION_STRING" }
+        $s | Should -Not -BeNullOrEmpty
+        $s.value | Should -Not -BeNullOrEmpty
+        # Connection strings use either legacy InstrumentationKey= or new format with EndpointSuffix=
+        $s.value | Should -Match "(?i)(instrumentationkey|endpointSuffix)="
     }
 
-    It "has Jwt__SigningKey set" {
-        $settingNames | Should -Contain "Jwt__SigningKey"
+    It "Jwt__SigningKey is non-empty and at least 44 chars (32-byte base64 minimum for HS256)" {
+        # Defence-in-depth: Terraform variable validation is the primary control.
+        # This assertion catches portal-originated drift (key deleted and re-added with blank/weak value).
+        $s = $script:settings | Where-Object { $_.name -eq "Jwt__SigningKey" }
+        $s | Should -Not -BeNullOrEmpty
+        $s.value | Should -Not -BeNullOrEmpty
+        $s.value.Length | Should -BeGreaterOrEqual 44
+        $s.value | Should -Match "^[A-Za-z0-9+/]{43,}={0,2}$"
     }
 
-    It "has Jwt__Issuer set" {
-        $settingNames | Should -Contain "Jwt__Issuer"
+    It "Jwt__Issuer is a well-formed HTTPS azurewebsites.net URL" {
+        $s = $script:settings | Where-Object { $_.name -eq "Jwt__Issuer" }
+        $s | Should -Not -BeNullOrEmpty
+        $s.value | Should -Match "^https://innoventity-.*\.azurewebsites\.net$"
     }
 
-    It "has Jwt__Audience set" {
-        $settingNames | Should -Contain "Jwt__Audience"
+    It "Jwt__Audience matches Jwt__Issuer (self-audience pattern required by JwtTokenService.cs)" {
+        $issuer   = ($script:settings | Where-Object { $_.name -eq "Jwt__Issuer" }).value
+        $audience = ($script:settings | Where-Object { $_.name -eq "Jwt__Audience" }).value
+        $audience | Should -Not -BeNullOrEmpty
+        $audience | Should -Be $issuer
+    }
+
+    It "DefaultConnection does NOT appear in app_settings (must be in connection_string block only)" {
+        # If this key exists here, a raw SQL password is visible in the appsettings API response.
+        $leak = $script:settings | Where-Object { $_.name -match "(?i)(DefaultConnection|ConnectionStrings__)" }
+        $leak | Should -BeNullOrEmpty
     }
 }
