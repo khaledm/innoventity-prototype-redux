@@ -57,3 +57,13 @@ test-*.txt
 node_modules/
 dist/
 .specify/memory/constitution.md.bak
+
+# Terraform — secrets and generated files (NEVER commit these)
+infrastructure/**/*.tfvars
+infrastructure/**/.terraform/
+infrastructure/**/.terraform.lock.hcl
+infrastructure/**/terraform.tfstate
+infrastructure/**/terraform.tfstate.backup
+infrastructure/**/tfplan
+infrastructure/**/tfplan-destroy
+infrastructure/**/outputs.json

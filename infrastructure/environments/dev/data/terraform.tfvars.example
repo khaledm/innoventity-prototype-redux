@@ -1,0 +1,16 @@
+# environments/dev/data/terraform.tfvars.example
+#
+# Copy this file to terraform.tfvars and fill in real values before applying.
+# terraform.tfvars is .gitignored — NEVER commit the real file with secrets.
+#
+# Generate a secure SQL password (must meet Azure complexity requirements):
+#   PowerShell:  -join ((65..90 + 97..122 + 48..57 + '!@#$%'.ToCharArray()) | Get-Random -Count 20 | % {[char]$_})
+#   bash:        openssl rand -base64 16
+
+environment      = "dev"
+location         = "East US"
+sql_database_sku = "Basic"
+
+# ── Secrets (replace with real values) ──────────────────────────────────────
+# Must meet Azure SQL complexity: 8+ chars, upper + lower + digit + special
+sql_admin_password = "REPLACE_WITH_SECURE_PASSWORD"

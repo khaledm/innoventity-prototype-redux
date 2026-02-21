@@ -13,8 +13,8 @@ VERSION HISTORY
 Previous Version: None (Initial Version)
 New Version: 1.0.0
 Bump Type: MAJOR (Initial establishment of governance framework)
-Rationale: First official constitution establishing foundational principles, 
-           constraints, and governance for the Innoventity platform v1.0 
+Rationale: First official constitution establishing foundational principles,
+           constraints, and governance for the Innoventity platform v1.0
            development project.
 
 ─────────────────────────────────────────────────────────────────────────────
@@ -25,31 +25,31 @@ ESTABLISHED PRINCIPLES (7):
   1. User Experience First
      - Technology serves users, not the other way around
      - Design decisions start with user needs
-  
+
   2. Quality is Non-Negotiable
      - Production-ready code at every phase
      - Tests validate real business rules
      - Security baked in, not bolted on
-  
+
   3. Simplicity Over Cleverness
      - Choose obvious solutions over clever abstractions
      - Use frameworks as intended
-  
+
   4. Specification Drives Implementation
      - Write specs before code
      - Specs define what "done" means
      - Spec-Kit workflow (SPECIFY → PLAN → TASKS → IMPLEMENT)
-  
+
   5. Tests Must Prove They Work
      - Tests must be observed failing before implementation (red → green → refactor)
      - OR validated via characterization testing (deliberate breakage)
      - High coverage is necessary but not sufficient
-  
+
   6. AI Augments, Humans Decide
      - AI generates boilerplate; humans design architecture
      - Critical business logic is human-implemented
      - All AI output is validated
-  
+
   7. Architecture Must Support Evolution
      - v1.0 should not block v2.0 features
      - Don't build v2.0 features prematurely
@@ -123,9 +123,9 @@ STRATEGIC DOCUMENTS (Referenced in Section 10):
   principles in a follow-up consistency audit.
 
 LEGACY REFERENCE:
-  📍 Legacy codebase location specified: 
+  📍 Legacy codebase location specified:
      c:\Users\mahmu\source\repos\innoventity-prototype-development\legacy-mvc\
-  ✅ Constitution correctly scopes legacy as reference for functional 
+  ✅ Constitution correctly scopes legacy as reference for functional
      requirements, not data migration source
 
 ─────────────────────────────────────────────────────────────────────────────
@@ -160,8 +160,8 @@ COMMIT MESSAGE
 
 docs: establish constitution v1.0.0 (initial ratification)
 
-Establish foundational governance framework for Innoventity platform v1.0 
-development. Defines 7 core principles, project scope, quality standards, 
+Establish foundational governance framework for Innoventity platform v1.0
+development. Defines 7 core principles, project scope, quality standards,
 development process, and success criteria.
 
 Key principles:
@@ -185,10 +185,10 @@ END OF SYNC IMPACT REPORT
 # INNOVENTITY PLATFORM CONSTITUTION
 ## Project Principles and Non-Negotiable Constraints
 
-**Version**: 1.0.0  
-**Effective Date**: February 8, 2026  
-**Project**: Innoventity - Global Open Innovation Platform (v1.0)  
-**Project Type**: Solo Learning/Portfolio Project - Reference-Based Reimplementation  
+**Version**: 1.0.0
+**Effective Date**: February 8, 2026
+**Project**: Innoventity - Global Open Innovation Platform (v1.0)
+**Project Type**: Solo Learning/Portfolio Project - Reference-Based Reimplementation
 **Authority**: Project Owner
 
 ---
@@ -197,7 +197,7 @@ END OF SYNC IMPACT REPORT
 
 This constitution defines the **unchangeable principles** that govern all decisions in the Innoventity platform development. Think of it as the project's DNA—the core beliefs that cannot be compromised.
 
-**What belongs here**: Principles, values, constraints, boundaries  
+**What belongs here**: Principles, values, constraints, boundaries
 **What doesn't belong here**: Technical implementation details, specific technologies, code patterns
 
 When specifications, plans, or implementation decisions conflict with this constitution, **the constitution wins**.
@@ -246,7 +246,7 @@ An **open innovation platform** that connects researchers with commercialization
 - **Idea Generators**: Researchers with innovations seeking partners
 - **R&D Organizations**: Technical experts offering research capabilities
 - **Manufacturing Companies**: Production specialists
-- **Sales & Marketing Companies**: Market access providers  
+- **Sales & Marketing Companies**: Market access providers
 - **Investors**: Funding sources
 
 ### Success Looks Like
@@ -310,7 +310,7 @@ An **open innovation platform** that connects researchers with commercialization
 - ❌ Advanced recommendation engine
 - ❌ Marketplace features (payments, contracts)
 
-**Why this scope?**  
+**Why this scope?**
 v1.0 focuses on **learning modern tech stack** and **delivering core value** (Open Innovation workflow). Complex organizational features add 6+ months and significant architectural complexity better suited for v2.0 after validating core platform.
 
 ---
@@ -593,7 +593,7 @@ v1.0 focuses on **learning modern tech stack** and **delivering core value** (Op
 - Passwords hashed (bcrypt)
 - Sensitive data encrypted at rest
 - PII never logged
-- Secrets in Azure Key Vault (never in code)
+- Secrets in Azure Key Vault (never in code) _(v2.0+; v1.0 uses App Service Configuration — see plan.md CHK093)_
 
 ---
 
@@ -771,9 +771,9 @@ Project succeeds if:
 
 These principles are non-negotiable. When in doubt, refer back to this document.
 
-**Effective Date**: February 8, 2026  
-**Ratification Date**: February 8, 2026  
-**Authority**: Project Owner  
+**Effective Date**: February 8, 2026
+**Ratification Date**: February 8, 2026
+**Authority**: Project Owner
 **Next Review**: Post-Phase 1 retrospective
 
 ---

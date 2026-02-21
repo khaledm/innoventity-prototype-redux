@@ -20,7 +20,8 @@ Build an open innovation platform enabling research-based innovation originators
 - Frontend: Angular 18 (standalone components, signals), RxJS, Angular Material (UI components)
 - Testing: xUnit, Playwright (E2E), Stryker.NET (mutation testing)
 
-**Storage**: Azure SQL Database (via EF Core 8), Azure Service Bus (async messaging), Azure Blob Storage (future document management)
+**Storage**: Azure SQL Database (via EF Core 8), Azure Blob Storage (future document management)
+> **Note**: Azure Service Bus deferred to Phase 1+. v1.0 notifications use DB-persisted API poll model (no message bus required). See spec.md §Clarifications 2026-02-21 Q3.
 
 **Testing**:
 - Unit: xUnit with test data builders
@@ -36,7 +37,7 @@ Build an open innovation platform enabling research-based innovation originators
 - API response time p95: <200ms
 - Database query p95: <100ms
 - Page load (First Contentful Paint) p95: <2s
-- Real-time notification delivery: <1s latency
+- Notification visibility: within one poll interval, v1.0 (DB-persisted API poll); <1s target deferred to Phase 1+ (SignalR). See spec.md §Clarifications 2026-02-21 Q3.
 
 **Constraints**:
 - Solo development (10-month timeline)
@@ -44,7 +45,7 @@ Build an open innovation platform enabling research-based innovation originators
 - Test-first development (TDD: red → green → refactor)
 - No data migration (fresh database, reference legacy for business rules only)
 - v2.0 extensibility required (multi-tenancy, new actor types, organization features)
-- **⚠️ NO FluentValidation**: All validation is manual inline code (see Implementation Patterns §P004). FluentValidation library MUST NOT be added. Rationale: Principle 3 (Simplicity Over Cleverness).
+- **Validation strategy**: Data Annotations on DTOs for simple constraints (required, length, range); FluentValidation `AbstractValidator<T>` for complex business rules (see Implementation Patterns §P004). Defense-in-depth: both layers always active. See CHK073.
 - **⚠️ Industry taxonomy**: All industry IDs/names MUST match ICB taxonomy from legacy MVC system. Generic placeholder IDs (e.g. `ELEC-001`) are invalid — they do not exist in the production dataset. Reference: `SchemaBuilder/Program.cs::GetCommonLookupSql()` in the legacy-mvc repo.
 
 **Scale/Scope**:
@@ -114,20 +115,39 @@ new Claim(JwtRegisteredClaimNames.Email, actor.Email),
 
 ---
 
-### P004: Manual Inline Validation — FluentValidation Prohibited
+### P004: Server-Side Validation Strategy
 
-**Requirement**: All endpoint request validation MUST use **manual inline validation**. FluentValidation is **explicitly prohibited** (Principle 3: Simplicity Over Cleverness).
+**Two-layer approach** (defense-in-depth, CHK073):
+
+- **Data Annotations** on request DTOs — simple, declarative constraints (`[Required]`, `[MaxLength]`, `[Range]`, `[EmailAddress]`). ASP.NET Core model binding applies these automatically before the handler runs.
+- **FluentValidation `AbstractValidator<T>`** — complex business rules that require database lookups, cross-field logic, or conditional validation (e.g., "proposal must be ≥200 chars *and* actor must not already have a bid for this innovation"). Phase 1+ for multi-step business rule validators.
+
+**Never trust client data**: Both layers run server-side. Client-side Angular Reactive Forms validation is a UX optimization only.
 
 ```csharp
-// ✅ CORRECT
-if (string.IsNullOrWhiteSpace(request.Title))
-    return Results.BadRequest(new { error = "Title is required" });
-if (request.Title.Length > 200)
-    return Results.BadRequest(new { error = "Title cannot exceed 200 characters" });
+// ✅ Data Annotation (simple, on DTO)
+public class SubmitBidRequest
+{
+    [Required] public string Location { get; set; } = string.Empty;
+    [MinLength(200)] public string ParticipationProposal { get; set; } = string.Empty;
+}
 
-// ❌ PROHIBITED
-// using FluentValidation; public class Validator : AbstractValidator<T> { }
+// ✅ FluentValidation (complex business rules requiring DB or cross-field logic)
+public class SubmitBidValidator : AbstractValidator<SubmitBidRequest>
+{
+    public SubmitBidValidator(AppDbContext db, Guid actorId, Guid innovationId)
+    {
+        RuleFor(x => x.ParticipationProposal)
+            .MinimumLength(200).WithMessage("Proposal must be at least 200 characters");
+        RuleFor(x => x)
+            .MustAsync(async (_, ct) =>
+                !await db.Bids.AnyAsync(b => b.ActorId == actorId && b.InnovationId == innovationId, ct))
+            .WithMessage("You have already submitted a bid for this innovation");
+    }
+}
 ```
+
+**Return format**: `400 Bad Request` with RFC 7807 `ValidationProblemDetails` (`errors` dictionary keyed by field name) for all validation failures. See CHK065–CHK073.
 
 ---
 
@@ -572,7 +592,7 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
 ### CHK071: Resend Activation Email Recovery Flow
 - **Current State**: **Gap identified** - Spec §R1.0 Error Scenario 1 mentions "Resend activation email" option (line 303), but NO API endpoint defined in Contracts
 - **Phase 0 Decision**: **Defer to Phase 1** due to implementation complexity vs. value trade-off
-  - **Complexity**: Requires Actor lookup by email + ActorType, additional endpoint security (rate limiting to prevent spam)
+  - **Complexity**: Requires Actor lookup by email + ActorType, additional endpoint security
   - **Workaround**: User can re-register with same email/ActorType - backend should allow overwriting PendingActivation accounts
   - **Phase 0 Activation UX**: `POST /auth/register` response body includes `activationToken` directly (no email sent). The test client reads this value and immediately calls `POST /auth/activate`. This is an intentional Phase 0 shortcut — do NOT treat the token-in-response as a bug. See `spec.md §Journey 1 Step 1` for the in-spec note.
 - **Phase 1 Implementation Requirements**:
@@ -581,7 +601,6 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
   - **Business Rules**:
     - Return 200 even if email not found (security - hide account existence)
     - Only resend if AccountStatus = PendingActivation (ignore Active accounts)
-    - Rate limit: Max 3 requests per email per hour (prevent spam)
   - **Response**: `200 OK` with generic message "If your account exists and is pending activation, a new email has been sent"
 
 ### CHK072: Refresh Token Expiry Handling
@@ -651,7 +670,6 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
   - Innovation owner benefits from more partnership options (competitive bidding)
   - Database can handle unlimited bids per innovation (Bid table has FK + index on InnovationId)
 - **Phase 1+ Considerations** (if spam becomes issue):
-  - Implement per-actor rate limit: Max 3 bids per innovation per day (prevent retry spam)
   - UI: Display "You have submitted the maximum number of bids for this innovation" if limit reached
 
 ### CHK077: String Length Boundary Validations
@@ -733,13 +751,20 @@ public async Task RevokeAllTokensAsync(Guid actorId) {
   - **Implicit Transactions**: Single `SaveChanges()` call wrapped in transaction automatically
   - **Explicit Transactions**: Not required for Phase 0 (all operations are single-entity creates/updates)
 - **Phase 1+ Scenarios Requiring Explicit Transactions**:
-  - Partner Selection: Update Innovation.Status + create multiple Partnership records (atomic operation)
+  - Partner Selection: Update Innovation.Status + create multiple Partnership records + set BidStatus = Rejected on ALL remaining Pending bids for this innovation — all in one atomic transaction (spec.md §Clarifications 2026-02-21 Q2)
   - Bid Withdrawal: Delete Bid + log audit record (atomic)
   ```csharp
   using var transaction = await _context.Database.BeginTransactionAsync();
   try {
-      innovation.Status = InnovationStatus.PartnerSelectionComplete;
+      innovation.Status = InnovationStatus.PartnersSelected;
       _context.Partnerships.AddRange(selectedPartnerships);
+      // Atomically reject all non-selected bids (spec R4.3 / Q2)
+      var pendingBidIds = selectedBidIds; // bids that were accepted
+      await _context.Bids
+          .Where(b => b.InnovationId == innovation.Id
+                   && !pendingBidIds.Contains(b.Id)
+                   && b.Status == BidStatus.Pending)
+          .ExecuteUpdateAsync(s => s.SetProperty(b => b.Status, BidStatus.Rejected));
       await _context.SaveChangesAsync();
       await transaction.CommitAsync();
   } catch {
@@ -1160,8 +1185,7 @@ src/Innoventity.API/
 ├── Infrastructure/            # Cross-cutting concerns
 │   ├── Persistence/          # EF Core DbContext, migrations
 │   ├── Authentication/       # JWT token generation/validation
-│   ├── Authorization/        # Policy handlers, requirements
-│   └── Messaging/            # Azure Service Bus integration
+│   └── Authorization/        # Policy handlers, requirements
 └── Program.cs                # Minimal API endpoint registration
 
 # Frontend (Angular 18 Standalone Components)

@@ -363,9 +363,9 @@ The platform creates a **multi-sided marketplace** for research-based innovation
      - Innovation is accepting bids
    - Bid recorded with submission timestamp
    - Bid status initially marked as pending (awaiting selection)
-   - System notifications:
-     - Innovation owner notified of new bid
-     - Real-time bid count update (if applicable)
+   - System notifications (in-app only, v1.0 — email delivery deferred to Phase 1+):
+     - Innovation owner receives an in-app notification of new bid (DB-persisted, surfaced via API poll)
+     - Bid count on owner's dashboard updates on next poll
    - **Error conditions**:
      - "You must be logged in to submit a bid"
      - "You have already submitted a bid for this innovation"
@@ -410,18 +410,17 @@ The platform creates a **multi-sided marketplace** for research-based innovation
 **Steps**:
 
 1. **Bid Monitoring**
-   - Innovation owner receives notifications as bids arrive
+   - Innovation owner sees in-app notifications (DB-persisted feed, polled via API) as bids arrive
    - Owner views bid dashboard showing:
      - Count of bids per actor type (R&D, Manufacturing, Sales/Marketing, Investor)
      - Bid details: who submitted, when, proposal summary
 
 2. **Sufficient Bids Threshold**
-   - System checks if innovation has received:
-     - ≥1 Manufacturing bid
-     - ≥1 Sales & Marketing bid
-     - ≥1 R&D bid
-   - When threshold met, innovation status indicates sufficient bids received
-   - Owner notified that partner selection can begin
+   - System derives threshold status at query time: `COUNT(Pending bids) GROUP BY ActorType WHERE ActorType IN (required types)`
+   - No separate status flag or enum value stored on the Innovation entity — bid counts are always current (a withdrawn bid is immediately reflected)
+   - Threshold met when: ≥1 bid per **each actor type declared as required** in the innovation's `CollaborationRequirements` (Investor always optional). Example: an innovation requiring only R&D + Manufacturing reaches threshold with ≥1 R&D bid AND ≥1 Manufacturing bid — Sales/Marketing is not required if not declared.
+   - In-app notification fired once inside the bid-submission handler when the bid that crosses the threshold is saved
+   - Owner receives in-app notification that partner selection can begin
 
 3. **Bid Evaluation**
    - Owner reviews each bid:
@@ -444,12 +443,13 @@ The platform creates a **multi-sided marketplace** for research-based innovation
      - Selected bids have not already been committed to another selection
    - **This operation is IRREVERSIBLE**
    - System applies changes:
-     - Selected bids marked as accepted with acceptance timestamp
-     - Rejected bids remain unaccepted
-     - Innovation status indicates partners have been selected
-   - System sends notifications:
-     - Selected partners notified of acceptance
-     - Rejected bidders notified (optional/implicit)
+     - Selected bids marked as `Accepted` with acceptance timestamp
+     - All other bids for this innovation atomically transitioned to `Rejected`
+     - `Rejected` bids become read-only (same immutability rule as `Accepted` — cannot be edited or withdrawn)
+     - Innovation status transitions to `PartnersSelected`
+   - System sends in-app notifications (v1.0; email delivery deferred to Phase 1+):
+     - Selected partners receive in-app notification of acceptance
+     - Rejected bidders receive in-app notification of rejection
    - **Error conditions**:
      - "You must own this innovation to select partners"
      - "Innovation has not received sufficient bids yet"
@@ -589,7 +589,7 @@ The platform creates a **multi-sided marketplace** for research-based innovation
    - System tracks completion status of all sections
    - Innovation owner reviews all sections marked "ready"
    - Owner marks business plan as "Complete" when satisfied
-   - Innovation status updated to indicate business plan finished
+   - Innovation status transitions to `BusinessPlanComplete` (Phase 1+ enum value = 4; deferred from Phase 0 which uses `PartnersSelected` as the terminal state)
    - System generates exportable business plan document (PDF)
    - Team can share document with external stakeholders (investors, advisors)
 
@@ -845,9 +845,13 @@ Scenario: Actor submits duplicate bid
 - **Error message**: "Bid incomplete: Location, participation type, and proposal (minimum 200 characters) are all required."
 
 **R4.3 Bid Immutability Post-Selection**:
-- Once a bid is accepted in partner selection, it cannot be withdrawn or edited
-- Unaccepted bids can be edited or withdrawn by poster
-- **Error message**: "This bid has been accepted and cannot be modified or withdrawn."
+- Once a bid is `Accepted` in partner selection, it cannot be withdrawn or edited
+- Once a bid is `Rejected` (transition applied atomically when owner finalizes partner selection), it is also read-only — it cannot be edited or withdrawn
+- Only `Pending` bids can be edited or withdrawn by the poster (before selection occurs)
+- `Pending` means "awaiting owner decision" and is never the terminal state for a bid on an innovation that has completed partner selection
+- **Error messages**:
+  - "This bid has been accepted and cannot be modified or withdrawn."
+  - "This bid has been rejected and cannot be modified or withdrawn."
 
 **Acceptance Tests**:
 ```gherkin
@@ -945,11 +949,10 @@ Scenario: System confirms irreversibility before final selection
   - "Selected bids do not match required actor types"
 
 **R5.5 Sufficient Bids Threshold**:
-- System determines innovation has "sufficient bids" when:
-  - ≥1 Manufacturing bid
-  - ≥1 Sales/Marketing bid
-  - ≥1 R&D bid
-- Investor bid is optional (not required for threshold)
+- System determines innovation has "sufficient bids" when **each actor type declared as required** in the innovation's `CollaborationRequirements` has ≥1 bid in `Pending` or `Accepted` state. Investor bids are always optional regardless of `CollaborationRequirements`.
+- **Example**: An innovation requiring only R&D and Manufacturing reaches threshold at ≥1 R&D bid AND ≥1 Manufacturing bid — a Sales/Marketing bid is not required if that category is not declared.
+- **Implementation**: Derived at query time via `COUNT(bids) GROUP BY actor_type WHERE actor_type IN (innovation.required_actor_types)` — no persisted flag or additional `InnovationStatus` enum value. Bid counts are always current; withdrawal is immediately reflected without requiring a compensating status update.
+- Notification trigger: fired once inside the bid-submission handler when counts cross the threshold for the first time (check: did this bid complete the final missing **required** category?)
 
 **Acceptance Tests**:
 ```gherkin
@@ -1092,6 +1095,7 @@ Scenario: Business plan financials restricted to selected partners
 - **Password Hashing**: BCrypt with work factor 12 (Plan §Security Requirements)
 - Account activation required before performing any actions
 - Failed login attempts tracked; temporary lockout after 5 failures for 15 minutes
+- **Rate limiting (Phase 0)**: No additional API-layer throttling beyond login lockout. Structural rules provide sufficient abuse prevention at the ~100 concurrent user scale declared in FR7.5 — email uniqueness (R1.3) prevents registration bursts, one-bid-per-actor (R4.1) prevents bid flooding. API-layer rate limiting (HTTP 429, `Retry-After`) deferred to Phase 1+.
 - **Error messages**:
   - "Password must be at least 8 characters and include uppercase, lowercase, digit, and special character."
   - "Too many failed login attempts. Account temporarily locked for 15 minutes."
@@ -1167,7 +1171,7 @@ Scenario: Business plan financials restricted to selected partners
 **Performance**:
 - API response time (p95) <200ms for all operations
 - Page load time (p95) <2s for all views
-- Real-time notification delivery latency <1s
+- Real-time notification delivery latency <1s (Phase 1+ SignalR or push; Phase 0 v1.0 uses API poll — notification visible within one poll interval)
 - Database query performance (p95) <100ms
 
 **Reliability**:
@@ -1991,7 +1995,19 @@ Scenario: Environment costs are tracked
 - ❌ **CRM Integration**: Salesforce, HubSpot connectors
 - ❌ **Calendar Integration**: Outlook, Google Calendar
 - ❌ **Patent Database Integration**: Automated IPR verification
-- ✅ **No external integrations** in v1.0 (except Azure Service Bus for internal messaging)
+- ✅ **No external integrations** in v1.0 (Azure Service Bus deferred — in-app notifications use DB-backed poll model, no message bus required for v1.0)
+
+---
+
+## Clarifications
+
+### Session 2026-02-21
+
+- Q: What is the canonical `InnovationStatus` state machine for v1.0, and should business plan completion be a distinct enum state? → A: Keep 3 current states (`Draft=1`, `Published=2`, `PartnersSelected=3`); add only `BusinessPlanComplete=4` as a Phase 1+ terminal state when Journey 4 (virtual incubator) is implemented. No intermediate `BusinessPlanInProgress` state required — workspace access opens automatically at `PartnersSelected`, and business plan progress is tracked at the section level, not the innovation level.
+- Q: When partner selection is finalized, what happens to non-selected bids — do they stay `Pending` or transition to `Rejected`? → A: All non-selected bids transition atomically to `Rejected` when the owner finalizes selection. `Rejected` bids are read-only (same immutability as `Accepted`). `Pending` is never a terminal state on a closed innovation.
+- Q: What is the notification delivery mechanism for v1.0 (in-app, email, or both)? → A: In-app notifications only (DB-persisted, surfaced via API polling). Email delivery deferred to Phase 1+ alongside activation-email SendGrid work. Azure Service Bus removed from v1.0 scope — no message bus required for polling-based in-app model.
+- Q: Is API rate limiting (beyond login lockout) required for Phase 0? → A: No. Structural rules are sufficient at ~100 concurrent user scale: email uniqueness (R1.3) prevents registration bursts, one-bid-per-actor (R4.1) prevents bid flooding, login lockout (R8.4) covers credential stuffing. API-layer throttling (HTTP 429 / `Retry-After`) deferred to Phase 1+.
+- Q: Is the "sufficient bids" threshold a persisted flag/status or derived at query time? → A: Derived at query time via `COUNT(bids) GROUP BY actor_type`. No persisted flag or new `InnovationStatus` value. Notification triggered inside bid-submission handler when the submitted bid completes the final missing required category.
 
 ---
 

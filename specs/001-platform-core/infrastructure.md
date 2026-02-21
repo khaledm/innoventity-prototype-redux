@@ -1,6 +1,6 @@
 # Infrastructure Plan: Platform Core (v1.0)
 
-**Branch**: `001-platform-core` | **Date**: February 8, 2026 | **Spec**: [spec.md](spec.md)  
+**Branch**: `001-platform-core` | **Date**: February 8, 2026 | **Spec**: [spec.md](spec.md)
 **Related**: [plan.md](plan.md) (Application Architecture)
 
 ## Ephemeral Environment Principles
@@ -17,7 +17,7 @@
 - **Observability**: Can we prove correctness in short-lived environments?
 
 **Prohibited Patterns**:
-- ❌ Manual Azure Portal configuration (except initial service principal setup)
+- ❌ Manual Azure Portal configuration of managed resources (except initial service principal setup) — prevented in prod via Reader-only RBAC; detected in all environments via nightly `terraform plan -detailed-exitcode`
 - ❌ Shared mutable resources across environments
 - ❌ Long-lived secrets without rotation strategy
 - ❌ Environment-specific code branches (use configuration instead)
@@ -36,21 +36,28 @@ infrastructure/
 │   └── networking/        # Virtual Network (Phase 1+, currently public endpoints)
 ├── environments/
 │   ├── dev/
-│   │   ├── main.tf        # Dev environment composition
-│   │   ├── terraform.tfvars  # Dev-specific config (SKUs, scale)
-│   │   └── backend.tf     # Terraform state (Azure Storage)
+│   │   ├── core/          # Stateless resources: App Service, App Insights
+│   │   │   ├── main.tf
+│   │   │   ├── terraform.tfvars
+│   │   │   └── backend.tf # State: tfstate-dev-core
+│   │   └── data/          # Stateful resources: SQL Server + Database
+│   │       ├── main.tf
+│   │       ├── terraform.tfvars
+│   │       └── backend.tf # State: tfstate-dev-data
 │   ├── test/
-│   │   ├── main.tf        # Test environment composition (same modules)
-│   │   ├── terraform.tfvars  # Test-specific config
-│   │   └── backend.tf
+│   │   ├── core/
+│   │   └── data/
 │   └── prod/
-│       ├── main.tf        # Prod environment composition (same modules)
-│       ├── terraform.tfvars  # Prod-specific config (higher SKU, scale settings)
-│       └── backend.tf
+│       ├── core/
+│       └── data/
 └── README.md              # Provisioning instructions
 ```
 
-**Environment-Agnostic Principle**: All `main.tf` files use SAME modules, only `terraform.tfvars` differs:
+**Split-State Principle**: Stateless and stateful resources live in separate Terraform root modules with independent state files. `terraform destroy` on `core/` tears down App Service and App Insights cleanly. `data/` is a separate apply/destroy operation and is never touched by a routine environment teardown.
+
+> ⚠️ **Why not `terraform destroy -target`?** Targeted destroy is explicitly warned against in Terraform documentation for routine workflow. It can leave orphaned resources, state inconsistencies, and hidden dependency violations. The split-state layout achieves the same isolation without any of those risks.
+
+**Environment-Agnostic Principle**: All `core/` and `data/` root modules use the SAME reusable modules. Only `terraform.tfvars` differs per environment:
 ```hcl
 # environments/dev/terraform.tfvars
 environment         = "dev"
@@ -67,20 +74,30 @@ retention_days      = 35
 
 ### Terraform State Management
 
-**Backend**: Azure Storage Account (per environment to prevent conflicts)
+**Backend**: Azure Storage Account with **two containers per environment** — one for core, one for data — to enforce state boundary.
 ```hcl
-# environments/dev/backend.tf
+# environments/dev/core/backend.tf
 terraform {
   backend "azurerm" {
     resource_group_name  = "innoventity-tfstate-rg"
     storage_account_name = "innoventitytfstate"
-    container_name       = "tfstate-dev"
+    container_name       = "tfstate-dev-core"
+    key                  = "platform-core.tfstate"
+  }
+}
+
+# environments/dev/data/backend.tf
+terraform {
+  backend "azurerm" {
+    resource_group_name  = "innoventity-tfstate-rg"
+    storage_account_name = "innoventitytfstate"
+    container_name       = "tfstate-dev-data"
     key                  = "platform-core.tfstate"
   }
 }
 ```
 
-**State Isolation**: Separate state file per environment prevents accidental cross-environment changes.
+**State Isolation**: Separate state file per layer per environment. `core/` destroy never touches `data/` state — no `-target` required, no orphan risk.
 
 **Bootstrap Requirement**: State storage account created ONCE manually, then managed via Terraform (state stored in itself).
 
@@ -106,7 +123,7 @@ variable "location" {
 resource "azurerm_resource_group" "main" {
   name     = "innoventity-${var.environment}-rg"
   location = var.location
-  
+
   tags = {
     Environment = var.environment
     ManagedBy   = "Terraform"
@@ -123,8 +140,8 @@ output "location" {
 }
 ```
 
-**Recreatability**: ✅ No data stored in resource group itself  
-**Blast Radius**: Destroying RG destroys all contained resources (expected behavior)  
+**Recreatability**: ✅ No data stored in resource group itself
+**Blast Radius**: Destroying RG destroys all contained resources (expected behavior)
 **Cost**: $0 (container only)
 
 ---
@@ -161,7 +178,7 @@ resource "azurerm_mssql_server" "main" {
   administrator_login          = "innoventity-admin"
   administrator_login_password = var.admin_password
   minimum_tls_version          = "1.2"
-  
+
   tags = {
     Environment = var.environment
     ManagedBy   = "Terraform"
@@ -173,10 +190,19 @@ resource "azurerm_mssql_database" "main" {
   server_id      = azurerm_mssql_server.main.id
   sku_name       = var.sku_name
   max_size_gb    = var.max_size_gb
-  
+
   tags = {
     Environment = var.environment
     ManagedBy   = "Terraform"
+  }
+
+  # Decision (2026-02-20): Production database is persistent — use split-state layout.
+  # The database lives in environments/{env}/data/ (separate Terraform root module).
+  # Destroying environments/{env}/core/ (App Service, App Insights) never touches this state.
+  # To intentionally destroy the database: cd environments/{env}/data && terraform destroy
+  # That decision requires explicit change-control; it is NOT part of any routine workflow.
+  lifecycle {
+    prevent_destroy = true
   }
 }
 
@@ -208,9 +234,9 @@ output "server_name" {
 }
 ```
 
-**Recreatability**: ⚠️ **Partial** - Database schema recreated via EF Core migrations (see Database State Management below)  
-**Blast Radius**: Data loss if destroyed - mitigated by test data seeding scripts (for dev/test environments)  
-**Cost**: Dev $5/month (Basic), Prod $30-150/month (S2 Standard)  
+**Recreatability**: ⚠️ **Partial** - Database schema recreated via EF Core migrations (see Database State Management below)
+**Blast Radius**: Data loss if destroyed - mitigated by test data seeding scripts (for dev/test environments)
+**Cost**: Dev $5/month (Basic), Prod $30-150/month (S2 Standard)
 **Validation**: Run EF Core migrations + smoke test queries after creation
 
 ---
@@ -250,7 +276,7 @@ resource "azurerm_service_plan" "main" {
   location            = var.location
   os_type             = "Linux"
   sku_name            = var.sku_name
-  
+
   tags = {
     Environment = var.environment
     ManagedBy   = "Terraform"
@@ -263,23 +289,23 @@ resource "azurerm_linux_web_app" "main" {
   location            = var.location
   service_plan_id     = azurerm_service_plan.main.id
   https_only          = true
-  
+
   site_config {
     always_on        = var.sku_name != "B1" ? true : false  # Basic tier doesn't support always_on
     ftps_state       = "Disabled"
     http2_enabled    = true
     minimum_tls_version = "1.2"
-    
+
     application_stack {
       dotnet_version = "8.0"
     }
-    
+
     cors {
       allowed_origins = var.environment == "dev" ? ["http://localhost:4200"] : ["https://innoventity-${var.environment}-web.azurestaticapps.net"]
       support_credentials = true
     }
   }
-  
+
   app_settings = {
     "ASPNETCORE_ENVIRONMENT" = var.environment == "prod" ? "Production" : "Development"
     "APPLICATIONINSIGHTS_CONNECTION_STRING" = var.application_insights_key
@@ -289,13 +315,13 @@ resource "azurerm_linux_web_app" "main" {
     "Jwt__AccessTokenExpiration" = "60"  # 1 hour
     "Jwt__RefreshTokenExpiration" = "10080"  # 7 days
   }
-  
+
   connection_string {
     name  = "InnoventityDb"
     type  = "SQLAzure"
     value = var.connection_string
   }
-  
+
   tags = {
     Environment = var.environment
     ManagedBy   = "Terraform"
@@ -308,18 +334,18 @@ resource "azurerm_linux_web_app_slot" "staging" {
   name               = "staging"
   app_service_id     = azurerm_linux_web_app.main.id
   https_only         = true
-  
+
   site_config {
     always_on = true
-    
+
     application_stack {
       dotnet_version = "8.0"
     }
   }
-  
+
   # Staging uses same app settings as production (validated before swap)
   app_settings = azurerm_linux_web_app.main.app_settings
-  
+
   tags = {
     Environment = "${var.environment}-staging"
     ManagedBy   = "Terraform"
@@ -337,9 +363,9 @@ output "staging_hostname" {
 }
 ```
 
-**Recreatability**: ✅ Fully recreatable - stateless application, config injected via Terraform  
-**Blast Radius**: API downtime during recreation (~2-3 minutes), no data loss  
-**Cost**: Dev $13/month (B1), Prod $100-200/month (P1v3)  
+**Recreatability**: ✅ Fully recreatable - stateless application, config injected via Terraform
+**Blast Radius**: API downtime during recreation (~2-3 minutes), no data loss
+**Cost**: Dev $13/month (B1), Prod $100-200/month (P1v3)
 **Validation**: Health check endpoint (`GET /health`) returns 200 after deployment
 
 ---
@@ -360,7 +386,7 @@ resource "azurerm_log_analytics_workspace" "main" {
   location            = var.location
   sku                 = "PerGB2018"
   retention_in_days   = var.environment == "prod" ? 90 : 30
-  
+
   tags = {
     Environment = var.environment
     ManagedBy   = "Terraform"
@@ -373,7 +399,7 @@ resource "azurerm_application_insights" "main" {
   location            = var.location
   workspace_id        = azurerm_log_analytics_workspace.main.id
   application_type    = "web"
-  
+
   tags = {
     Environment = var.environment
     ManagedBy   = "Terraform"
@@ -393,9 +419,9 @@ output "instrumentation_key" {
 }
 ```
 
-**Recreatability**: ✅ Fully recreatable  
-**Blast Radius**: Loss of historical telemetry data (30-90 days retention), no application impact  
-**Cost**: ~$2-5/month per environment (first 5GB/month free)  
+**Recreatability**: ✅ Fully recreatable
+**Blast Radius**: Loss of historical telemetry data (30-90 days retention), no application impact
+**Cost**: ~$2-5/month per environment (first 5GB/month free)
 **Validation**: Check for telemetry ingestion after app deployment (query for requests in last 5 minutes)
 
 ---
@@ -445,7 +471,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Test"))
 public static async Task SeedDevelopmentDataAsync(ApplicationDbContext context)
 {
     if (await context.Actors.AnyAsync()) return;  // Skip if already seeded
-    
+
     var ideaGenerator = new Actor
     {
         Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),  // Fixed GUID for reproducibility
@@ -454,7 +480,7 @@ public static async Task SeedDevelopmentDataAsync(ApplicationDbContext context)
         AccountStatus = AccountStatus.Active,
         // ... other properties
     };
-    
+
     var innovation = new Innovation
     {
         Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
@@ -462,7 +488,7 @@ public static async Task SeedDevelopmentDataAsync(ApplicationDbContext context)
         OwnerId = ideaGenerator.Id,
         // ... other properties
     };
-    
+
     context.Actors.Add(ideaGenerator);
     context.Innovations.Add(innovation);
     await context.SaveChangesAsync();
@@ -552,32 +578,34 @@ curl https://$(terraform output -raw app_service_hostname)/health
 **Prerequisites**:
 1. Confirm no active users (production environments)
 
-**Steps**:
+**Destroy stateless resources (core) — routine teardown:**
 ```bash
-# 1. Navigate to environment directory
-cd infrastructure/environments/dev
-
-# 2. Plan destruction (dry-run)
+# Tears down App Service, App Insights. Database is untouched (separate state).
+cd infrastructure/environments/dev/core
 terraform plan -destroy -out=tfplan-destroy
-
-# 4. Review resources to be destroyed
-# 5. Destroy all resources
 terraform apply tfplan-destroy
-
-# 6. (Optional) Delete Terraform state
-# rm -rf .terraform terraform.tfstate*
-# az storage blob delete --account-name innoventitytfstate --container-name tfstate-dev --name platform-core.tfstate
 ```
 
-**Duration**: ~3-5 minutes
+**Destroy data layer — intentional only, under change-control:**
+```bash
+# Only run this when you explicitly intend to drop the database.
+# Requires removing prevent_destroy from the SQL module or it will hard-fail.
+cd infrastructure/environments/dev/data
+terraform plan -destroy -out=tfplan-destroy
+terraform apply tfplan-destroy
+```
 
-**Blast Radius**: All environment resources destroyed (App Service, SQL Database, Application Insights). Data loss unless backed up.
+> ⚠️ **Do not use `terraform destroy -target`** for either layer. The split-state design means you never need it. Targeted destroy leaves state inconsistencies and is not recommended by Terraform for routine workflow.
 
-**Validation**: Verify resources deleted in Azure Portal (resource group should be empty or deleted)
+**Duration**: Core ~2-3 minutes. Data ~1-2 minutes.
+
+**Blast Radius**: Core destroy removes App Service and App Insights only; no data loss. Data destroy is irreversible for production data.
+
+**Validation**: Verify core resources deleted in Azure Portal; SQL Server and Database should remain until data layer is explicitly destroyed.
 
 ---
 
-### Update Workflow (Infrastructure Drift)
+### Update Workflow (Intentional Infrastructure Changes)
 
 **Scenario**: Change App Service SKU, add firewall rule, update secret rotation
 
@@ -609,6 +637,59 @@ curl https://$(terraform output -raw app_service_hostname)/health
 **Downtime Strategy**: Use deployment slots (prod environment) to minimize downtime during recreation
 
 ---
+
+### Unintentional Drift: Prevention and Detection
+
+**Problem**: Someone with portal access changes App Service configuration, a firewall rule, or an app setting outside Terraform. The Terraform state no longer reflects reality. The next `terraform apply` may overwrite the change silently, or produce unexpected plan output.
+
+**Control options evaluated**:
+
+| Option | Mechanism | Verdict for this project |
+|--------|-----------|-------------------------|
+| **Azure Policy** | Audit/deny resource properties at create/modify time | ⚠️ Partial — does not cover all config properties (e.g. `app_settings`); adds authoring/testing overhead. Overkill for Phase 0. |
+| **Deny Assignments** (Azure Blueprints / Deployment Stacks) | Block changes even at Owner level | ❌ Too heavy — designed for enterprise compliance. Azure Blueprints is deprecated. Deployment Stacks is the successor but adds significant complexity. |
+| **RBAC restriction** | Remove portal write access for humans | ✅ Primary prevention control — already applied for prod (Reader-only). The correct structural answer for drift prevention. |
+| **Nightly drift detection pipeline** | Scheduled `terraform plan -detailed-exitcode`; alert on exit code 2 | ✅ Detection layer — simple, transparent, fits the "pipeline only" apply model. 24h detection window acceptable for this scale. |
+
+**Decision**: RBAC is the primary prevention layer. Nightly drift detection is the detection layer. Azure Policy and Deny Assignments are deferred.
+
+**Prevention (RBAC — already partially enforced)**:
+- Production: developers have Reader-only access → portal changes are blocked by RBAC. Full prevention.
+- Development: developers currently have Contributor access → portal changes are technically possible. Drift in dev is recoverable (`terraform apply` corrects it), so this is an accepted risk for dev agility.
+
+**Detection (Nightly Drift Scan — T076 pipeline addition)**:
+```yaml
+# .github/workflows/drift-detection.yml  (or equivalent pipeline step)
+schedule:
+  - cron: '0 2 * * *'   # 02:00 UTC nightly
+
+jobs:
+  drift-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Terraform Init (core)
+        run: terraform -chdir=infrastructure/environments/prod/core init
+      - name: Terraform Plan (core)
+        id: plan_core
+        run: |
+          terraform -chdir=infrastructure/environments/prod/core \
+            plan -detailed-exitcode -out=tfplan 2>&1 | tee plan_output.txt
+          echo "exitcode=$?" >> $GITHUB_OUTPUT
+      - name: Fail if drift detected
+        if: steps.plan_core.outputs.exitcode == '2'
+        run: |
+          echo "::error::Infrastructure drift detected in prod/core. Review plan output."
+          cat plan_output.txt
+          exit 1
+      # Repeat for prod/data
+```
+
+> `terraform plan -detailed-exitcode` returns exit code `0` (no changes), `1` (error), or `2` (changes pending). Exit code `2` means drift exists.
+
+**Scope**: Drift detection runs against `prod/core` and `prod/data` only. Dev drift is acceptable and not monitored.
+
+**Implementation**: Drift detection is implemented as the standalone `drift.yml` workflow (see §Testing Requirements §Three-Pipeline CI/CD Architecture). It is a separate workflow from `deploy.yml` — never runs on push, never applies.
 
 ## Component Validation Matrix
 
@@ -776,7 +857,7 @@ resource "azurerm_monitor_metric_alert" "high_error_rate" {
   resource_group_name = var.resource_group_name
   scopes              = [azurerm_application_insights.main.id]
   description         = "Alert when error rate exceeds threshold"
-  
+
   criteria {
     metric_namespace = "microsoft.insights/components"
     metric_name      = "exceptions/count"
@@ -784,11 +865,11 @@ resource "azurerm_monitor_metric_alert" "high_error_rate" {
     operator         = "GreaterThan"
     threshold        = 5
   }
-  
+
   window_size        = "PT5M"
   frequency          = "PT1M"
   severity           = 2
-  
+
   action {
     action_group_id = azurerm_monitor_action_group.main.id
   }
@@ -838,104 +919,125 @@ infrastructure/**/terraform.tfstate*
 - **Rotation**: Service principal credentials rotated every 90 days
 
 **Developer Access** (Azure RBAC):
-- **Development**: Contributor on dev resource group, Reader on test/prod
-- **Production**: Reader only, CI/CD pipeline handles deployments
+- **Development**: Contributor on dev resource group — this is intentional for dev agility. Consequence: portal changes in dev are possible and constitute accepted drift (recoverable via `terraform apply`).
+- **Production**: Reader only — portal changes are blocked by RBAC. This is the primary drift prevention control for prod.
+
+> **Why RBAC is the right primary control, not Azure Policy**: Policy is useful for enforcing naming conventions and allowed SKUs at create time, but doesn't prevent in-place modification of `app_settings`, firewall rules, or connection strings by a Contributor. RBAC's Reader restriction is the only control that fully blocks portal-originated drift in prod.
 
 ---
 
 ## Testing Requirements
 
-### Infrastructure Testing
+### Infrastructure Testing: Terratest (IaC Code Correctness)
 
-**Tool**: Terratest (Go-based Terraform testing framework)
+**Tool**: Terratest v0.46+ / Go 1.21+
 
-**Tests to Implement**:
+**Purpose**: Validate that Terraform module *code* produces the correct Azure resources — catches wrong resource types, missing arguments, and tautological configurations. Runs `InitAndApply → assert via Azure SDK → Destroy`.
+
+**Test Files** (`infrastructure/tests/terratest/`):
+- `app_service_module_test.go` — validates `azurerm_linux_web_app` outputs (`https_only`, TLS version, `app_settings` keys present)
+- `sql_database_module_test.go` — validates `azurerm_mssql_server` + `azurerm_mssql_database` (version, SKU, `prevent_destroy` comment present)
+- `dev_environment_test.go` — end-to-end: provisions both `core/` + `data/`, asserts `GET /health` returns 200 with body containing `"Healthy"`
+
+**Required pattern** (`defer terraform.Destroy` is non-negotiable):
 ```go
-// tests/infrastructure_test.go
 func TestDevEnvironmentProvisioning(t *testing.T) {
     t.Parallel()
-    
     terraformOptions := &terraform.Options{
-        TerraformDir: "../infrastructure/environments/dev",
+        TerraformDir: "../../environments/dev/core",
         Vars: map[string]interface{}{
-            "environment": "test-" + strings.ToLower(random.UniqueId()),
+            "environment":        "test-" + strings.ToLower(random.UniqueId()),
             "sql_admin_password": "TestP@ssw0rd123!",
-            "jwt_secret_key": generateRandomBase64(32),
+            "jwt_secret_key":     generateRandomBase64(32),
         },
     }
-    
-    // Ensure cleanup
     defer terraform.Destroy(t, terraformOptions)
-    
-    // Apply infrastructure
+
     terraform.InitAndApply(t, terraformOptions)
-    
-    // Validate outputs
-    appServiceURL := terraform.Output(t, terraformOptions, "app_service_url")
-    assert.NotEmpty(t, appServiceURL)
-    
-    // Test health endpoint
-    http_helper.HttpGetWithRetry(
-        t,
-        fmt.Sprintf("https://%s/health", appServiceURL),
-        nil,
-        200,
-        "Healthy",
-        10,
-        30*time.Second,
-    )
-}
 
-func TestDatabaseRecreation(t *testing.T) {
-    // 1. Provision environment
-    // 2. Seed test data (insert Actor record)
-    // 3. Capture expected schema (query sys.tables, sys.columns)
-    // 4. Destroy SQL Database (terraform destroy -target=module.sql_database)
-    // 5. Recreate SQL Database (terraform apply)
-    // 6. Apply EF Core migrations
-    // 7. Validate schema matches expected (compare sys.tables, sys.columns)
-    // 8. Assert data loss (Actor record no longer exists - expected behavior)
+    // Non-tautological: query Azure SDK, not terraform.Output() comparison to input
+    appServiceName := terraform.Output(t, terraformOptions, "app_service_name")
+    appService := azure.GetAppService(t, appServiceName, "innoventity-test-rg", "")
+    assert.True(t, *appService.HTTPSOnly, "App Service must enforce HTTPS")
+
+    http_helper.HttpGetWithRetry(t,
+        fmt.Sprintf("https://%s.azurewebsites.net/health", appServiceName),
+        nil, 200, "Healthy", 10, 30*time.Second)
 }
 ```
 
-**Validation**: Tests MUST demonstrate failure scenarios:
-- ❌ Health check returns 500 if database connection string missing (prove detection works)
-- ❌ Terraform apply fails if JWT key <256 bits (prove validation works)
+**Characterisation failure mode** (Principle 5 — mandatory, Mark Seemann): Record in `infrastructure/README.md` the actual HTTP status code returned when the DB connection string is omitted from `app_settings`. If no failure scenario has been observed, the test suite has no validity.
 
-### Epistemic Discipline for LLM-Generated Code
+**Phase**: Local only (Phase 0). Add as PR gate in `infra.yml` from Phase 1 onward.
 
-**Problem**: Terraform modules and validation scripts may be LLM-generated, require proof of correctness.
+---
 
-**Validation Strategy**:
-1. **Characterization Tests**: Run terraform apply in isolated subscription, capture actual resource properties
-   ```bash
-   # After first manual apply, capture expected state
-   terraform show -json > expected-state.json
-   
-   # Future applies: compare against baseline
-   terraform show -json | jq 'del(.format_version, .terraform_version)' > current-state.json
-   diff expected-state.json current-state.json
-   ```
+### Environment State Validation: Pester (Post-Apply Safety)
 
-2. **Manual Verification Checklist** (before trusting IaC):
-   - [ ] App Service provisions with HTTPS-only enabled
-   - [ ] SQL Database firewall rules allow ONLY Azure services (not 0.0.0.0/0)
-   - [ ] Application Insights linked to Log Analytics Workspace
-   - [ ] App Service app_settings correctly inject secrets
-   - [ ] Deployment slot (prod) uses same configuration as production
+**Tool**: Pester v5 (PowerShell)
 
-3. **Idempotency Testing**: Run `terraform apply` twice, second run must show "No changes" (no drift)
+**Purpose**: Validate live environment state *after* `terraform apply` — detects misconfigured firewall rules, wrong TLS settings, or missing `app_settings` that Terratest cannot catch (Terratest writes then reads from the same apply; Pester reads from a running environment independently).
 
-4. **Destruction Testing**: Run `terraform destroy`, verify ALL resources deleted (no orphaned resources)
+**Test Files** (`infrastructure/tests/pester/`):
+- `AppService.Tests.ps1` — asserts `httpsOnly = true`, `minTlsVersion = 1.2`, required `app_settings` keys present
+- `SqlDatabase.Tests.ps1` — asserts firewall rule allows Azure services only (`startIpAddress = "0.0.0.0"`, `endIpAddress = "0.0.0.0"`)
+- `Secrets.Tests.ps1` — asserts no plaintext secret values appear in `app_settings` responses
+- `HealthCheck.Tests.ps1` — asserts `GET /health` returns 200 + JSON body has `"status":"Healthy"` for each dependency
 
-**No Tautological Assertions**: Avoid tests like "assert terraform output matches terraform input" - instead, query Azure API directly:
-```bash
-# BAD TEST (tautological)
-assert terraform.output("app_service_name") == "innoventity-dev-api"
+**Required pattern** (`-CI` flag mandatory — exits non-zero on any failure):
+```powershell
+# infrastructure/tests/pester/HealthCheck.Tests.ps1
+Describe "App Service Health" {
+    It "returns 200 with status Healthy" {
+        $url = "https://$env:APP_SERVICE_NAME.azurewebsites.net/health"
+        $response = Invoke-RestMethod -Uri $url -Method Get
+        $response.status | Should -Be "Healthy"
+    }
+}
 
-# GOOD TEST (external validation)
-az webapp show --name innoventity-dev-api --resource-group innoventity-dev-rg --query "httpsOnly" --output tsv | grep -q "true"
+# Run via: Invoke-Pester -CI ./infrastructure/tests/pester/
 ```
+
+**Inputs**: `APP_SERVICE_NAME` and `RESOURCE_GROUP_NAME` from environment variables (never hardcoded).
+
+**Runs in**: `deploy.yml` job `pester-health` after every deploy; `infra.yml` job `pester-infra` after Terraform apply.
+
+---
+
+### Three-Pipeline CI/CD Architecture
+
+Three workflows in `.github/workflows/`. No fourth workflow. Filenames and job names below are authoritative.
+
+**`infra.yml`** — triggers on push to `infrastructure/**` or `workflow_dispatch`
+
+| # | Job | Description |
+|---|-----|-------------|
+| 1 | `terraform-plan-core` | `terraform plan` on `environments/{env}/core/` |
+| 2 | `terraform-apply-core` | `terraform apply` on `core/` |
+| 3 | `terraform-plan-data` | `terraform plan` on `environments/{env}/data/` |
+| 4 | `approve-data` | Manual gate (prod only) — GitHub Environment protection rule |
+| 5 | `terraform-apply-data` | `terraform apply` on `data/` |
+| 6 | `pester-infra` | `Invoke-Pester -CI ./infrastructure/tests/pester/` |
+
+**`deploy.yml`** — triggers on push to `src/**`
+
+| # | Job | Description |
+|---|-----|-------------|
+| 1 | `preflight` | Check env vars, connectivity |
+| 2 | `build-test` | `dotnet build` + `dotnet test` (unit + integration) |
+| 3 | `migrate` | `dotnet ef database update` |
+| 4 | `deploy` | Publish API to App Service |
+| 5 | `pester-health` | `Invoke-Pester -CI ./infrastructure/tests/pester/HealthCheck.Tests.ps1` |
+| 6 | `slot-swap` | Swap staging slot to production (prod only) |
+
+**`drift.yml`** — triggers on `cron: "0 2 * * *"` only (never on push)
+
+| # | Job | Description |
+|---|-----|-------------|
+| 1 | `drift-check-core` | `terraform plan -detailed-exitcode` on `prod/core/` — detection only, never applies |
+| 2 | `drift-check-data` | `terraform plan -detailed-exitcode` on `prod/data/` — detection only, never applies |
+
+> `terraform apply` is **never** triggered by a code push. `infra.yml` triggers only on `infrastructure/**` changes. `deploy.yml` never calls Terraform.
 
 ---
 
@@ -950,13 +1052,16 @@ az webapp show --name innoventity-dev-api --resource-group innoventity-dev-rg --
 - [ ] App Service module (40 lines Terraform)
 - [ ] Application Insights module (15 lines Terraform)
 - [ ] Dev environment composition (environments/dev/main.tf)
-- [ ] Validation script (`validate-environment.sh`)
+- [ ] Pester validation suite (`infrastructure/tests/pester/AppService.Tests.ps1`, `SqlDatabase.Tests.ps1`, `Secrets.Tests.ps1`, `HealthCheck.Tests.ps1`)
+- [ ] Terratest suite — local run only (`infrastructure/tests/terratest/dev_environment_test.go`)
+- [ ] `infrastructure/scripts/create-environment.ps1` (PowerShell, orchestrates Terraform lifecycle)
+- [ ] `infrastructure/scripts/validate-environment.ps1` (PowerShell, invokes `Invoke-Pester -CI`)
 - [ ] .gitignore for Terraform state/secrets
 
 ### Deferred (Phase 1+):
 - ⏸️ Test/Prod environment compositions (copy dev, adjust SKUs)
-- ⏸️ Terratest infrastructure tests (validate manually first)
-- ⏸️ CI/CD pipeline integration (Azure DevOps YAML)
+- ⏸️ Terratest PR gate — add as `infra.yml` PR check from Phase 1+
+- ⏸️ Three-pipeline CI/CD implementation (`infra.yml`, `deploy.yml`, `drift.yml`) — architecture defined in §Testing Requirements, implementation deferred to T076–T078
 - ⏸️ Auto-shutdown scripts for cost optimization
 - ⏸️ Azure Monitor alerts (Application Insights manual review sufficient for now)
 
@@ -968,6 +1073,43 @@ az webapp show --name innoventity-dev-api --resource-group innoventity-dev-rg --
 ---
 
 ## Open Questions / Decisions Needed
+
+**Resolved decisions are recorded here for traceability.**
+
+**✅ Is production database persistent?**
+- **Decision (2026-02-20)**: Yes — production database is persistent.
+- **Implementation**: Split-state layout: `environments/{env}/core/` (App Service, App Insights) and `environments/{env}/data/` (SQL Server + Database) are separate Terraform root modules with independent state files. Routine `terraform destroy` on `core/` never touches the data layer. `lifecycle { prevent_destroy = true }` is retained in the SQL module as a hard backstop.
+- **Why not `prevent_destroy` + `-target`**: Targeted destroy is an anti-pattern (Terraform docs explicitly warn against it for routine workflow). It risks orphaned resources, state inconsistencies, and hidden dependency violations. The split-state layout is the correct structural solution — it makes the boundary explicit and enforced at the state level, not at the plan/apply invocation level.
+- **Corollary**: FR7.1 §4 "Data Loss Prevention" is satisfied for production. Dev/test data loss on `core/` destroy is acceptable (schema recoverable from migrations, data recoverable from seed scripts).
+
+**✅ Is production destroy allowed?**
+- **Decision (2026-02-20)**: Yes, but `prevent_destroy = true` on the SQL module means a full `terraform destroy` will error in all environments. Intentional full destruction requires removing the lifecycle guard under change-control.
+
+**✅ Are backups mandatory?**
+- **Decision (2026-02-20)**: No explicit backup configuration. Azure SQL built-in PITR (7 days Basic, 35 days S2) provides passive protection at no extra cost. Sufficient for Phase 0 risk tolerance.
+
+**✅ Is Key Vault mandatory?**
+- **Decision (2026-02-20)**: No. App Service Configuration (slot settings) is the secret injection pattern. See plan.md §CHK093.
+
+**✅ Are private endpoints required?**
+- **Decision (2026-02-20)**: No. Public endpoints with TLS 1.2 minimum + Azure Services firewall rule. Networking module deferred to Phase 1+.
+
+**✅ Are per-PR environments required?**
+- **Decision (2026-02-20)**: No. Pipeline targets a single shared dev environment. Per-PR dynamic environments deferred to Phase 1+.
+
+**✅ Who can run terraform apply/destroy?**
+- **Decision (2026-02-20)**: Pipeline only. The CI/CD service principal holds credentials. Developers have read-only access to dev; no direct apply/destroy rights.
+
+**✅ Is the 10-minute SLA hard?**
+- **Decision (2026-02-20)**: Soft target for Phase 0; treated as hard from Phase 1 onward. T070 validation script will measure and report actual wall-clock time. No hard pipeline failure on breach until Phase 1.
+
+**✅ What is included in the 10-minute SLA?**
+- **Decision (2026-02-20)**: Full stack — `terraform apply` invocation → EF Core migrations applied → `GET /health` returns 200. A provisioned-but-schema-less environment does not count as complete.
+
+**✅ Is environment parity architectural or availability-level?**
+- **Decision (2026-02-20)**: Architectural only. Same Terraform modules, same topology. SKU/scale parameters differ per environment. No requirement for zone-redundancy or availability SLA parity between dev and prod.
+
+---
 
 1. **Terraform Backend Bootstrap**: Should state storage account be managed manually or via separate bootstrap Terraform?
    - **Recommendation**: Manual creation (one-time, shared across all environments)

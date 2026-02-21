@@ -37,9 +37,9 @@
 
 **Goal**: Minimal IaC and scripts to create/destroy a dev environment matching FR7.1/FR7.2.
 
-- [ ] T068 Create infrastructure/environments/dev template (e.g., Terraform/Bicep) provisioning Resource Group, App Service, Azure SQL, and Application Insights as per infrastructure.md
+- [ ] T068 Create infrastructure/environments/dev template (e.g., Terraform) provisioning Resource Group, App Service, Azure SQL, and Application Insights as per infrastructure.md
 - [ ] T069 Add scripts to create and destroy the dev environment (`apply`/`destroy`) and verify completion within 10 minutes
-- [ ] T070 Add a basic infrastructure validation step (re-running apply to confirm idempotency and checking service health endpoints)
+- [ ] T070 Validate infrastructure idempotency and characterisation failure modes: (1) run second `terraform apply` on `core/` and `data/` — assert "No changes" exit code 0; (2) deliberately omit DB connection string from App Service `app_settings`, run `GET /health`, record actual HTTP status in `infrastructure/README.md`; (3) restore config, assert health returns 200; (4) run Pester suite (`Invoke-Pester -CI ./infrastructure/tests/pester/`) and confirm all 4 test files pass; (5) run Terratest locally (`go test ./infrastructure/tests/terratest/ -timeout 30m`) against dev environment with `defer terraform.Destroy` active
 
 ---
 
@@ -92,6 +92,8 @@
 - [X] T035 [US2] Integration test: POST /auth/login rejects invalid password in LoginTests.cs
 - [X] T036 [US2] Integration test: POST /auth/refresh-token returns new access token in RefreshTokenTests.cs
 - [X] T037 [US2] Integration test: POST /auth/refresh-token rejects expired refresh token in RefreshTokenTests.cs
+- [ ] T081 [P] [US2] Unit test: Login handler increments FailedLoginAttempts on wrong password and resets counter to 0 on successful login in tests/Unit/Infrastructure/LoginHandlerTests.cs
+- [ ] T082 [US2] Integration test: POST /auth/login returns 423 Locked with RFC 7807 body "Too many failed login attempts. Account temporarily locked for 15 minutes." after 5 consecutive failed attempts; assert LockoutUntil is ~15 min in future in tests/Integration/Features/Authentication/LoginTests.cs
 
 ### Implementation for User Story 2
 
@@ -100,6 +102,9 @@
 - [X] T040 [US2] Implement AccountStatus check (only Active can login) in Features/Authentication/Login.cs
 - [X] T041 [US2] Implement POST /auth/refresh-token endpoint in Features/Authentication/RefreshToken.cs
 - [X] T042 [US2] Add JWT claims (actorId, actorType, email) in JwtTokenService.cs
+- [ ] T083 [US2] Add FailedLoginAttempts (int, default 0) and LockoutUntil (DateTimeOffset?, nullable) columns to Actor entity in Domain/Entities/Actor.cs (R8.4)
+- [ ] T084 [US2] Create EF Core migration for Actor lockout fields in Infrastructure/Persistence/Migrations/
+- [ ] T085 [US2] Implement lockout logic in Features/Authentication/Login.cs: increment FailedLoginAttempts on wrong password; set LockoutUntil = UtcNow + 15 min on 5th failure; block login with 423 when LockoutUntil > UtcNow; reset counter on successful login (R8.4)
 
 ---
 
@@ -146,7 +151,7 @@
 - [X] T062 Add structured logging with correlation IDs in Infrastructure/Logging/
 - [X] T063 Verify all integration tests pass with clean database
 - [X] T064 Verify E2E test passes end-to-end journey
-- [ ] T065 Create deployment configuration for Azure App Service in infrastructure/ (includes App Service Configuration for JWT signing key, database connection string; SendGrid API key config deferred to Phase 1+ when email notifications implemented)
+- [X] T065 Create deployment configuration for Azure App Service in infrastructure/ (includes App Service Configuration for JWT signing key, database connection string; SendGrid API key config deferred to Phase 1+ when email notifications implemented)
 - [X] T079 Run Stryker.NET mutation tests on Infrastructure/Authentication/JwtTokenService.cs and PasswordHasher.cs, verify ≥70% mutation score per CHK031 requirement
   <!-- Result (2026-02-19): Score = 80% (16 killed / 18 tested). 2 survivors both in JwtTokenService.cs — null-coalescing ?? throw paths at lines 19 and 49 (missing SigningKey guard) not exercised. ≥70% threshold MET. -->
 - [X] T080 Update contracts/openapi.yaml to document all Phase 0.6 endpoints: GET /health, GET /industries, POST /innovations, GET /innovations, PUT /innovations/{id}, PATCH /innovations/{id}/submit, GET /innovations/{innovationId}/bids, POST /innovations/{innovationId}/bids, PUT /bids/{bidId} — including auth requirements, request/response schemas, and all documented status codes (200/201/400/401/403/404/409/500 where applicable)
@@ -157,9 +162,9 @@
 
 **Goal**: Implement automated deployment pipeline satisfying CHK031 production-ready requirements.
 
-- [ ] T076 Author CI/CD pipeline definition (.github/workflows/deploy.yml or azure-pipelines.yml) with stages: Build → Unit Tests → Integration Tests → Deploy to Dev → Health Check
-- [ ] T077 Configure pipeline gates: (1) Fail on test failures (exit code != 0), (2) Fail on health check returning non-200, (3) Fail on infrastructure drift detection
-- [ ] T078 Validate green pipeline run: Trigger pipeline, verify successful deploy to dev environment, confirm all gates executed and artifact tagged
+- [ ] T076 Author three GitHub Actions workflows: (1) `.github/workflows/infra.yml` with jobs `terraform-plan-core` → `terraform-apply-core` → `terraform-plan-data` → `approve-data` (manual gate, prod only) → `terraform-apply-data` → `pester-infra`; (2) `.github/workflows/deploy.yml` with jobs `preflight` → `build-test` → `migrate` → `deploy` → `pester-health` → `slot-swap`; (3) `.github/workflows/drift.yml` with `cron: "0 2 * * *"` trigger only, jobs `drift-check-core` + `drift-check-data` using `terraform plan -detailed-exitcode` (detection only, never applies)
+- [ ] T077 Configure pipeline gates across three workflows: `infra.yml` fails if `terraform apply` exits non-zero or `Invoke-Pester -CI` fails; `deploy.yml` fails if `dotnet test` exits non-zero, if `pester-health` (`HealthCheck.Tests.ps1`) returns non-200 from `GET /health`, or if `migrate` job errors; `drift.yml` emits `::error::` annotation and exits non-zero if `terraform plan -detailed-exitcode` returns exit code 2 (drift detected) — `drift.yml` never calls `terraform apply`
+- [ ] T078 Validate green runs across all three pipelines: trigger `infra.yml` via `workflow_dispatch` on dev — confirm all 6 jobs pass and `pester-infra` exits 0; trigger `deploy.yml` by pushing to `src/` — confirm `pester-health` passes (`GET /health` 200); trigger `drift.yml` manually — confirm exit code 0 (no drift) on dev; document screenshot evidence in `infrastructure/README.md`
 
 ---
 
@@ -175,6 +180,37 @@
 
 ---
 
+## Phase 8: Notification System (Journey 2+3 Prerequisite)
+
+**Goal**: DB-persisted in-app notification feed so innovation owners are alerted when bids arrive and the sufficient-bids threshold is crossed (spec.md §Clarifications Q3, R5.5).
+**Prerequisite**: Phase 5 complete (Bid entity + submission endpoint from specs/003-api-completion/ must exist).
+
+- [ ] T086 [P] Create Notification entity in Domain/Entities/Notification.cs: Id (Guid), RecipientActorId (Guid FK → Actor), Message (string max 500), CreatedAt (DateTimeOffset), IsRead (bool default false), LinkedEntityId (Guid?), LinkedEntityType (string? max 50)
+- [ ] T087 Add Notification to AppDbContext and create EF Core migration in Infrastructure/Persistence/Migrations/
+- [ ] T088 Integration test: GET /notifications returns array of unread NotificationDto sorted descending by CreatedAt for authenticated actor in tests/Integration/Features/Notifications/GetNotificationsTests.cs
+- [ ] T089 Integration test: POST /innovations/{id}/bids creates a Notification record for the innovation owner with message "A new bid was received for your innovation." in tests/Integration/Features/Bids/SubmitBidNotificationTests.cs
+- [ ] T090 Integration test: sufficient-bids trigger fires exactly once — a second bid in the same final-missing category does NOT create a second threshold notification in SubmitBidNotificationTests.cs
+- [ ] T091 Implement GET /notifications endpoint in Features/Notifications/GetNotifications.cs with [Authorize], returning NotificationDto[] (Id, Message, CreatedAt, IsRead, LinkedEntityId, LinkedEntityType)
+- [ ] T092 Add notification creation in bid-submission handler: (a) always create "new bid received" notification to innovation owner; (b) if this bid completes the last missing required category per R5.5 query-time check, create "sufficient bids reached" threshold notification once
+- [ ] T093 Update contracts/openapi.yaml with GET /notifications schema
+
+---
+
+## Phase 9: Partner Selection (Journey 3)
+
+**Goal**: Innovation owner selects exactly one bid per required actor type; selection is permanent (R5.1–R5.5). T057a (Future-Phase6+) in Phase 5 constitutes the constitution-mandated human-written irreversibility test anchor for this phase.
+**Prerequisite**: Phase 8 complete (notification system must fire post-selection workspace notifications).
+
+- [ ] T094 Integration test: POST /innovations/{id}/select-partners returns 409 when sufficient bids threshold not met (R5.4) in tests/Integration/Features/PartnerSelection/SelectPartnersTests.cs
+- [ ] T095 Integration test: POST /innovations/{id}/select-partners returns 422 when required actor type missing from selection payload (R5.2) in SelectPartnersTests.cs
+- [ ] T096 Integration test: POST /innovations/{id}/select-partners returns 200 and transitions selected bids to Accepted, remaining bids to Rejected (R4.4 atomic transition) in SelectPartnersTests.cs
+- [ ] T097 Integration test: POST /innovations/{id}/select-partners returns 403 when partner selection already completed — error "Partner selection is final and cannot be changed" (R5.3 irreversibility; see T057a) in SelectPartnersTests.cs
+- [ ] T098 Implement POST /innovations/{id}/select-partners endpoint in Features/PartnerSelection/SelectPartners.cs with FluentValidation enforcing R5.1–R5.5
+- [ ] T099 Implement irreversibility guard: check existing Accepted bids; return 403 if already selected (R5.3)
+- [ ] T100 Update contracts/openapi.yaml with partner selection endpoint schema (request: { selectedBidIds: Guid[] }, response: 200/403/409/422)
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -186,7 +222,9 @@
 - **US2 Authentication (Phase 4)**: Depends on US1 (requires Actor entity)
 - **US3 View Innovation (Phase 5)**: Depends on US2 (requires authentication)
 - **Polish (Phase 6)**: Depends on US1+US2+US3 complete
-- **CI/CD Pipeline (Phase 6b)**: Depends on Phase 6 complete (needs T066-T070)
+- **CI/CD Pipeline (Phase 6b)**: Depends on Phase 6 complete (needs T068-T070; T066 and T067 are ✅ complete)
+- **Notification System (Phase 8)**: Depends on Bid submission endpoint (specs/003-api-completion/) and Actor entity (Phase 3)
+- **Partner Selection (Phase 9)**: Depends on Phase 8 (notification triggers) and sufficient-bids threshold logic (R5.5)
 - **Frontend Phase 0 (Phase 7)**: Can run parallel with Phase 6b
 
 ### Critical Path for Phase 0 MVP
@@ -204,9 +242,10 @@ T043-T057 (US3: View Innovation) [needs auth from US2]
   ↓
 T058-T065, T079 (Polish & Deploy + Mutation Testing)
   ↓
-T076-T078 (CI/CD Pipeline) [CHK031 requirement]
+T068-T070 (IaC Phase 0) [prerequisite for CI/CD — see Phase Dependencies]
   ↓
-(Parallel: T068-T070 IaC + T071-T075 Frontend can run concurrently)
+T076-T078 (CI/CD Pipeline) [CHK031 requirement; depends on T066-T070]
+(Parallel with T068-T070 and above: T071-T075 Frontend)
 ```
 
 ### Parallel Opportunities
@@ -221,6 +260,8 @@ T076-T078 (CI/CD Pipeline) [CHK031 requirement]
 **Phase 6 (Polish)**: T058, T059, T060 can run parallel; T079 runs after core auth implementation complete
 **Phase 6b (CI/CD)**: T076, T077 can run parallel (both editing pipeline file)
 **Phase 7 (Frontend)**: T071, T072, T073, T074 can run parallel (different files)
+**Phase 8 (Notifications)**: T086 entity + T088/T089/T090 tests can run parallel (after T087 migration); T091 + T092 implementation can run parallel
+**Phase 9 (Partner Selection)**: T094, T095, T096, T097 can run parallel (all tests, different scenarios; after Phase 8 complete)
 
 ---
 
@@ -261,9 +302,9 @@ For each user story:
 4. Complete US2 Authentication (T030-T042) → ~3 hours
 5. Complete US3 View Innovation (T043-T057) → ~3 hours
 6. Polish & Deploy (T058-T065, T079) → ~3 hours
-7. CI/CD Pipeline (T076-T078) → ~2 hours
-8. (Parallel) IaC (T068-T070) → ~2 hours
-9. (Parallel) Frontend (T071-T075) → ~3 hours
+7. IaC Phase 0 (T068-T070) → ~2 hours
+8. CI/CD Pipeline (T076-T078) → ~2 hours [requires T068-T070]
+9. (Parallel with 7+8) Frontend (T071-T075) → ~3 hours
 
 **Total MVP estimate**: ~20 hours (assumes TDD discipline, no debugging needed if tests written correctly)
 
@@ -276,6 +317,9 @@ For each user story:
 - After T065: Deployable to Azure → smoke test in staging
 - After T079: Mutation testing validated → test quality confirmed (CHK031)
 - After T078: CI/CD pipeline operational → automated deploy/test/health validated (CHK031)
+- After T085: Login lockout operational → R8.4 fully enforced (5 failures → 15-min lockout)
+- After T092: Notification system operational → bid notifications and sufficient-bids threshold alerts firing (Journey 2+3 unblocked)
+- After T100: Partner selection operational → Journey 3 complete (irreversibility enforced per R5.3)
 
 ---
 
@@ -288,7 +332,7 @@ For each user story:
 - **Entity Validation**: Business rules R1.1-R8.4 enforced at entity and endpoint layers
 - **Commit Frequency**: After each logical task or small task group
 - **Epistemic Honesty**: If test passes unexpectedly, investigate before proceeding
-- **⚠️ FluentValidation**: PROHIBITED. Manual inline validation only in all endpoint handlers. See `plan.md §Implementation Patterns P004`.
+- **Validation**: Data Annotations on DTOs for simple constraints; FluentValidation `AbstractValidator<T>` for complex business rules. Both layers active. See `plan.md §P004` and `plan.md §CHK073`.
 - **⚠️ Industry IDs**: Use ICB taxonomy only (`TECH-001`, `HLTH-001`, `ENRG-001`, `AUTO-001`, `INDU-001`, `FIN-001`, `TCOM-001`, `CSVC-001`, `UTIL-001`, `MTRL-001`). `ELEC-001` is not a valid ID and does not exist in the production dataset.
 - **⚠️ DbContext Isolation**: Tests must use a unique Guid-based database name shared between the test DbContext and WebApplicationFactory. See `plan.md §Implementation Patterns P001-P002` for required patterns.
 - **Phase 0.6 Coverage**: `specs/003-api-completion/tasks.md` T001-T017 implement Innovation CRUD (R2.1), Bid management (R4.1-R4.4), and Journey 1-2 subcutaneous tests. Cross-reference before planning Phase 1+ tasks to avoid duplication.
