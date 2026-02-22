@@ -19,16 +19,17 @@
 package test
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/gruntwork-io/terratest/modules/azure"
-	http_helper "github.com/gruntwork-io/terratest/modules/http-helper"
 	"github.com/gruntwork-io/terratest/modules/random"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestAppServiceModule validates that the app-service module produces the correct
@@ -73,12 +74,15 @@ func TestAppServiceModule(t *testing.T) {
 		"App Service must require TLS 1.2 minimum")
 }
 
-// TestDevEnvironmentHealthCheck provisions both layers (data + core), deploys, and
-// validates GET /health returns 200 with "Healthy" in the response body.
+// TestDevEnvironmentAppServiceInfra provisions both layers (data + core) and validates
+// that the App Service is reachable and correctly configured via the Azure SDK.
 //
-// This is the full end-to-end IaC correctness test — smoke-tests the actual deployed app.
+// D1=OptionA: HTTP /health assertion removed — the app container is not deployed in this
+// Terraform-only run, so the health endpoint is not expected to return 200. Infrastructure
+// correctness (HTTPS-only, TLS, resource existence) is asserted via azure.GetAppService.
+//
 // Run time: ~5-10 minutes (Azure provisioning).
-func TestDevEnvironmentHealthCheck(t *testing.T) {
+func TestDevEnvironmentAppServiceInfra(t *testing.T) {
 	t.Parallel()
 
 	uniqueID := strings.ToLower(random.UniqueId())
@@ -117,18 +121,25 @@ func TestDevEnvironmentHealthCheck(t *testing.T) {
 	appServiceName := terraform.Output(t, coreOptions, "app_service_name")
 	_ = resourceGroup // used in data destroy
 
-	// Non-tautological: query Azure SDK
+	// Non-tautological: query Azure SDK — asserts correct infra config, not tautological output comparison
 	appService := azure.GetAppService(t, appServiceName, fmt.Sprintf("innoventity-%s-rg", testEnv), "")
-	assert.True(t, *appService.HTTPSOnly)
-
-	// Validate GET /health returns 200 with "Healthy"
-	healthURL := fmt.Sprintf("https://%s.azurewebsites.net/health", appServiceName)
-	http_helper.HttpGetWithRetry(t, healthURL, nil, 200, "Healthy", 10, 30*time.Second)
+	require.NotNil(t, appService,
+		"App Service must be provisioned and retrievable via the Azure SDK")
+	assert.True(t, *appService.HTTPSOnly,
+		"App Service must enforce HTTPS-only (https_only = true)")
+	assert.Equal(t, "1.2", string(appService.SiteConfig.MinTLSVersion),
+		"App Service must require TLS 1.2 minimum")
 }
 
-// generateRandomBase64 generates a cryptographically random base64 string of n bytes.
+// generateRandomBase64 generates a cryptographically random base64-encoded string
+// from n random bytes.  For n=32 the output is 44 characters — the minimum length
+// required by the jwt_secret_key Terraform variable validation (≥44 chars, HS256).
 func generateRandomBase64(t *testing.T, n int) string {
 	t.Helper()
-	// Use random.UniqueId pattern — in production replace with crypto/rand
-	return random.UniqueId() + random.UniqueId() + random.UniqueId()
+	buf := make([]byte, n)
+	_, err := rand.Read(buf)
+	if err != nil {
+		t.Fatalf("generateRandomBase64: crypto/rand.Read failed: %v", err)
+	}
+	return base64.StdEncoding.EncodeToString(buf)
 }
