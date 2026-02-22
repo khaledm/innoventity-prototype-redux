@@ -39,7 +39,7 @@
 
 - [ ] T068 Create infrastructure/environments/dev template (e.g., Terraform) provisioning Resource Group, App Service, Azure SQL, and Application Insights as per infrastructure.md
 - [ ] T069 Add scripts to create and destroy the dev environment (`apply`/`destroy`) and verify completion within 10 minutes
-- [ ] T070 Validate infrastructure idempotency and characterisation failure modes: (1) run second `terraform apply` on `core/` and `data/` — assert "No changes" exit code 0; (2) deliberately omit DB connection string from App Service `app_settings`, run `GET /health`, record actual HTTP status in `infrastructure/README.md`; (3) restore config, assert health returns 200; (4) run Pester suite (`Invoke-Pester -CI ./infrastructure/tests/pester/`) and confirm all 4 test files pass; (5) run Terratest locally (`go test ./infrastructure/tests/terratest/ -timeout 30m`) against dev environment with `defer terraform.Destroy` active
+- [ ] T070 Validate infrastructure idempotency and characterisation failure modes: (1) run second `terraform apply` on `core/` and `data/` — assert "No changes" exit code 0 [automated by `create-environment.ps1` Step 5/5 idempotency gate — H5]; (2) deliberately omit DB connection string from App Service `app_settings`, run `GET /health`, record actual HTTP status in `infrastructure/README.md`; (3) restore config, assert health returns 200; (4) run Pester suite (`Invoke-Pester -CI ./infrastructure/tests/pester/`) — Pester `$script:` scope bug fixed in commit `6cb2109` (C3); (5) run Terratest locally (`go test ./infrastructure/tests/terratest/ -timeout 30m`) — requires `go mod tidy` to be run first with Go 1.21+ (H3 blocker: `go.sum` not yet generated); **Gate**: before closing T070, run `/speckit.analyze` and resolve any CRITICAL/HIGH findings against `.specify/memory/infra-review-prompt.md`
 
 ---
 
@@ -162,7 +162,7 @@
 
 **Goal**: Implement automated deployment pipeline satisfying CHK031 production-ready requirements.
 
-- [ ] T076 Author three GitHub Actions workflows: (1) `.github/workflows/infra.yml` with jobs `terraform-plan-core` → `terraform-apply-core` → `terraform-plan-data` → `approve-data` (manual gate, prod only) → `terraform-apply-data` → `pester-infra`; (2) `.github/workflows/deploy.yml` with jobs `preflight` → `build-test` → `migrate` → `deploy` → `pester-health` → `slot-swap`; (3) `.github/workflows/drift.yml` with `cron: "0 2 * * *"` trigger only, jobs `drift-check-core` + `drift-check-data` using `terraform plan -detailed-exitcode` (detection only, never applies)
+- [ ] T076 Author three GitHub Actions workflows: (1) `.github/workflows/infra.yml` with jobs `terraform-plan-core` → `terraform-apply-core` → `terraform-plan-data` → `approve-data` (manual gate, prod only) → `terraform-apply-data` → `pester-infra`; (2) `.github/workflows/deploy.yml` with jobs `preflight` → `build-test` → `migrate` → `deploy` → `pester-health` → `slot-swap`; (3) `.github/workflows/drift.yml` with `cron: "0 2 * * *"` trigger only, jobs `drift-check-core` + `drift-check-data` using `terraform plan -detailed-exitcode` (detection only, never applies); **Note**: `infra.yml` `terraform-apply-core` step must inject `-var sql_server_id=$(cd environments/dev/data && terraform output -raw sql_server_id)` to enable SQL diagnostic settings (C5, FR7.6); **Gate**: before merging T076 PR, run `/speckit.analyze` and confirm zero new CRITICAL findings
 - [ ] T077 Configure pipeline gates across three workflows: `infra.yml` fails if `terraform apply` exits non-zero or `Invoke-Pester -CI` fails; `deploy.yml` fails if `dotnet test` exits non-zero, if `pester-health` (`HealthCheck.Tests.ps1`) returns non-200 from `GET /health`, or if `migrate` job errors; `drift.yml` emits `::error::` annotation and exits non-zero if `terraform plan -detailed-exitcode` returns exit code 2 (drift detected) — `drift.yml` never calls `terraform apply`
 - [ ] T078 Validate green runs across all three pipelines: trigger `infra.yml` via `workflow_dispatch` on dev — confirm all 6 jobs pass and `pester-infra` exits 0; trigger `deploy.yml` by pushing to `src/` — confirm `pester-health` passes (`GET /health` 200); trigger `drift.yml` manually — confirm exit code 0 (no drift) on dev; document screenshot evidence in `infrastructure/README.md`
 
@@ -208,6 +208,12 @@
 - [ ] T098 Implement POST /innovations/{id}/select-partners endpoint in Features/PartnerSelection/SelectPartners.cs with FluentValidation enforcing R5.1–R5.5
 - [ ] T099 Implement irreversibility guard: check existing Accepted bids; return 403 if already selected (R5.3)
 - [ ] T100 Update contracts/openapi.yaml with partner selection endpoint schema (request: { selectedBidIds: Guid[] }, response: 200/403/409/422)
+
+### Phase 6 Infrastructure — Spec Analysis Remediation (commits 88242fb–6319022)
+
+- [X] T101 Add `azurerm_monitor_diagnostic_setting` for App Service to `modules/app-service/main.tf` with inputs `log_analytics_workspace_id` wired from `module.monitoring.workspace_id` in `core/main.tf` (FR7.6 MUST — C5 finding from spec analysis)
+- [X] T102 Add `azurerm_monitor_diagnostic_setting` for SQL Server to `environments/dev/core/main.tf` using `var.sql_server_id` (sourced from `data/` output at apply time) and `module.monitoring.workspace_id`; inject via `-var sql_server_id=...` in CI workflow T076 (FR7.6 MUST — C5 finding)
+- [X] T103 Create `infrastructure/scripts/destroy-environment.ps1` with correct destroy order (core first, data second), `prevent_destroy` guard reminder, prod confirmation gate, and post-destroy `az group show` resource-existence validation (FR7.8 acceptance criterion — C6 finding)
 
 ---
 
