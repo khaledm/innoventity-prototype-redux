@@ -79,13 +79,11 @@ Before approving any infrastructure PR:
 
 ---
 
-## Known Outstanding Items (as of commit 6319022)
+## Known Outstanding Items (as of commit 7281cf3)
 
 These are tracked issues that should be completed before T070 is closed:
 
-- **H3 (partial)**: `go.sum` not generated — `go mod tidy` must be run with Go 1.21+ (`infrastructure/tests/terratest/`)
-- **T070 Step 5 gate**: Terratest cannot be run until `go.sum` exists
-- **`sql_server_id` wiring in CI**: T076 must inject `-var sql_server_id=...` in the `infra.yml` `terraform-apply-core` step
+- **`sql_server_id` wiring in CI**: T076 must inject `-var sql_server_id=$(cd environments/dev/data && terraform output -raw sql_server_id)` in the `infra.yml` `terraform-apply-core` step
 
 ---
 
@@ -98,3 +96,4 @@ These are tracked issues that should be completed before T070 is closed:
 | 1C | 2254a55 | C1 (crypto/rand JWT key), H3 (go.mod created), D1=OptionA (test rename + HTTP assertion removed) |
 | 2A | 7ba7686 | C5 (diagnostic settings App Service + SQL, FR7.6) |
 | 2B | 6319022 | C6 (destroy-environment.ps1, FR7.8), H5 (timing gate, idempotency step) |
+| H3 close | 7281cf3 | H3 fully resolved: go.sum generated via `go mod tidy` (Go 1.26); go.mod expanded with indirect deps |
