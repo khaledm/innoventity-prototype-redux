@@ -23,6 +23,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$script:StartTime = Get-Date  # H5: timing gate — elapsed time reported at completion
 
 $RepoRoot    = Resolve-Path (Join-Path $PSScriptRoot "../..")
 $DataDir     = Join-Path $RepoRoot "infrastructure/environments/$Environment/data"
@@ -36,7 +37,7 @@ function Write-Step([string]$message) {
 # ─────────────────────────────────────────────────────────────────
 # Step 1: Apply data layer (Resource Group + SQL)
 # ─────────────────────────────────────────────────────────────────
-Write-Step "Step 1/4 — Apply data layer ($Environment/data)"
+Write-Step "Step 1/5 — Apply data layer ($Environment/data)"
 Push-Location $DataDir
 try {
     terraform init -input=false
@@ -54,7 +55,7 @@ finally {
 # ─────────────────────────────────────────────────────────────────
 # Step 2: Apply core layer (App Service + App Insights)
 # ─────────────────────────────────────────────────────────────────
-Write-Step "Step 2/4 — Apply core layer ($Environment/core)"
+Write-Step "Step 2/5 — Apply core layer ($Environment/core)"
 
 # jwt_secret_key must be provided; read from tfvars or prompt
 $JwtKey = $env:JWT_SECRET_KEY
@@ -83,7 +84,7 @@ finally {
 # ─────────────────────────────────────────────────────────────────
 # Step 3: Apply EF Core migrations
 # ─────────────────────────────────────────────────────────────────
-Write-Step "Step 3/4 — Apply EF Core migrations"
+Write-Step "Step 3/5 — Apply EF Core migrations"
 if (-not $SkipMigrations -and -not $WhatIf) {
     Push-Location $RepoRoot
     try {
@@ -102,7 +103,7 @@ if (-not $SkipMigrations -and -not $WhatIf) {
 # ─────────────────────────────────────────────────────────────────
 # Step 4: Validate
 # ─────────────────────────────────────────────────────────────────
-Write-Step "Step 4/4 — Validate environment"
+Write-Step "Step 4/5 — Validate environment"
 if (-not $WhatIf) {
     $HealthUrl = "https://$AppHostname/health"
     Write-Host "Polling $HealthUrl ..."
@@ -136,3 +137,38 @@ if (-not $WhatIf) {
 
 Write-Host "`n✅ Environment '$Environment' created successfully." -ForegroundColor Green
 Write-Host "   Run Pester tests: .\infrastructure\scripts\validate-environment.ps1 -Environment $Environment"
+
+# ─────────────────────────────────────────────────────────────────
+# Step 5: Idempotency check (H5) — second plan must show no changes
+# terraform plan -detailed-exitcode returns:
+#   exit 0 = no changes (idempotent ✔)
+#   exit 2 = changes pending (drift detected ✘)
+#   exit 1 = error
+# ─────────────────────────────────────────────────────────────────
+Write-Step "Step 5/5 — Idempotency check"
+if (-not $WhatIf) {
+    Write-Host "  Running idempotency plan for data/ ..."
+    Push-Location $DataDir
+    try {
+        terraform plan -detailed-exitcode -input=false | Out-Null
+        if ($LASTEXITCODE -eq 2) {
+            throw "❌ Idempotency failure in data/: terraform plan detected pending changes after apply. Check for non-deterministic resources."
+        }
+        Write-Host "  ✅ data/ is idempotent (no pending changes)" -ForegroundColor Green
+    } finally { Pop-Location }
+
+    Write-Host "  Running idempotency plan for core/ ..."
+    Push-Location $CoreDir
+    try {
+        terraform plan -detailed-exitcode -input=false `
+            -var "connection_string=$ConnectionString" `
+            -var "jwt_secret_key=$JwtKey" | Out-Null
+        if ($LASTEXITCODE -eq 2) {
+            throw "❌ Idempotency failure in core/: terraform plan detected pending changes after apply. Check for non-deterministic resources."
+        }
+        Write-Host "  ✅ core/ is idempotent (no pending changes)" -ForegroundColor Green
+    } finally { Pop-Location }
+}
+
+$elapsed = [math]::Round(((Get-Date) - $script:StartTime).TotalMinutes, 1)
+Write-Host "`n✅ Wave complete. Environment '$Environment' created and validated in ${elapsed}m." -ForegroundColor Green
