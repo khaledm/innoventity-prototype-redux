@@ -11,6 +11,16 @@
 #
 # ⚠️ SendGrid / email keys are NOT configured here — deferred to Phase 1+.
 
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = ">= 3.116"
+    }
+  }
+  required_version = ">= 1.6"
+}
+
 variable "environment" {
   type        = string
   description = "Environment name (dev, test, prod)"
@@ -157,7 +167,10 @@ resource "azurerm_linux_web_app_slot" "staging" {
   https_only     = true
 
   site_config {
-    always_on = true
+    always_on           = true
+    ftps_state          = "Disabled"  # H2: security parity with production slot
+    minimum_tls_version = "1.2"       # H2: security parity with production slot
+    http2_enabled       = true        # H2: security parity with production slot
 
     application_stack {
       dotnet_version = "8.0"

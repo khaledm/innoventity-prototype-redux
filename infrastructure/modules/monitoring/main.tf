@@ -5,6 +5,16 @@
 # Historical telemetry is lost on recreation but no application data is affected.
 # Retention is per-environment: dev/test = 30 days, prod = 90 days.
 
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = ">= 3.116"
+    }
+  }
+  required_version = ">= 1.6"
+}
+
 variable "environment" {
   type        = string
   description = "Environment name (dev, test, prod)"
@@ -81,4 +91,9 @@ output "instrumentation_key" {
 output "app_insights_name" {
   value       = azurerm_application_insights.main.name
   description = "Application Insights resource name"
+}
+
+output "workspace_id" {
+  value       = azurerm_log_analytics_workspace.main.id
+  description = "Log Analytics Workspace resource ID — required input for diagnostic settings (Wave 2A, FR7.6)"
 }

@@ -21,7 +21,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.0"
+      version = "~> 3.116"
     }
   }
   required_version = ">= 1.6"
@@ -57,6 +57,12 @@ variable "sql_admin_password" {
   description = "SQL Server admin password — inject via CI/CD secret or local tfvars; never commit"
 }
 
+variable "developer_cidr" {
+  type        = string
+  default     = null
+  description = "Developer IP address for local SQL firewall rule. Set in terraform.tfvars — not required for CI/CD. C4 fix."
+}
+
 # ─────────────────────────────────────────────────────────────────
 # Resource Group — owned by data/ layer
 # Persists across core/ recreations. Destroying core/ does NOT touch this.
@@ -84,6 +90,7 @@ module "sql" {
   location            = var.location
   sku_name            = var.sql_database_sku
   admin_password      = var.sql_admin_password
+  developer_cidr      = var.developer_cidr  # C4: explicit IP only; default null disables wide-open rule
 
   depends_on = [azurerm_resource_group.main]
 }
@@ -113,4 +120,9 @@ output "server_fqdn" {
 output "sql_server_name" {
   value       = "innoventity-${var.environment}-sql"
   description = "SQL Server resource name — set as SQL_SERVER_NAME env var before running Pester"
+}
+
+output "sql_server_id" {
+  value       = module.sql.sql_server_id
+  description = "SQL Server resource ID — passed to core/ for diagnostic settings wiring (Wave 2A, FR7.6)"
 }

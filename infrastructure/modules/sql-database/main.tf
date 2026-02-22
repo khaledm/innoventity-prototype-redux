@@ -7,6 +7,16 @@
 #
 # See infrastructure.md §Split-State Principle for the full design rationale.
 
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = ">= 3.116"
+    }
+  }
+  required_version = ">= 1.6"
+}
+
 variable "environment" {
   type        = string
   description = "Environment name (dev, test, prod)"
@@ -39,6 +49,12 @@ variable "admin_password" {
   description = "SQL admin password — injected from CI/CD secrets; never stored in source control"
 }
 
+variable "developer_cidr" {
+  type        = string
+  default     = null
+  description = "Developer IP address for local SQL access (e.g. '203.0.113.42'). Null disables the rule. Set in terraform.tfvars — never commit real IPs. C4 fix."
+}
+
 # ─────────────────────────────────────────────────────────────────
 # SQL Server
 # ─────────────────────────────────────────────────────────────────
@@ -56,6 +72,13 @@ resource "azurerm_mssql_server" "main" {
     Environment = var.environment
     ManagedBy   = "Terraform"
     Project     = "Innoventity Platform Core"
+  }
+
+  # H1: server destroy blocked at the Terraform layer.
+  # Database lifecycle { prevent_destroy } alone is insufficient — deleting the server
+  # cascades and removes the database regardless of the database guard.
+  lifecycle {
+    prevent_destroy = true
   }
 }
 
@@ -100,13 +123,15 @@ resource "azurerm_mssql_firewall_rule" "allow_azure_services" {
 }
 
 # Dev only — allow local developer connections.
-# ⚠️ Replace 0.0.0.0–255.255.255.255 with your actual developer IP range before applying.
+# C4 fix: rule is created only when environment=dev AND developer_cidr is explicitly provided.
+# Null default prevents world-open firewall (0.0.0.0–255.255.255.255) being applied by default.
+# Set developer_cidr in terraform.tfvars (never commit). Find your IP: curl -s https://api.ipify.org
 resource "azurerm_mssql_firewall_rule" "allow_local_dev" {
-  count            = var.environment == "dev" ? 1 : 0
+  count            = (var.environment == "dev" && var.developer_cidr != null) ? 1 : 0
   name             = "AllowLocalDevelopment"
   server_id        = azurerm_mssql_server.main.id
-  start_ip_address = "0.0.0.0"
-  end_ip_address   = "255.255.255.255"
+  start_ip_address = var.developer_cidr
+  end_ip_address   = var.developer_cidr
 }
 
 # ─────────────────────────────────────────────────────────────────
@@ -127,4 +152,14 @@ output "server_fqdn" {
 output "database_name" {
   value       = azurerm_mssql_database.main.name
   description = "Database name"
+}
+
+output "sql_server_name" {
+  value       = azurerm_mssql_server.main.name
+  description = "SQL Server resource name — set as SQL_SERVER_NAME env var before running Pester"
+}
+
+output "sql_server_id" {
+  value       = azurerm_mssql_server.main.id
+  description = "SQL Server resource ID — required input for diagnostic settings (Wave 2A, FR7.6)"
 }
