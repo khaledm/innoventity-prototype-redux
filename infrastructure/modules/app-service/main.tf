@@ -72,6 +72,11 @@ variable "application_insights_key" {
   description = "Application Insights connection string — sourced from monitoring module output"
 }
 
+variable "log_analytics_workspace_id" {
+  type        = string
+  description = "Log Analytics Workspace resource ID for diagnostic settings (FR7.6 MUST). Pass module.monitoring.workspace_id from the calling root module."
+}
+
 # ─────────────────────────────────────────────────────────────────
 # App Service Plan
 # ─────────────────────────────────────────────────────────────────
@@ -184,6 +189,38 @@ resource "azurerm_linux_web_app_slot" "staging" {
     Environment = "${var.environment}-staging"
     ManagedBy   = "Terraform"
     Project     = "Innoventity Platform Core"
+  }
+}
+
+# ─────────────────────────────────────────────────────────────────
+# Azure Monitor Diagnostic Settings (FR7.6 MUST)
+# Streams App Service HTTP, console, and application logs + AllMetrics to Log Analytics.
+# ─────────────────────────────────────────────────────────────────
+
+resource "azurerm_monitor_diagnostic_setting" "app_service" {
+  name                       = "innoventity-${var.environment}-app-diag"
+  target_resource_id         = azurerm_linux_web_app.main.id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
+
+  enabled_log {
+    category = "AppServiceHTTPLogs"
+  }
+
+  enabled_log {
+    category = "AppServiceConsoleLogs"
+  }
+
+  enabled_log {
+    category = "AppServiceAppLogs"
+  }
+
+  enabled_log {
+    category = "AppServiceAuditLogs"
+  }
+
+  metric {
+    category = "AllMetrics"
+    enabled  = true
   }
 }
 

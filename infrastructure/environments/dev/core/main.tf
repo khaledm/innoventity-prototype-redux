@@ -62,6 +62,14 @@ variable "connection_string" {
   description = "SQL connection string from data/ layer"
 }
 
+# Sourced from data/ output: cd ../data && terraform output -raw sql_server_id
+# Required for SQL Server diagnostic settings (FR7.6). Run after data/ apply.
+variable "sql_server_id" {
+  type        = string
+  default     = null
+  description = "SQL Server resource ID from data/ layer — enables diagnostic settings on the SQL Server. Inject at apply time: -var sql_server_id=$(cd ../data && terraform output -raw sql_server_id)"
+}
+
 # ─────────────────────────────────────────────────────────────────
 # Modules
 # ─────────────────────────────────────────────────────────────────
@@ -83,6 +91,34 @@ module "app_service" {
   jwt_secret_key           = var.jwt_secret_key
   connection_string        = var.connection_string
   application_insights_key = module.monitoring.connection_string
+  log_analytics_workspace_id = module.monitoring.workspace_id
+}
+
+# ─────────────────────────────────────────────────────────────────
+# Azure Monitor Diagnostic Settings — SQL Server (FR7.6 MUST)
+# Created here (not in sql-database module) because the Log Analytics workspace
+# lives in core/ state while SQL Server lives in data/ state. Cross-state wiring
+# is done by injecting sql_server_id as input variable at apply time.
+# ─────────────────────────────────────────────────────────────────
+
+resource "azurerm_monitor_diagnostic_setting" "sql_server" {
+  count                      = var.sql_server_id != null ? 1 : 0
+  name                       = "innoventity-${var.environment}-sql-diag"
+  target_resource_id         = var.sql_server_id
+  log_analytics_workspace_id = module.monitoring.workspace_id
+
+  enabled_log {
+    category = "SQLSecurityAuditEvents"
+  }
+
+  enabled_log {
+    category = "DevOpsOperationsAudit"
+  }
+
+  metric {
+    category = "Basic"
+    enabled  = true
+  }
 }
 
 # ─────────────────────────────────────────────────────────────────
