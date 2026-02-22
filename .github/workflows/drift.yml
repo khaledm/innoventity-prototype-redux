@@ -1,0 +1,121 @@
+# .github/workflows/drift.yml
+#
+# Drift detection — runs nightly to detect out-of-band Azure resource changes.
+# NEVER applies — detection only. Emits ::error:: annotation if drift is found.
+#
+# Job chain: drift-check-data ║ drift-check-core  (parallel, independently gated)
+#
+# Trigger:
+#   schedule  — 02:00 UTC daily
+#   workflow_dispatch — on-demand manual drift check
+#
+# Required secrets:
+#   ARM_CLIENT_ID, ARM_CLIENT_SECRET, ARM_SUBSCRIPTION_ID, ARM_TENANT_ID
+#   SQL_ADMIN_PASSWORD    — needed to satisfy data/ variable validation at plan time
+#   JWT_SECRET_KEY        — needed to satisfy core/ jwt_secret_key validation at plan time
+#
+# Exit codes from terraform plan -detailed-exitcode:
+#   0 = no changes      → success, no drift
+#   1 = plan error      → infra is broken, needs investigation
+#   2 = changes pending → drift detected, manual reconciliation required
+
+name: Drift Detection
+
+on:
+  schedule:
+    - cron: "0 2 * * *"   # 02:00 UTC daily
+  workflow_dispatch:
+
+env:
+  ARM_CLIENT_ID:       ${{ secrets.ARM_CLIENT_ID }}
+  ARM_CLIENT_SECRET:   ${{ secrets.ARM_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID:       ${{ secrets.ARM_TENANT_ID }}
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────
+  # data/ drift check — Resource Group + SQL Server + SQL Database
+  # ─────────────────────────────────────────────────────────────────
+  drift-check-data:
+    name: Drift / data
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure/environments/dev/data
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.6"
+          terraform_wrapper: false
+
+      - name: terraform init
+        run: terraform init -input=false
+
+      - name: Detect drift (never applies)
+        run: |
+          set +e
+          terraform plan -detailed-exitcode -input=false \
+            -var "sql_admin_password=${{ secrets.SQL_ADMIN_PASSWORD }}"
+          EXIT_CODE=$?
+          set -e
+          if [ $EXIT_CODE -eq 2 ]; then
+            echo "::error file=infrastructure/environments/dev/data/main.tf::Drift detected in data/ layer (exit 2) — manual resource change suspected. Run infra.yml workflow_dispatch to reconcile."
+            exit 1
+          elif [ $EXIT_CODE -eq 1 ]; then
+            echo "::error::terraform plan errored in data/ (exit 1) — check ARM auth, backend config, and state integrity."
+            exit 1
+          fi
+          echo "✅ No drift in data/ — state is consistent with Azure resources."
+
+  # ─────────────────────────────────────────────────────────────────
+  # core/ drift check — App Service + App Insights + diagnostic settings
+  # Reads connection_string and sql_server_id from data/ state so that
+  # the plan accurately reflects the live configuration (no false positives).
+  # ─────────────────────────────────────────────────────────────────
+  drift-check-core:
+    name: Drift / core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.6"
+          terraform_wrapper: false
+
+      - name: Read data/ outputs for core/ plan inputs
+        id: data-outputs
+        working-directory: infrastructure/environments/dev/data
+        run: |
+          terraform init -input=false
+          CONN=$(terraform output -raw connection_string)
+          echo "::add-mask::$CONN"
+          echo "connection_string=$CONN" >> $GITHUB_OUTPUT
+
+          SQL_SERVER_ID=$(terraform output -raw sql_server_id)
+          echo "sql_server_id=$SQL_SERVER_ID" >> $GITHUB_OUTPUT
+
+      - name: terraform init (core)
+        working-directory: infrastructure/environments/dev/core
+        run: terraform init -input=false
+
+      - name: Detect drift (never applies)
+        working-directory: infrastructure/environments/dev/core
+        run: |
+          set +e
+          terraform plan -detailed-exitcode -input=false \
+            -var "connection_string=${{ steps.data-outputs.outputs.connection_string }}" \
+            -var "jwt_secret_key=${{ secrets.JWT_SECRET_KEY }}" \
+            -var "sql_server_id=${{ steps.data-outputs.outputs.sql_server_id }}"
+          EXIT_CODE=$?
+          set -e
+          if [ $EXIT_CODE -eq 2 ]; then
+            echo "::error file=infrastructure/environments/dev/core/main.tf::Drift detected in core/ layer (exit 2) — manual resource change suspected. Run infra.yml workflow_dispatch to reconcile."
+            exit 1
+          elif [ $EXIT_CODE -eq 1 ]; then
+            echo "::error::terraform plan errored in core/ (exit 1) — check ARM auth, backend config, and state integrity."
+            exit 1
+          fi
+          echo "✅ No drift in core/ — state is consistent with Azure resources."

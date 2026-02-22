@@ -79,11 +79,13 @@ Before approving any infrastructure PR:
 
 ---
 
-## Known Outstanding Items (as of commit 7281cf3)
+## Known Outstanding Items
 
-These are tracked issues that should be completed before T070 is closed:
+All spec-analysis findings (C1–C6, H1–H6) are resolved. T070 may now be closed.
 
-- **`sql_server_id` wiring in CI**: T076 must inject `-var sql_server_id=$(cd environments/dev/data && terraform output -raw sql_server_id)` in the `infra.yml` `terraform-apply-core` step
+Remaining pipeline validation (T077/T078 — not a blocker for T070):
+- **T077**: Pipeline gates not yet verified — requires `infra.yml` green run on dev
+- **T078**: Screenshot evidence not yet in `infrastructure/README.md` — complete after first successful pipeline run
 
 ---
 
@@ -97,3 +99,4 @@ These are tracked issues that should be completed before T070 is closed:
 | 2A | 7ba7686 | C5 (diagnostic settings App Service + SQL, FR7.6) |
 | 2B | 6319022 | C6 (destroy-environment.ps1, FR7.8), H5 (timing gate, idempotency step) |
 | H3 close | 7281cf3 | H3 fully resolved: go.sum generated via `go mod tidy` (Go 1.26); go.mod expanded with indirect deps |
+| T076 | pending | Three GitHub Actions workflows authored: infra.yml (CI wiring `sql_server_id` ✅), deploy.yml, drift.yml |
