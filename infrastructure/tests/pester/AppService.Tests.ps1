@@ -11,7 +11,7 @@ BeforeAll {
     if (-not $env:APP_SERVICE_NAME)    { throw "APP_SERVICE_NAME env var is required" }
     if (-not $env:RESOURCE_GROUP_NAME) { throw "RESOURCE_GROUP_NAME env var is required" }
 
-    $app = az webapp show `
+    $script:app = az webapp show `
         --name $env:APP_SERVICE_NAME `
         --resource-group $env:RESOURCE_GROUP_NAME `
         --query "{httpsOnly:httpsOnly,ftpsState:siteConfig.ftpsState,minTls:siteConfig.minTlsVersion,alwaysOn:siteConfig.alwaysOn,planId:serverFarmId}" `
@@ -22,22 +22,22 @@ BeforeAll {
     # on all other SKUs, alwaysOn = false is an availability misconfiguration causing cold starts.
     # Terraform module: always_on = var.sku_name != "B1" ? true : false
     $script:appSku = az appservice plan show `
-        --ids $app.planId `
+        --ids $script:app.planId `
         --query "sku.name" `
         --output tsv
 }
 
 Describe "App Service Configuration" {
     It "enforces HTTPS-only (httpsOnly = true)" {
-        $app.httpsOnly | Should -Be $true
+        $script:app.httpsOnly | Should -Be $true
     }
 
     It "disables FTP (ftpsState = Disabled)" {
-        $app.ftpsState | Should -Be "Disabled"
+        $script:app.ftpsState | Should -Be "Disabled"
     }
 
     It "enforces minimum TLS 1.2" {
-        $app.minTls | Should -Be "1.2"
+        $script:app.minTls | Should -Be "1.2"
     }
 
     It "alwaysOn is false on B1, true on non-B1 SKUs (availability misconfiguration guard)" {
@@ -45,10 +45,10 @@ Describe "App Service Configuration" {
         # On any other SKU, alwaysOn = false causes cold starts and is an active misconfiguration.
         # $script:appSku is fetched from az appservice plan show in BeforeAll.
         if ($script:appSku -eq "B1") {
-            $app.alwaysOn | Should -Be $false `
+            $script:app.alwaysOn | Should -Be $false `
                 -Because "B1 SKU does not support always_on; Terraform sets it false intentionally"
         } else {
-            $app.alwaysOn | Should -Be $true `
+            $script:app.alwaysOn | Should -Be $true `
                 -Because "always_on must be enabled on $($script:appSku) SKU to prevent cold starts (availability misconfiguration)"
         }
     }

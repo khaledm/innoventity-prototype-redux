@@ -122,7 +122,15 @@ if (-not $WhatIf) {
     } while ($attempts -lt 18)  # 3 minutes max
 
     if ($attempts -ge 18) {
-        Write-Error "❌ Environment did not become healthy within 3 minutes. Check App Service logs."
+        Write-Host "  Fetching recent App Service logs for diagnosis:" -ForegroundColor Yellow
+        az webapp log tail `
+            --name $AppName `
+            --resource-group (terraform -chdir=$CoreDir output -raw resource_group_name) `
+            --provider application `
+            --filter Error `
+            --timeout 10 2>&1 | Select-Object -Last 20 | ForEach-Object { Write-Host "    $_" }
+        throw "❌ Environment '$Environment' did not become healthy within 3 minutes. " +
+              "Check App Service logs above or run: az webapp log tail --name $AppName"
     }
 }
 
