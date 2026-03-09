@@ -4,7 +4,9 @@
     "test-projects": [ "../../tests/Innoventity.API.Tests/Innoventity.API.Tests.csproj" ],
     "mutate": [
       "Infrastructure/Authentication/JwtTokenService.cs",
-      "Infrastructure/Authentication/PasswordHasher.cs"
+      "Infrastructure/Authentication/PasswordHasher.cs",
+      "Features/Authentication/Login.cs",
+      "Domain/Entities/Actor.cs"
     ],
     "reporters": [ "html", "json", "progress" ],
     "thresholds": {

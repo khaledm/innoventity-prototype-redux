@@ -92,8 +92,8 @@
 - [X] T035 [US2] Integration test: POST /auth/login rejects invalid password in LoginTests.cs
 - [X] T036 [US2] Integration test: POST /auth/refresh-token returns new access token in RefreshTokenTests.cs
 - [X] T037 [US2] Integration test: POST /auth/refresh-token rejects expired refresh token in RefreshTokenTests.cs
-- [ ] T081 [P] [US2] Unit test: Login handler increments FailedLoginAttempts on wrong password and resets counter to 0 on successful login in tests/Unit/Infrastructure/LoginHandlerTests.cs
-- [ ] T082 [US2] Integration test: POST /auth/login returns 423 Locked with RFC 7807 body "Too many failed login attempts. Account temporarily locked for 15 minutes." after 5 consecutive failed attempts; assert LockoutUntil is ~15 min in future in tests/Integration/Features/Authentication/LoginTests.cs
+- [X] T081 [P] [US2] Unit test: Login handler increments FailedLoginAttempts on wrong password and resets counter to 0 on successful login in tests/Unit/Infrastructure/LoginHandlerTests.cs
+- [X] T082 [US2] Integration test: POST /auth/login returns 423 Locked with RFC 7807 body "Too many failed login attempts. Account temporarily locked for 15 minutes." after 5 consecutive failed attempts; assert LockoutUntil is ~15 min in future in tests/Integration/Features/Authentication/LoginTests.cs
 
 ### Implementation for User Story 2
 
@@ -102,9 +102,9 @@
 - [X] T040 [US2] Implement AccountStatus check (only Active can login) in Features/Authentication/Login.cs
 - [X] T041 [US2] Implement POST /auth/refresh-token endpoint in Features/Authentication/RefreshToken.cs
 - [X] T042 [US2] Add JWT claims (actorId, actorType, email) in JwtTokenService.cs
-- [ ] T083 [US2] Add FailedLoginAttempts (int, default 0) and LockoutUntil (DateTimeOffset?, nullable) columns to Actor entity in Domain/Entities/Actor.cs (R8.4)
-- [ ] T084 [US2] Create EF Core migration for Actor lockout fields in Infrastructure/Persistence/Migrations/
-- [ ] T085 [US2] Implement lockout logic in Features/Authentication/Login.cs: increment FailedLoginAttempts on wrong password; set LockoutUntil = UtcNow + 15 min on 5th failure; block login with 423 when LockoutUntil > UtcNow; reset counter on successful login (R8.4)
+- [X] T083 [US2] Add FailedLoginAttempts (int, default 0) and LockoutUntil (DateTimeOffset?, nullable) columns to Actor entity in Domain/Entities/Actor.cs (R8.4)
+- [X] T084 [US2] Create EF Core migration for Actor lockout fields in Infrastructure/Persistence/Migrations/
+- [X] T085 [US2] Implement lockout logic in Features/Authentication/Login.cs: increment FailedLoginAttempts on wrong password; set LockoutUntil = UtcNow + 15 min on 5th failure; block login with 423 when LockoutUntil > UtcNow; reset counter on successful login (R8.4)
 
 ---
 

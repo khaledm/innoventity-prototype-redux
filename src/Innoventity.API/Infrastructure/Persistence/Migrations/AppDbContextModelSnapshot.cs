@@ -65,6 +65,9 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<int>("FailedLoginAttempts")
+                        .HasColumnType("int");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -74,6 +77,9 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTimeOffset?>("LockoutUntil")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()

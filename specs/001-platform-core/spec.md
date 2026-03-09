@@ -783,7 +783,7 @@ Scenario: Owner can edit their own innovation
 
 **R3.1 Visibility by Status**:
 - Draft innovations: Visible only to owner
-- Published innovations (≥Submitted): Visible to all actors matching industry affiliation
+- Published innovations (`Published` or `PartnersSelected`): Visible to all actors matching industry affiliation
 - Innovations with selected partners: Full details visible only to owner and accepted partners
 - Rejected bids: Bidders retain limited view (visible but cannot access collaboration workspace)
 
