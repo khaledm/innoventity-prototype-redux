@@ -78,7 +78,7 @@ jobs:
     needs: terraform-plan-data
     runs-on: ubuntu-latest
     if: ${{ inputs.environment == 'prod' }}
-    environment: prod   # configure required reviewers in GitHub Settings → Environments
+    environment: production   # configure required reviewers in GitHub Settings → Environments
     steps:
       - run: echo "Production data layer approved by ${{ github.actor }}"
 
