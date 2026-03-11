@@ -42,7 +42,7 @@ variable "environment" {
 
 variable "location" {
   type    = string
-  default = "UK South"
+  default = "North Europe"
 }
 
 variable "sql_database_sku" {

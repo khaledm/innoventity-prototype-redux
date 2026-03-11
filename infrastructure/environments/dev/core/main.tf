@@ -40,7 +40,7 @@ variable "environment" {
 
 variable "location" {
   type    = string
-  default = "UK South"
+  default = "North Europe"
 }
 
 variable "app_service_sku" {
