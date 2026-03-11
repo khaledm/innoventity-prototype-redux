@@ -58,9 +58,21 @@ jobs:
         id: tf-outputs
         working-directory: infrastructure/environments/dev/core
         run: |
+          set -euo pipefail
           terraform init -input=false
-          echo "app_service_name=$(terraform output -raw app_service_name)" >> $GITHUB_OUTPUT
-          echo "resource_group_name=$(terraform output -raw resource_group_name)" >> $GITHUB_OUTPUT
+
+          APP_SERVICE_NAME="$(terraform output -raw app_service_name 2>/dev/null || true)"
+          RESOURCE_GROUP_NAME="$(terraform output -raw resource_group_name 2>/dev/null || true)"
+
+          if [ -z "$APP_SERVICE_NAME" ] || [ -z "$RESOURCE_GROUP_NAME" ]; then
+            echo "::error::Terraform outputs not found in infrastructure/environments/dev/core state."
+            echo "::error::Run Infrastructure workflow (environment=dev) to completion first, then rerun Deploy."
+            echo "::error::Expected outputs: app_service_name, resource_group_name"
+            exit 1
+          fi
+
+          echo "app_service_name=$APP_SERVICE_NAME" >> "$GITHUB_OUTPUT"
+          echo "resource_group_name=$RESOURCE_GROUP_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Verify App Service exists
         run: |

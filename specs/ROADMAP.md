@@ -31,8 +31,8 @@ This roadmap ensures **all recommendations from legacy domain analysis are captu
 |-------|--------|--------|------|-------|----------------------|
 | **Phase 0 Backend (MVP core)** | ✅ COMPLETE | `001-platform-core` | [spec.md](001-platform-core/spec.md) | 57/57 ✅ | Registration/auth + view innovation backend slice complete |
 | **Phase 0 Full Scope (Backend + Infra + Frontend + CI/CD)** | 🏃 IN PROGRESS | `001-platform-core` | [spec.md](001-platform-core/spec.md) | Backend complete; full-scope gates pending | Prevent false baseline: full MVP includes Angular client + infra automation + CI/CD validation |
-| **Phase 0.5 (Foundation)** | ⏸️ DEFERRED | `002-domain-enhancements` | [spec.md](002-domain-enhancements/spec.md) | 0/32 | EntityBase, Actor name/address (HIGH priority items) |
-| **Phase 0.6 (API Completion)** | 🏃 IN PROGRESS (70%) | `003-api-completion` | [spec.md](003-api-completion/spec.md) | 61/67 target | Bid CRUD operations (simplified, Phase 1 will refactor) |
+| **Phase 0.5 (Foundation)** | ✅ COMPLETE | `002-domain-enhancements` | [spec.md](002-domain-enhancements/spec.md) | 31/31 ✅ | EntityBase, Actor name/address, and contract alignment complete (implementation present on `001-platform-core`; merge-to-`Main` status should be verified separately) |
+| **Phase 0.6 (API Completion)** | ✅ COMPLETE | `003-api-completion` | [spec.md](003-api-completion/spec.md) | 17/17 tasks ✅ | Innovation CRUD + bid management + journey testing + traceability complete |
 | **Phase 1 (Domain Richness)** | 📋 PLANNED | TBD | [See below](#phase-1-domain-richness--rich-behavior) | TBD | ProductIdea composition, FormalResponse polymorphism, Selection workflow |
 | **Phase 2 (Engagement)** | 📋 PLANNED | TBD | [See below](#phase-2-engagement--communication) | TBD | Messaging, interest tracking, industry hierarchy |
 | **Phase 3 (Virtual Incubator)** | 💡 VISION | TBD | Not yet specified | TBD | BusinessPlan aggregate, collaboration workspace |
@@ -50,11 +50,11 @@ Source of truth: `specs/001-platform-core/tasks.md` and `specs/001-platform-core
 
 ---
 
-## Phase 0.6 (Current) - API Completion & Subcutaneous Testing
+## Phase 0.6 (Completed) - API Completion & Subcutaneous Testing
 
 **Branch**: `003-api-completion`
 **Duration**: 3 weeks (Feb 3-24, 2026)
-**Status**: Week 3 - 70% complete (T001-T010 done, T011-T017 remaining)
+**Status**: ✅ COMPLETE (T001-T017 done)
 
 ### Scope Summary
 
