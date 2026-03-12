@@ -164,9 +164,10 @@ terraform apply      # must exit 0 with "No changes. Your infrastructure matches
 
 | Test | Condition | Expected | Actual observed | Date recorded |
 |------|-----------|----------|-----------------|---------------|
-| `GET /health` with missing `DefaultConnection` app setting | `DefaultConnection` connection string removed from App Service Configuration | App reports unhealthy + non-200 status | _(run T070 step 2 and record here)_ | _(pending T070)_ |
+| `GET /health` with missing `DefaultConnection` app setting | `DefaultConnection` connection string removed from App Service Configuration | App reports unhealthy + non-200 status | *(run T070 step 2 and record here)* | *(pending T070)* |
 
 **T070 procedure for this record**:
+
 1. Temporarily remove `DefaultConnection` from App Service Configuration (via Terraform/tfvars)
 2. Run `GET /health` and record the **exact HTTP status code** and **response body** in the table above
 3. Restore the connection string
