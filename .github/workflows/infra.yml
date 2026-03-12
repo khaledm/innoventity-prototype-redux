@@ -92,8 +92,6 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() && needs.terraform-plan-data.result == 'success' && (needs.approve-data.result == 'success' || needs.approve-data.result == 'skipped') }}
     outputs:
-      connection_string:   ${{ steps.tf-outputs.outputs.connection_string }}
-      sql_server_id:       ${{ steps.tf-outputs.outputs.sql_server_id }}
       resource_group_name: ${{ steps.tf-outputs.outputs.resource_group_name }}
     defaults:
       run:
@@ -123,18 +121,7 @@ jobs:
         id: tf-outputs
         run: |
           set -euo pipefail
-          TF_JSON=$(terraform output -json 2>&1)
-          echo "terraform output -json exit: $?"
-          echo "TF_JSON length: ${#TF_JSON}"
-
-          CONN=$(echo "$TF_JSON" | jq -re '.connection_string.value')
-          echo "::add-mask::$CONN"
-          echo "connection_string=$CONN" >> $GITHUB_OUTPUT
-
-          SQL_SERVER_ID=$(echo "$TF_JSON" | jq -re '.sql_server_id.value')
-          echo "sql_server_id=$SQL_SERVER_ID" >> $GITHUB_OUTPUT
-
-          RG=$(echo "$TF_JSON" | jq -re '.resource_group_name.value')
+          RG=$(terraform output -json 2>/dev/null | jq -re '.resource_group_name.value')
           echo "resource_group_name=$RG" >> $GITHUB_OUTPUT
 
   # ─────────────────────────────────────────────────────────────────
@@ -155,16 +142,24 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "~1.6"
+          terraform_wrapper: false
+
+      - name: terraform init (data)
+        working-directory: infrastructure/environments/${{ inputs.environment || 'dev' }}/data
+        run: terraform init -input=false
 
       - name: terraform init
         run: terraform init -input=false
 
       - name: terraform plan
         run: |
+          DATA_JSON=$(terraform -chdir=../data output -json 2>/dev/null)
+          CONN=$(echo "$DATA_JSON" | jq -re '.connection_string.value')
+          SQL_ID=$(echo "$DATA_JSON" | jq -re '.sql_server_id.value')
           terraform plan -out=tfplan-core -input=false \
-            -var "connection_string=${{ needs.terraform-apply-data.outputs.connection_string }}" \
+            -var "connection_string=$CONN" \
             -var "jwt_secret_key=${{ secrets.JWT_SECRET_KEY }}" \
-            -var "sql_server_id=${{ needs.terraform-apply-data.outputs.sql_server_id }}"
+            -var "sql_server_id=$SQL_ID"
 
       - uses: actions/upload-artifact@v4
         with:
