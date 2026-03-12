@@ -61,8 +61,12 @@ jobs:
           set -euo pipefail
           terraform init -input=false
 
-          APP_SERVICE_NAME="$(terraform output -raw app_service_name 2>/dev/null || true)"
-          RESOURCE_GROUP_NAME="$(terraform output -raw resource_group_name 2>/dev/null || true)"
+          # terraform output -raw emits diagnostic box-drawing chars to stdout in TF 1.6+
+          # when state is empty; use -json instead which returns parseable {} on empty state.
+          TF_JSON=$(terraform output -json 2>/dev/null || echo "{}")
+
+          APP_SERVICE_NAME=$(echo "$TF_JSON" | jq -r '.app_service_name.value // empty')
+          RESOURCE_GROUP_NAME=$(echo "$TF_JSON" | jq -r '.resource_group_name.value // empty')
 
           if [ -z "$APP_SERVICE_NAME" ] || [ -z "$RESOURCE_GROUP_NAME" ]; then
             echo "::error::Terraform outputs not found in infrastructure/environments/dev/core state."
