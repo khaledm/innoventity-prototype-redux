@@ -122,16 +122,19 @@ jobs:
       - name: Capture outputs
         id: tf-outputs
         run: |
-          TF_JSON=$(terraform output -json)
+          set -euo pipefail
+          TF_JSON=$(terraform output -json 2>&1)
+          echo "terraform output -json exit: $?"
+          echo "TF_JSON length: ${#TF_JSON}"
 
-          CONN=$(echo "$TF_JSON" | jq -r '.connection_string.value')
+          CONN=$(echo "$TF_JSON" | jq -re '.connection_string.value')
           echo "::add-mask::$CONN"
           echo "connection_string=$CONN" >> $GITHUB_OUTPUT
 
-          SQL_SERVER_ID=$(echo "$TF_JSON" | jq -r '.sql_server_id.value')
+          SQL_SERVER_ID=$(echo "$TF_JSON" | jq -re '.sql_server_id.value')
           echo "sql_server_id=$SQL_SERVER_ID" >> $GITHUB_OUTPUT
 
-          RG=$(echo "$TF_JSON" | jq -r '.resource_group_name.value')
+          RG=$(echo "$TF_JSON" | jq -re '.resource_group_name.value')
           echo "resource_group_name=$RG" >> $GITHUB_OUTPUT
 
   # ─────────────────────────────────────────────────────────────────
