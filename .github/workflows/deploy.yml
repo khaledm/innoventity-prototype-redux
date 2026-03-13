@@ -148,20 +148,20 @@ jobs:
           terraform_version: "~1.6"
           terraform_wrapper: false
 
-      - name: Read connection string from terraform state
-        id: tf-conn
+      - name: Apply migrations
         working-directory: infrastructure/environments/dev/data
         run: |
+          set -euo pipefail
           terraform init -input=false
-          CONN=$(terraform output -raw connection_string)
+          # Read connection_string directly from state and pass it to dotnet-ef in the same
+          # shell process. Never write it to $GITHUB_OUTPUT — GitHub secret scanning blocks
+          # any output value that contains SQL_ADMIN_PASSWORD.
+          CONN=$(terraform output -json | jq -re '.connection_string.value')
           echo "::add-mask::$CONN"
-          echo "connection_string=$CONN" >> $GITHUB_OUTPUT
-
-      - name: Apply migrations
-        run: |
+          cd "$GITHUB_WORKSPACE"
           dotnet ef database update \
             --project src/Innoventity.API/Innoventity.API.csproj \
-            --connection "${{ steps.tf-conn.outputs.connection_string }}"
+            --connection "$CONN"
 
   # ─────────────────────────────────────────────────────────────────
   # 4. Deploy — zip-deploy API package to App Service

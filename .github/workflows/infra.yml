@@ -53,6 +53,7 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "~1.6"
+          terraform_wrapper: false
 
       - name: terraform init
         run: terraform init -input=false
@@ -205,8 +206,10 @@ jobs:
       - name: Capture outputs
         id: tf-outputs
         run: |
-          echo "app_service_name=$(terraform output -raw app_service_name)" >> $GITHUB_OUTPUT
-          echo "app_service_hostname=$(terraform output -raw app_service_hostname)" >> $GITHUB_OUTPUT
+          set -euo pipefail
+          TF_JSON=$(terraform output -json 2>/dev/null)
+          echo "app_service_name=$(echo "$TF_JSON" | jq -re '.app_service_name.value')" >> $GITHUB_OUTPUT
+          echo "app_service_hostname=$(echo "$TF_JSON" | jq -re '.app_service_hostname.value')" >> $GITHUB_OUTPUT
 
   # ─────────────────────────────────────────────────────────────────
   # 6. Pester infrastructure test suite
