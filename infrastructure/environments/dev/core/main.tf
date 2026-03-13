@@ -40,7 +40,7 @@ variable "environment" {
 
 variable "location" {
   type    = string
-  default = "North Europe"
+  default = "West Europe"  # PremiumV3 quota is 0 in North Europe on this VS Professional subscription; West Europe has it available.
 }
 
 variable "app_service_sku" {
