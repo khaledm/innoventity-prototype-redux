@@ -218,9 +218,8 @@ resource "azurerm_monitor_diagnostic_setting" "app_service" {
     category = "AppServiceAuditLogs"
   }
 
-  metric {
+  enabled_metric {
     category = "AllMetrics"
-    enabled  = true
   }
 }
 

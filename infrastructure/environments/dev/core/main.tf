@@ -112,9 +112,8 @@ resource "azurerm_monitor_diagnostic_setting" "sql_server" {
     # SQLSecurityAuditEvents is a database-level category (Microsoft.Sql/servers/databases), not server-level.
   }
 
-  metric {
+  enabled_metric {
     category = "AllMetrics"  # SQL Server only supports "AllMetrics", not "Basic"
-    enabled  = true
   }
 }
 
