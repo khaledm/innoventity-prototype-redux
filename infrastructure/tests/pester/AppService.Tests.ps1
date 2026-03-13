@@ -18,13 +18,18 @@ BeforeAll {
         --output json | ConvertFrom-Json
 
     # Fetch App Service Plan SKU — needed for the alwaysOn conditional assertion.
-    # always_on is intentionally false on B1 (Basic tier does not support it);
-    # on all other SKUs, alwaysOn = false is an availability misconfiguration causing cold starts.
-    # Terraform module: always_on = var.sku_name != "B1" ? true : false
-    $script:appSku = az appservice plan show `
-        --ids $script:app.planId `
-        --query "sku.name" `
-        --output tsv
+    # always_on is intentionally false on F1/D1/B1; true on all other SKUs.
+    # Parse plan name from the resource ID rather than passing --ids, which fails when
+    # ConvertFrom-Json returns an empty planId on some runner environments.
+    $script:appSku = ''
+    if ($script:app.planId) {
+        $planName = ($script:app.planId -split '/')[-1]
+        $script:appSku = az appservice plan show `
+            --name $planName `
+            --resource-group $env:RESOURCE_GROUP_NAME `
+            --query "sku.name" `
+            --output tsv
+    }
 }
 
 Describe "App Service Configuration" {

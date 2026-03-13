@@ -17,6 +17,10 @@
 
 name: Infrastructure
 
+permissions:
+  checks: write      # required by dorny/test-reporter to publish test results
+  contents: read
+
 on:
   workflow_dispatch:
     inputs:
@@ -251,6 +255,7 @@ jobs:
               './infrastructure/tests/pester/Secrets.Tests.ps1',
               './infrastructure/tests/pester/SqlDatabase.Tests.ps1'
           )
+          $config.Output.CIFormat         = 'GithubActions'  # annotates failures inline in Actions log
           $config.TestResult.Enabled      = $true
           $config.TestResult.OutputPath   = 'pester-infra-results.xml'
           $config.TestResult.OutputFormat = 'NUnitXml'
@@ -262,3 +267,12 @@ jobs:
         with:
           name: pester-infra-results
           path: pester-infra-results.xml
+
+      - name: Publish test results to Summary
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Pester Infrastructure Tests
+          path: pester-infra-results.xml
+          reporter: dotnet-nunit
+          fail-on-error: false
