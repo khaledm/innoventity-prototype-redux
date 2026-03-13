@@ -134,6 +134,7 @@ jobs:
     name: Plan / core
     needs: terraform-apply-data
     runs-on: ubuntu-latest
+    if: ${{ always() && needs.terraform-apply-data.result == 'success' }}
     defaults:
       run:
         working-directory: infrastructure/environments/${{ inputs.environment || 'dev' }}/core
@@ -178,6 +179,7 @@ jobs:
     name: Apply / core
     needs: [terraform-plan-core, terraform-apply-data]
     runs-on: ubuntu-latest
+    if: ${{ always() && needs.terraform-plan-core.result == 'success' && needs.terraform-apply-data.result == 'success' }}
     outputs:
       app_service_name:     ${{ steps.tf-outputs.outputs.app_service_name }}
       app_service_hostname: ${{ steps.tf-outputs.outputs.app_service_hostname }}
@@ -220,6 +222,7 @@ jobs:
     name: Pester / infra
     needs: [terraform-apply-core, terraform-apply-data]
     runs-on: ubuntu-latest
+    if: ${{ always() && needs.terraform-apply-core.result == 'success' && needs.terraform-apply-data.result == 'success' }}
     steps:
       - uses: actions/checkout@v4
 
