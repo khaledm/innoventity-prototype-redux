@@ -46,7 +46,7 @@ variable "location" {
 variable "app_service_sku" {
   type        = string
   description = "App Service Plan SKU"
-  default     = "B1"
+  default     = "F1"  # Free tier — no quota required. Use B1/S1 for prod when quota allows.
 }
 
 variable "jwt_secret_key" {
@@ -116,7 +116,7 @@ resource "azurerm_monitor_diagnostic_setting" "sql_server" {
   }
 
   metric {
-    category = "Basic"
+    category = "AllMetrics"  # SQL Server only supports "AllMetrics", not "Basic"
     enabled  = true
   }
 }

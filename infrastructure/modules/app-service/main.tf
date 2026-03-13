@@ -109,8 +109,8 @@ resource "azurerm_linux_web_app" "main" {
   https_only = true
 
   site_config {
-    # always_on is not supported on Basic (B1) tier
-    always_on           = var.sku_name != "B1" ? true : false
+    # always_on requires Standard tier or above; not supported on Free (F1), Shared (D1), or Basic (B1)
+    always_on           = !contains(["F1", "D1", "B1"], var.sku_name)
     ftps_state          = "Disabled"
     http2_enabled       = true
     minimum_tls_version = "1.2"
