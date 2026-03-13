@@ -244,7 +244,13 @@ jobs:
         run: |
           Install-Module Pester -Force -SkipPublisherCheck -RequiredVersion 5.6.1
           $config = New-PesterConfiguration
-          $config.Run.Path          = './infrastructure/tests/pester/'
+          # HealthCheck.Tests.ps1 is excluded here — it requires a deployed application
+          # and runs in deploy.yml (pester-health job) after code deployment.
+          $config.Run.Path          = @(
+              './infrastructure/tests/pester/AppService.Tests.ps1',
+              './infrastructure/tests/pester/Secrets.Tests.ps1',
+              './infrastructure/tests/pester/SqlDatabase.Tests.ps1'
+          )
           $config.TestResult.Enabled      = $true
           $config.TestResult.OutputPath   = 'pester-infra-results.xml'
           $config.TestResult.OutputFormat = 'NUnitXml'
