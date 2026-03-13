@@ -46,7 +46,7 @@ variable "location" {
 variable "app_service_sku" {
   type        = string
   description = "App Service Plan SKU"
-  default     = "F1"  # Free tier — no quota required. Use B1/S1 for prod when quota allows.
+  default     = "S1"  # Standard tier — Basic and Free VM quotas are 0 in this subscription.
 }
 
 variable "jwt_secret_key" {
@@ -108,11 +108,8 @@ resource "azurerm_monitor_diagnostic_setting" "sql_server" {
   log_analytics_workspace_id = module.monitoring.workspace_id
 
   enabled_log {
-    category = "SQLSecurityAuditEvents"
-  }
-
-  enabled_log {
-    category = "DevOpsOperationsAudit"
+    category = "DevOpsOperationsAudit"  # Only category supported at server (Microsoft.Sql/servers) level.
+    # SQLSecurityAuditEvents is a database-level category (Microsoft.Sql/servers/databases), not server-level.
   }
 
   metric {
