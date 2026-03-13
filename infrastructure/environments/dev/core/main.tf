@@ -46,7 +46,7 @@ variable "location" {
 variable "app_service_sku" {
   type        = string
   description = "App Service Plan SKU"
-  default     = "P1v2"  # PremiumV2 — Free/Basic/Standard VM quotas are 0 in this subscription.
+  default     = "P1v3"  # PremiumV3 — only P0v3/P1v3/P2v3/P3v3 have non-zero quota (limit=30) on this VS Professional subscription.
 }
 
 variable "jwt_secret_key" {
