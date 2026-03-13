@@ -217,4 +217,3 @@ go test ./... -timeout 30m -v
 - [infrastructure.md](../specs/001-platform-core/infrastructure.md) — Full design rationale
 - [plan.md](../specs/001-platform-core/plan.md) — Application architecture
 - [tasks.md](../specs/001-platform-core/tasks.md) — T065, T068–T070, T076–T078
-<!-- trigger: infra pipeline bootstrap 2026-03-11 -->
