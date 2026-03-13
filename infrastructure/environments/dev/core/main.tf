@@ -46,7 +46,7 @@ variable "location" {
 variable "app_service_sku" {
   type        = string
   description = "App Service Plan SKU"
-  default     = "S1"  # Standard tier — Basic and Free VM quotas are 0 in this subscription.
+  default     = "P1v2"  # PremiumV2 — Free/Basic/Standard VM quotas are 0 in this subscription.
 }
 
 variable "jwt_secret_key" {
@@ -107,10 +107,9 @@ resource "azurerm_monitor_diagnostic_setting" "sql_server" {
   target_resource_id         = var.sql_server_id
   log_analytics_workspace_id = module.monitoring.workspace_id
 
-  enabled_log {
-    category = "DevOpsOperationsAudit"  # Only category supported at server (Microsoft.Sql/servers) level.
-    # SQLSecurityAuditEvents is a database-level category (Microsoft.Sql/servers/databases), not server-level.
-  }
+  # No enabled_log blocks: SQLSecurityAuditEvents and DevOpsOperationsAudit are
+  # conditional categories only available when SQL Server Auditing is explicitly
+  # configured via an audit policy. Without one, Azure returns 400 "not supported".
 
   metric {
     category = "AllMetrics"  # SQL Server only supports "AllMetrics", not "Basic"
