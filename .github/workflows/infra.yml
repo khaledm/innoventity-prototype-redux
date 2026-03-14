@@ -258,7 +258,7 @@ jobs:
           $config.Output.CIFormat         = 'GithubActions'  # annotates failures inline in Actions log
           $config.TestResult.Enabled      = $true
           $config.TestResult.OutputPath   = 'pester-infra-results.xml'
-          $config.TestResult.OutputFormat = 'NUnitXml'
+          $config.TestResult.OutputFormat = 'NUnit30Xml'  # NUnit 3.x — required by dorny/test-reporter dotnet-nunit parser (NUnitXml is NUnit 2.x and causes parse failure)
           $config.Run.Exit                = $true
           Invoke-Pester -Configuration $config
 
