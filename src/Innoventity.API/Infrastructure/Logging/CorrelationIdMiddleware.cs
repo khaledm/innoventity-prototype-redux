@@ -18,7 +18,7 @@ public sealed class CorrelationIdMiddleware(RequestDelegate next, ILogger<Correl
 
     public async Task InvokeAsync(HttpContext context)
     {
-        var correlationId = context.Request.Headers[HeaderName].FirstOrDefault()
+        string correlationId = context.Request.Headers[HeaderName].FirstOrDefault()
                             ?? Guid.NewGuid().ToString();
 
         // Expose on HttpContext for downstream handlers (e.g. exception handler)
