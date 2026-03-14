@@ -189,6 +189,7 @@ jobs:
           dotnet ef database update \
             --project src/Innoventity.API/Innoventity.API.csproj \
             --startup-project src/Innoventity.API/Innoventity.API.csproj \
+            --configuration Release \
             --no-build \
             --connection "$CONN"
 
