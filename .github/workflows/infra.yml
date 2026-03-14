@@ -258,7 +258,7 @@ jobs:
           $config.Output.CIFormat         = 'GithubActions'  # annotates failures inline in Actions log
           $config.TestResult.Enabled      = $true
           $config.TestResult.OutputPath   = 'pester-infra-results.xml'
-          $config.TestResult.OutputFormat = 'JUnitXml'
+          $config.TestResult.OutputFormat = 'NUnit3'  # NUnit 3.x — required by dorny/test-reporter dotnet-nunit parser
           $config.Run.Exit                = $true
           Invoke-Pester -Configuration $config
 
@@ -274,7 +274,7 @@ jobs:
         with:
           name: Pester Infrastructure Tests
           path: pester-infra-results.xml
-          reporter: java-junit
+          reporter: dotnet-nunit
           fail-on-error: false
           fail-on-empty: true
           list-tests: all
