@@ -16,6 +16,15 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// App Service Linux warmup probes require the app to listen on the assigned PORT
+// and all interfaces. Keep local/default hosting behavior when ASPNETCORE_URLS is set.
+var appServicePort = Environment.GetEnvironmentVariable("PORT");
+var configuredUrls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
+if (!string.IsNullOrWhiteSpace(appServicePort) && string.IsNullOrWhiteSpace(configuredUrls))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{appServicePort}");
+}
+
 // Configure Application Insights
 builder.Services.AddApplicationInsightsTelemetry();
 
