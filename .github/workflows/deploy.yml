@@ -15,6 +15,10 @@
 
 name: Deploy
 
+permissions:
+  checks: write
+  contents: read
+
 on:
   push:
     branches: [001-platform-core, Main]
@@ -119,6 +123,17 @@ jobs:
           name: test-results-unit-integration
           path: TestResults/**/*.trx
           if-no-files-found: error
+
+      - name: Publish test results to Summary
+        uses: dorny/test-reporter@v2
+        if: always()
+        with:
+          name: Unit + Integration Tests
+          path: TestResults/**/*.trx
+          reporter: dotnet-trx
+          fail-on-error: false
+          fail-on-empty: true
+          list-tests: all
 
       - name: Publish API
         run: dotnet publish src/Innoventity.API/Innoventity.API.csproj -c Release -o publish/
