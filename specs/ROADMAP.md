@@ -29,10 +29,10 @@ This roadmap ensures **all recommendations from legacy domain analysis are captu
 
 | Phase | Status | Branch | Spec | Tests | Gap Analysis Coverage |
 |-------|--------|--------|------|-------|----------------------|
-| **Phase 0 Backend (MVP core)** | ✅ COMPLETE | `001-platform-core` | [spec.md](001-platform-core/spec.md) | 57/57 ✅ | Registration/auth + view innovation backend slice complete |
-| **Phase 0 Full Scope (Backend + Infra + Frontend + CI/CD)** | 🏃 IN PROGRESS | `001-platform-core` | [spec.md](001-platform-core/spec.md) | Backend complete; full-scope gates pending | Prevent false baseline: full MVP includes Angular client + infra automation + CI/CD validation |
-| **Phase 0.5 (Foundation)** | ✅ COMPLETE | `002-domain-enhancements` | [spec.md](002-domain-enhancements/spec.md) | 31/31 ✅ | EntityBase, Actor name/address, and contract alignment complete (implementation present on `001-platform-core`; merge-to-`Main` status should be verified separately) |
-| **Phase 0.6 (API Completion)** | ✅ COMPLETE | `003-api-completion` | [spec.md](003-api-completion/spec.md) | 17/17 tasks ✅ | Innovation CRUD + bid management + journey testing + traceability complete |
+| **Phase 0 Backend (MVP core)** | ✅ COMPLETE | `001-platform-core` | [spec.md](001-platform-core/spec.md) | 112/115 ✅ | Registration/auth + view innovation backend slice complete |
+| **Phase 0 Full Scope (Backend + Infra + Frontend + CI/CD)** | 🏃 IN PROGRESS | `001-platform-core` | [spec.md](001-platform-core/spec.md) | Backend complete; full-scope gates pending | Full MVP includes Angular client + infra automation + CI/CD validation + browser E2E |
+| **Phase 0.5 (Foundation)** | ✅ COMPLETE | `002-domain-enhancements` (merged to `001-platform-core`) | [spec.md](002-domain-enhancements/spec.md) | 31/31 ✅ | EntityBase, Actor name/address, and contract alignment complete |
+| **Phase 0.6 (API Completion)** | ✅ COMPLETE | `003-api-completion` (merged to `001-platform-core`) | [spec.md](003-api-completion/spec.md) | 17/17 tasks ✅ | Innovation CRUD + bid management + journey testing + traceability complete |
 | **Phase 1 (Domain Richness)** | 📋 PLANNED | TBD | [See below](#phase-1-domain-richness--rich-behavior) | TBD | ProductIdea composition, FormalResponse polymorphism, Selection workflow |
 | **Phase 2 (Engagement)** | 📋 PLANNED | TBD | [See below](#phase-2-engagement--communication) | TBD | Messaging, interest tracking, industry hierarchy |
 | **Phase 3 (Virtual Incubator)** | 💡 VISION | TBD | Not yet specified | TBD | BusinessPlan aggregate, collaboration workspace |
@@ -41,10 +41,10 @@ This roadmap ensures **all recommendations from legacy domain analysis are captu
 
 ### Phase 0 Full Scope - Open Items (explicit)
 
-- **Infrastructure automation (Phase 2b)**: T068, T069, T070
-- **Quickstart validation**: T059
-- **CI/CD operational validation (Phase 6b / CHK031)**: T076, T077, T078
-- **Frontend shell + browser E2E (Phase 7)**: T071, T072, T073, T074, T075
+- **Infrastructure automation (Phase 2b)**: ✅ T068, T069, T070 COMPLETE (validated 2026-04-04)
+- **Quickstart validation**: T059 OPEN
+- **CI/CD operational validation (Phase 6b / CHK031)**: ✅ T076, T077 COMPLETE; ⚠️ T078 PARTIAL (infra.yml ✅, deploy.yml ✅, drift.yml scheduled trigger pending Main merge)
+- **Frontend shell + browser E2E (Phase 7)**: ⚠️ T071, T072, T073, T074, T075 OPEN - **NEXT PRIORITY** per user
 
 Source of truth: `specs/001-platform-core/tasks.md` and `specs/001-platform-core/plan.md` ("Phase 0 Scope: backend + minimal frontend"; "MVP Goal: Register -> Activate -> Login -> View Innovation via Angular client").
 

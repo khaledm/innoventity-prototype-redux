@@ -195,7 +195,23 @@ This file MUST NOT be deleted. Every test class using `WebApplicationFactory<Pro
 - `tests/Innoventity.API.Tests/E2E/Journeys/` — subcutaneous journey tests (J1, J2 complete)
 - `tests/Innoventity.Client.Tests/e2e/` — Playwright tests (deferred until Angular client complete)
 
-**Playwright remains required for**: J4 (Virtual Incubator) multi-party collaboration UX once Angular client is built.
+**Testing Strategy Clarification** (2026-04-04):
+- **Backend API (ASP.NET Core)**: Use subcutaneous tests via `WebApplicationFactory` for all Journey 1-3 validation
+  - Rationale: Faster, more stable, no UI dependency, proves backend completeness
+  - Pattern: Direct HTTP calls to API endpoints with real EF Core in-memory database
+  - Example: `tests/Innoventity.API.Tests/E2E/Journeys/Phase0JourneyTests.cs`
+- **Frontend UI (Angular)**: Use Playwright for browser E2E tests targeting Angular components/pages
+  - Rationale: Validates actual user experience, form interactions, routing, UI state management
+  - Pattern: Browser automation driving Angular SPA against real backend API
+  - Example: `tests/Innoventity.Client.Tests/e2e/journey-1-registration.spec.ts` (future)
+  - **Angular-specific testing**: Signal-based forms, RxJS observables, OpenAPI-generated client integration
+
+**Playwright remains required for**:
+- Angular UI E2E validation (Phase 7: T075 browser journey test)
+- J4 (Virtual Incubator) multi-party collaboration UX once Angular client is built
+- Any tests validating browser-specific behavior (routing, navigation, UI state)
+
+**Constitution Principle 5 Compliance**: Both strategies honor TDD red→green→refactor — subcutaneous tests written BEFORE API implementation, Playwright tests written BEFORE Angular component implementation.
 
 ## Phase 0 Authorization
 
@@ -1047,6 +1063,33 @@ For Phase 0 to be considered "production-ready" (even as a constrained first sli
   - Known limitations of Phase 0 (e.g., no multi-tenant isolation, simplified authorization) are explicitly listed
 
 These checklist items provide the concrete interpretation of "production-ready from Phase 0" used throughout this plan and should be re-validated before cutting any Phase 0 release.
+
+**Status Distinction** (Updated 2026-04-04 per C2 finding resolution):
+
+Two separate completion milestones exist for Phase 0:
+
+1. **"Backend Complete"** (Current State - April 4, 2026):
+   - ✅ All backend API endpoints implemented and tested (112/115 tests passing, 97.4%)
+   - ✅ Infrastructure code authored, validated, and deployed to DEV (`innoventity-dev-api.azurewebsites.net`)
+   - ✅ CI/CD pipelines authored + validated on DEV (infra.yml ✅, deploy.yml ✅)
+   - ✅ Mutation testing threshold met (80% score, threshold: ≥70%)
+   - ✅ Subcutaneous journey tests validate J1-J3 via API (no UI dependency)
+   - ⚠️ **Does NOT include**: Angular client, browser E2E tests, quickstart validation
+
+2. **"Full Phase 0 Complete"** (Pending Frontend + Final Gates):
+   - Requires: Backend Complete (above) + Frontend Shell (T071-T075) + Quickstart Validation (T059)
+   - ✅ Backend: All items from "Backend Complete" above
+   - ⏳ Frontend: Angular 18 app with login + innovation detail pages (T071-T074)
+   - ⏳ Browser E2E: Playwright test exercising Register → Activate → Login → View Innovation (T075)
+   - ⏳ Quickstart: Manual validation of quickstart.md steps (T059)
+   - ⏳ Drift Detection: Scheduled trigger validation on Main branch (T078 partial)
+
+**Roadmap Reporting** (per I1, C2 findings):
+- ROADMAP.md must distinguish "Backend Complete" vs "Full Phase 0 Complete" in status column
+- Phase completion percentages must specify scope: "Backend: 100%" vs "Full Scope: 68%" (example)
+- Prevent false baseline: declaring Phase 0 "done" without frontend creates governance debt
+
+**Next Milestone**: Complete T071-T075 (Angular shell + Playwright E2E) to achieve "Full Phase 0 Complete" status.
 
 ---
 

@@ -27,14 +27,14 @@
 - [x] T011: GET /innovations/{innovationId}/bids (3h)
 - [x] T012: PUT /bids/{bidId} (3h) [Implementation complete - tests pending pre-existing test fixes]
 
-### Week 4: Journey Tests & Documentation (PENDING)
-- [ ] T013: Journey 1 test suite (5h)
-- [ ] T014: Journey 2 test suite (4h)
-- [ ] T015: Validate test suite (1h)
-- [ ] T016: OpenAPI documentation (2h)
-- [ ] T017: Specification traceability (2h)
+### Week 4: Journey Tests & Documentation (COMPLETE)
+- [x] T013: Journey 1 test suite (5h) — **COMPLETE** commit `464704d`: 4 journey tests in `Journey1_InnovationSubmissionTests.cs` (submission flow validation)
+- [x] T014: Journey 2 test suite (4h) — **COMPLETE** commit `e0236a1`: 3 journey tests in `Journey2_BiddingTests.cs` (discovery & bidding validation)
+- [x] T015: Validate test suite (1h) — **COMPLETE** commit `7324ee5`: 112/115 tests passing (97.4%), 3 skipped (Phase 1 domain validation deferred)
+- [x] T016: OpenAPI documentation (2h) — **COMPLETE** commit `c247cab`: All 14 Phase 0.6 endpoints documented in `contracts/openapi.yaml`
+- [x] T017: Specification traceability (2h) — **COMPLETE** commits `ffdc130` (initial), today: comprehensive `specs/001-platform-core/traceability.md` created
 
-**Progress**: 12/17 tasks complete (71%)
+**Progress**: 17/17 tasks complete (100%) ✅
 
 ---
 
