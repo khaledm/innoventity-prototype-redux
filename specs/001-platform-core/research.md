@@ -1,7 +1,7 @@
 # Phase 0 Research: Platform Core Technical Decisions
 
-**Feature**: Platform Core (v1.0)  
-**Date**: February 8, 2026  
+**Feature**: Platform Core (v1.0)
+**Date**: February 8, 2026
 **Status**: Complete (No unknowns - decisions from constitution)
 
 ---
@@ -149,7 +149,7 @@ This research phase consolidates technical decisions already established in the 
 **Decision**: Vertical Slice Architecture
 
 **Rationale**:
-- **Feature Cohesion**: Each feature (auth, innovations, bids) contains its own endpoints, logic, data access  
+- **Feature Cohesion**: Each feature (auth, innovations, bids) contains its own endpoints, logic, data access
 - **Reduced Coupling**: Changes to one feature don't ripple through shared layers
 - **Spec-Kit Alignment**: One specification often maps to one or more vertical slices
 - **Simplicity**: Easier to navigate than traditional layered architecture (per Principle 3)
@@ -193,7 +193,7 @@ src/Innoventity.API/Features/
 
 **API Conventions**:
 - **/api/auth/**: Authentication endpoints (register, login, activate, refresh-token)
-- **/api/innovations/<id>**: Innovation CRUD and lifecycle operations  
+- **/api/innovations/<id>**: Innovation CRUD and lifecycle operations
 - **/api/innovations/<id>/bids**: Bid submission and management
 - **/api/innovations/<id>/select-partners**: Partner selection (POST, irreversible)
 - **/api/incubator/<innovation-id>/**: Virtual incubator workspace operations

@@ -688,7 +688,7 @@ $payload | ConvertFrom-Json | Format-List
                 .AllowCredentials();
       });
   });
-  
+
   // BEFORE app.MapControllers()
   app.UseCors();
   ```
