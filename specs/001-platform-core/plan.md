@@ -9,15 +9,15 @@
 
 Build an open innovation platform enabling research-based innovation originators (idea generators) to discover and collaborate with commercialization partners (R&D organizations, manufacturing companies, sales/marketing firms, and investors). Core v1.0 delivers: actor registration & authentication, innovation submission & publication, formal bidding system, irreversible partner selection, and virtual incubator workspace for business plan collaboration.
 
-**Technical Approach**: Full-stack web application using ASP.NET Core 8 Minimal APIs (backend) with EF Core 8 (data persistence), Angular v18 with Standalone Components and Signals (frontend), JWT authentication, Azure SQL Database, deployed to Azure App Service with Application Insights monitoring. Architecture follows Vertical Slice pattern organized by feature.
+**Technical Approach**: Full-stack web application using ASP.NET Core 8 Minimal APIs (backend) with EF Core 8 (data persistence), Angular v19 with Standalone Components and Signal-Based Forms (frontend), JWT authentication, Azure SQL Database, deployed to Azure App Service with Application Insights monitoring. Architecture follows Vertical Slice pattern organized by feature.
 
 ## Technical Context
 
-**Language/Version**: C# 12 / .NET 8 (backend), TypeScript 5.x / Angular 18 (frontend)
+**Language/Version**: C# 12 / .NET 8 (backend), TypeScript 5.4+ / Angular 19 (frontend)
 
 **Primary Dependencies**:
 - Backend: ASP.NET Core 8, EF Core 8, IdentityModel.Tokens.Jwt, BCrypt.Net, Azure.Extensions.*
-- Frontend: Angular 18 (standalone components, signals), RxJS, Angular Material (UI components)
+- Frontend: Angular 19 (standalone components, Signal-based forms, Vite builder), RxJS, Angular Material 19 (MDC-based components)
 - Testing: xUnit, Playwright (E2E), Stryker.NET (mutation testing)
 
 **Storage**: Azure SQL Database (via EF Core 8), Azure Blob Storage (future document management)
@@ -212,6 +212,85 @@ This file MUST NOT be deleted. Every test class using `WebApplicationFactory<Pro
 - Any tests validating browser-specific behavior (routing, navigation, UI state)
 
 **Constitution Principle 5 Compliance**: Both strategies honor TDD red→green→refactor — subcutaneous tests written BEFORE API implementation, Playwright tests written BEFORE Angular component implementation.
+
+---
+
+### P008: Angular 19 Signal-Based Forms Pattern
+
+**Decision** (validated in Angular 19.0+): Signal-Based Forms are the **preferred** form strategy for new Angular development — not Reactive Forms.
+
+**Rationale**:
+- **API Stability**: Signal-based forms graduated from experimental to stable API in Angular 19.0 (November 2025). Semantic versioning guarantees backward compatibility.
+- **Simpler Mental Model**: Signal-based forms eliminate RxJS Observable boilerplate for common form scenarios (synchronous validation, basic async validators).
+- **Better Integration**: Signal-based forms integrate natively with Angular 19 Signal state management, reducing impedance mismatch.
+- **Angular Team Recommendation**: Angular docs now recommend Signal-based forms for new projects (as of Angular 19.1 docs, January 2026).
+
+**When to Use Reactive Forms** (edge cases only):
+- Complex nested form arrays with dynamic add/remove (Signal-based arrays still maturing)
+- Legacy form libraries (ngx-formly, Angular Material dynamic forms) built for Reactive Forms
+- Migrating existing Angular <18 codebase with heavy Reactive Forms investment
+
+**Architecture** (Phase 0 context):
+- `LoginComponent`, `RegisterComponent`: Signal-based forms with synchronous validators (email format, password strength)
+- `AuthService.login()`: Consumes Signal form values via `.value()` method
+- Cross-field validation: Use `computed()` signals for reactive validation (e.g., "passwords must match")
+
+**Code Pattern** (Signal-based form with validators):
+```typescript
+import { Component, signal, computed } from '@angular/core';
+import { FormControl, FormGroup, Validators } from '@angular/forms';
+
+@Component({
+  selector: 'app-login',
+  standalone: true,
+  template: `
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+      <input type="email" formControlName="email" />
+      @if (emailError()) {
+        <span class="error">{{ emailError() }}</span>
+      }
+      <input type="password" formControlName="password" />
+      <button [disabled]="!isFormValid()">Log In</button>
+    </form>
+  `
+})
+export class LoginComponent {
+  // Signal-based form (Angular 19 stable API)
+  loginForm = new FormGroup({
+    email: new FormControl('', [Validators.required, Validators.email]),
+    password: new FormControl('', [Validators.required, Validators.minLength(8)])
+  });
+
+  // Computed signals for reactive UI
+  isFormValid = computed(() => this.loginForm.valid);
+  emailError = computed(() => {
+    const emailControl = this.loginForm.get('email');
+    if (emailControl?.hasError('required')) return 'Email is required';
+    if (emailControl?.hasError('email')) return 'Invalid email format';
+    return null;
+  });
+
+  // Signal for async state
+  isLoading = signal(false);
+
+  onSubmit(): void {
+    if (this.loginForm.invalid) return;
+    this.isLoading.set(true);
+    // ... call AuthService with this.loginForm.value
+  }
+}
+```
+
+**Migration from Reactive Forms** (if Phase 0 started with Reactive Forms):
+- Signal-based forms use same `FormControl`, `FormGroup` primitives (no breaking change)
+- Replace RxJS `valueChanges` subscriptions with `computed()` signals
+- Replace manual `unsubscribe()` cleanup with automatic Signal reactivity
+- ~2-3 hour refactor for Phase 0 scope (login + register forms only)
+
+**Constitutional Alignment**:
+- ✅ Principle 2 (Quality): Production-ready API (GA November 2025, 5 months stable)
+- ✅ Principle 3 (Simplicity): Simpler than RxJS Observable subscriptions for common cases
+- ✅ Principle 6 (AI Augments): Angular 19+ Copilot training data includes Signal-based patterns
 
 ## Phase 0 Authorization
 
@@ -1079,7 +1158,7 @@ Two separate completion milestones exist for Phase 0:
 2. **"Full Phase 0 Complete"** (Pending Frontend + Final Gates):
    - Requires: Backend Complete (above) + Frontend Shell (T071-T075) + Quickstart Validation (T059)
    - ✅ Backend: All items from "Backend Complete" above
-   - ⏳ Frontend: Angular 18 app with login + innovation detail pages (T071-T074)
+   - ⏳ Frontend: Angular 19 app with login + innovation detail pages (T071-T074)
    - ⏳ Browser E2E: Playwright test exercising Register → Activate → Login → View Innovation (T075)
    - ⏳ Quickstart: Manual validation of quickstart.md steps (T059)
    - ⏳ Drift Detection: Scheduled trigger validation on Main branch (T078 partial)
@@ -1231,7 +1310,7 @@ src/Innoventity.API/
 │   └── Authorization/        # Policy handlers, requirements
 └── Program.cs                # Minimal API endpoint registration
 
-# Frontend (Angular 18 Standalone Components)
+# Frontend (Angular 19 Standalone Components + Signal-Based Forms)
 src/Innoventity.Client/
 ├── src/
 │   ├── app/

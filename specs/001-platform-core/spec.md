@@ -1378,7 +1378,7 @@ These journeys are important for full platform value but can be tested with inte
 **Scope**:
 1. **User Registration & Authentication (Backend)**: User can register as Idea Generator, activate account, and log in via API endpoints
 2. **View Single Innovation (Backend)**: Authenticated user can retrieve and view one innovation by its unique identifier via API endpoint
-3. **Minimal Angular Client (Frontend)**: Angular 18 application exercising Phase 0 API endpoints for end-to-end validation of the complete user journey
+3. **Minimal Angular Client (Frontend)**: Angular 19 application exercising Phase 0 API endpoints for end-to-end validation of the complete user journey
 
 **What's OUT of Phase 0 Scope** (Deferred to Phase 1+):
 - ❌ **Innovation Submission**: Creating and publishing new innovations (multi-step form workflow)

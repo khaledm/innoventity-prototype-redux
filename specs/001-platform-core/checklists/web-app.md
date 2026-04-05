@@ -660,7 +660,7 @@ This checklist acts as **unit tests for requirements writing** — validating th
 
 - [ ] CHK104 - Are Azure service dependencies explicitly documented (SQL, App Service, Application Insights per Research)? [Completeness, Research §Decision 8]
 - [ ] CHK105 - Are email service provider requirements specified? [Gap]
-- [ ] CHK106 - Are third-party library version requirements pinned (Angular 18, .NET 8 per Plan)? [Completeness, Plan §Technical Context]
+- [ ] CHK106 - Are third-party library version requirements pinned (Angular 19, .NET 8 per Plan)? [Completeness, Plan §Technical Context]
 
 ### Assumptions Requiring Validation
 

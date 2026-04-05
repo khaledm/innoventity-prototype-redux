@@ -737,7 +737,7 @@ Recommended sequence (1-2 weeks):
 
 - **ASP.NET Core 8**: [Official Docs](https://learn.microsoft.com/aspnet/core/)
 - **Entity Framework Core**: [EF Core Docs](https://learn.microsoft.com/ef/core/)
-- **Angular 18**: [Angular Docs](https://angular.dev/)
+- **Angular 19**: [Angular Docs](https://angular.dev/)
 - **Testing ASP.NET Core**: [Integration Testing Guide](https://learn.microsoft.com/aspnet/core/test/integration-tests)
 - **Playwright**: [Playwright Docs](https://playwright.dev/)
 - **Azure Deployment**: [Azure Developer CLI Docs](https://learn.microsoft.com/azure/developer/azure-developer-cli/)

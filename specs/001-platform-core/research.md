@@ -38,10 +38,10 @@ This research phase consolidates technical decisions already established in the 
 
 ## Decision 2: Frontend Technology Stack
 
-**Decision**: Angular v18 with Standalone Components + Signals
+**Decision**: Angular v19 with Standalone Components + Signal-Based Forms
 
 **Rationale**:
-- **Learning Objective**: Angular v18 is explicitly mentioned in Constitution Constraint 3
+- **Learning Objective**: Angular v19 is explicitly mentioned in Constitution Constraint 3
 - **Microsoft Template**: Use `dotnet new angular` template for structure consistency
 - **Standalone Components**: Modern Angular pattern (no NgModules), simpler mental model
 - **Signals**: Reactive state management with fine-grained updates, better performance
