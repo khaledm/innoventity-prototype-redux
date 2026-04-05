@@ -174,8 +174,8 @@
 
 - [X] T071 Initialize Angular 19 app in src/Innoventity.Client/ with routing, Vite builder, and basic layout
 - [X] T072 Implement login page using Signal-based forms, calling POST /auth/login, storing access/refresh tokens, and handling error messages
-- [ ] T073 Implement minimal innovation detail page using Angular 19 control flow syntax (@if, @for) that calls GET /innovations/{id} using stored access token and renders required Phase 0 fields
-- [ ] T074 Configure Angular environment files with API base URL for dev/staging
+- [X] T073 Implement minimal innovation detail page using Angular 19 control flow syntax (@if, @for) that calls GET /innovations/{id} using stored access token and renders required Phase 0 fields
+- [X] T074 Configure Angular environment files with API base URL for dev/staging
 - [ ] T075 Add Playwright E2E test that drives the browser through Register → Activate (mock email token) → Login → View innovation, using the Angular client
 
 ---

@@ -10,7 +10,13 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/login/login.component').then(m => m.LoginComponent)
   },
   // TODO: Add register route when implemented in future task
-  // TODO: Add innovation routes when implemented in T073
+
+  // Innovation routes (protected with AuthGuard)
+  {
+    path: 'innovations/:id',
+    loadComponent: () => import('./features/innovations/innovation-detail/innovation-detail.component').then(m => m.InnovationDetailComponent),
+    canActivate: [AuthGuard]
+  },
 
   // Fallback
   { path: '**', redirectTo: '/login' }

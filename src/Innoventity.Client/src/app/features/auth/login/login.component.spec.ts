@@ -140,7 +140,7 @@ describe('LoginComponent', () => {
 
     await component.onSubmit();
 
-    expect(router.navigate).toHaveBeenCalledWith(['/innovations']);
+    expect(router.navigate).toHaveBeenCalledWith(['/innovations', '3fa85f64-5717-4562-b3fc-2c963f66afa6']);
   });
 
   it('should display error message on failed login', async () => {

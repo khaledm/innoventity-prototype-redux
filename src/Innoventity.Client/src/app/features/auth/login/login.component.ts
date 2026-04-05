@@ -99,8 +99,10 @@ export class LoginComponent {
     this.isLoading.set(false);
 
     if (result.success) {
-      // Navigate to innovations list for now (will be replaced with specific innovation ID in T075)
-      this.router.navigate(['/innovations']);
+      // TODO: Get actual innovation ID from backend or user selection
+      // For T073 testing, using a placeholder ID
+      const testInnovationId = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
+      this.router.navigate(['/innovations', testInnovationId]);
     } else {
       this.errorMessage.set(result.error || 'Login failed. Please try again.');
     }

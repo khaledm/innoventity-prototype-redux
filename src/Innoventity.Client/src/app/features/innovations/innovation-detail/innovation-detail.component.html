@@ -1,0 +1,83 @@
+<div class="innovation-detail-container">
+  @if (loading()) {
+    <div class="loading-spinner">
+      <mat-spinner diameter="50"></mat-spinner>
+      <p>Loading innovation details...</p>
+    </div>
+  }
+
+  @if (error() && !loading()) {
+    <mat-card class="error-card">
+      <mat-card-content>
+        <div class="error-message">
+          <mat-icon>error</mat-icon>
+          <h2>Failed to Load Innovation</h2>
+          <p>{{ error() }}</p>
+          <button mat-raised-button color="primary" (click)="goBack()">
+            <mat-icon>arrow_back</mat-icon>
+            Go Back
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (innovation() && !loading() && !error()) {
+    <mat-card class="innovation-card">
+      <mat-card-header>
+        <mat-card-title>{{ innovation()!.title }}</mat-card-title>
+        <mat-card-subtitle>
+          <mat-chip-set>
+            <mat-chip>{{ innovation()!.productType }}</mat-chip>
+            <mat-chip highlighted>{{ innovation()!.researchCategory }}</mat-chip>
+            @if (innovation()!.hasIPR) {
+              <mat-chip color="accent">
+                <mat-icon>verified</mat-icon>
+                IPR Protected
+              </mat-chip>
+            }
+          </mat-chip-set>
+        </mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <article class="innovation-details">
+          <section class="research-background">
+            <h3>Research Background</h3>
+            <p>{{ innovation()!.researchBackground }}</p>
+          </section>
+
+          @if (innovation()!.iprDetails) {
+            <section class="ipr-details">
+              <h3>Intellectual Property Details</h3>
+              <p>{{ innovation()!.iprDetails }}</p>
+            </section>
+          }
+
+          <section class="metadata">
+            <dl>
+              <dt>Innovation ID</dt>
+              <dd>{{ innovation()!.id }}</dd>
+
+              <dt>Product Type</dt>
+              <dd>{{ innovation()!.productType }}</dd>
+
+              <dt>Research Category</dt>
+              <dd>{{ innovation()!.researchCategory }}</dd>
+
+              <dt>IPR Status</dt>
+              <dd>{{ innovation()!.hasIPR ? 'Protected' : 'Not Protected' }}</dd>
+            </dl>
+          </section>
+        </article>
+      </mat-card-content>
+
+      <mat-card-actions>
+        <button mat-button (click)="goBack()">
+          <mat-icon>arrow_back</mat-icon>
+          Back
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  }
+</div>
