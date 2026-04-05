@@ -89,9 +89,9 @@ This document defines the complete technical architecture for the Innoventity An
 ```
 
 **Version Requirements**:
-- Node.js: `>=24.14.1` (LTS)
-- npm: `>=11.1.0`
-- TypeScript: `5.5.x` (Angular 19 minimum requirement)
+- Node.js: `20.x LTS` (Angular 19 supports 18.19+ or 20.x; Node 24 not yet supported)
+- npm: `>=10.0.0` (comes with Node 20 LTS)
+- TypeScript: `5.4.x` (Angular 19 minimum requirement)
 
 ### 1.2 Browser Support Matrix
 
