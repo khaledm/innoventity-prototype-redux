@@ -57,17 +57,20 @@ mat-card-header {
   }
 }
 
-// Fix for mat-select overlay issue
+// Fix for mat-select overlay issue - FIXED: Opacity and positioning
 ::ng-deep .login-actor-type-panel {
   margin-top: 0;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   border-radius: 8px;
-  background-color: #fff;
+  background-color: #ffffff !important; // Force opaque background
+  opacity: 1 !important; // Override any transparency
+  backdrop-filter: none;
 
   .mat-mdc-option {
     padding: 1rem 1.5rem;
     font-size: 1rem;
     min-height: 48px;
+    background-color: #ffffff; // Ensure options are opaque
 
     &:hover {
       background-color: rgba(102, 126, 234, 0.08);
@@ -148,6 +151,18 @@ button[type="submit"] {
   .mat-mdc-text-field-wrapper {
     background-color: #f8f9fa;
     border-radius: 8px;
+  }
+
+  // Fix input padding - text should not hug borders
+  .mat-mdc-input-element {
+    padding-left: 1rem !important; // Add generous padding inside inputs
+    padding-right: 1rem !important;
+  }
+
+  // Fix select padding
+  .mat-mdc-select {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
   }
 
   .mat-mdc-form-field {
