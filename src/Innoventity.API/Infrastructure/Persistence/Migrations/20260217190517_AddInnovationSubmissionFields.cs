@@ -47,76 +47,14 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                 nullable: false,
                 defaultValue: "");
 
-            migrationBuilder.InsertData(
-                table: "Industries",
-                columns: new[] { "Id", "Name" },
-                values: new object[,]
-                {
-                    { "AUTO-001", "Consumer Goods" },
-                    { "CSVC-001", "Consumer Services" },
-                    { "ENRG-001", "Oil & Gas" },
-                    { "FIN-001", "Financials" },
-                    { "HLTH-001", "Health Care" },
-                    { "INDU-001", "Industrials" },
-                    { "MTRL-001", "Basic Materials" },
-                    { "TCOM-001", "Telecommunications" },
-                    { "TECH-001", "Technology" },
-                    { "UTIL-001", "Utilities" }
-                });
+            // Note: Industry seed data already exists from initial migration
+            // migrationBuilder.InsertData(...) removed to prevent duplicate key errors
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DeleteData(
-                table: "Industries",
-                keyColumn: "Id",
-                keyValue: "AUTO-001");
-
-            migrationBuilder.DeleteData(
-                table: "Industries",
-                keyColumn: "Id",
-                keyValue: "CSVC-001");
-
-            migrationBuilder.DeleteData(
-                table: "Industries",
-                keyColumn: "Id",
-                keyValue: "ENRG-001");
-
-            migrationBuilder.DeleteData(
-                table: "Industries",
-                keyColumn: "Id",
-                keyValue: "FIN-001");
-
-            migrationBuilder.DeleteData(
-                table: "Industries",
-                keyColumn: "Id",
-                keyValue: "HLTH-001");
-
-            migrationBuilder.DeleteData(
-                table: "Industries",
-                keyColumn: "Id",
-                keyValue: "INDU-001");
-
-            migrationBuilder.DeleteData(
-                table: "Industries",
-                keyColumn: "Id",
-                keyValue: "MTRL-001");
-
-            migrationBuilder.DeleteData(
-                table: "Industries",
-                keyColumn: "Id",
-                keyValue: "TCOM-001");
-
-            migrationBuilder.DeleteData(
-                table: "Industries",
-                keyColumn: "Id",
-                keyValue: "TECH-001");
-
-            migrationBuilder.DeleteData(
-                table: "Industries",
-                keyColumn: "Id",
-                keyValue: "UTIL-001");
+            // Note: Industry seed data deletions removed since inserts were removed from Up()
 
             migrationBuilder.DropColumn(
                 name: "PartnersNeeded",

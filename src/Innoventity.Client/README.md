@@ -38,21 +38,45 @@ This will compile your project and store the build artifacts in the `dist/` dire
 
 ## Running unit tests
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+To execute unit tests with Jest, use:
 
 ```bash
-ng test
+npm test
+```
+
+To run tests in watch mode:
+
+```bash
+npm run test:watch
+```
+
+To generate coverage report:
+
+```bash
+npm run test:coverage
 ```
 
 ## Running end-to-end tests
 
-For end-to-end (e2e) testing, run:
+The project uses [Playwright](https://playwright.dev/) for end-to-end testing.
+
+**Prerequisites**: The backend API must be running on `http://localhost:5001` before running E2E tests.
 
 ```bash
-ng e2e
+# Start the backend API (in a separate terminal)
+cd ../Innoventity.API
+dotnet run
+
+# Run E2E tests
+npm run e2e
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+For more E2E testing options and troubleshooting, see the [E2E README](e2e/README.md).
+
+**Interactive UI Mode** (recommended for debugging):
+```bash
+npx playwright test --ui
+```
 
 ## Additional Resources
 

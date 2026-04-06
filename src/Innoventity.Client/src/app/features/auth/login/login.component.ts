@@ -44,8 +44,8 @@ export class LoginComponent {
     { value: ActorType.SalesMarketing, label: 'Sales & Marketing' }
   ];
 
-  // Computed signals for reactive validation messages
-  isFormValid = computed(() => this.loginForm.valid);
+  // Note: Use loginForm.valid directly in template instead of computed signal
+  // Computed signals don't automatically track FormGroup validity changes
 
   emailError = computed(() => {
     const control = this.loginForm.get('email');

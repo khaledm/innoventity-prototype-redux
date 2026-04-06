@@ -1,7 +1,7 @@
 <div class="login-container">
   <mat-card>
     <mat-card-header>
-      <mat-card-title>Log In to Innoventity</mat-card-title>
+      <mat-card-title><h2>Log In to Innoventity</h2></mat-card-title>
     </mat-card-header>
 
     <mat-card-content>
@@ -16,7 +16,7 @@
 
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Actor Type</mat-label>
-          <mat-select formControlName="actorType">
+          <mat-select formControlName="actorType" panelClass="login-actor-type-panel">
             @for (type of actorTypes; track type.value) {
               <mat-option [value]="type.value">{{ type.label }}</mat-option>
             }
@@ -45,7 +45,7 @@
           color="primary"
           type="submit"
           class="full-width"
-          [disabled]="!isFormValid() || isLoading()"
+          [disabled]="!loginForm.valid || isLoading()"
         >
           @if (isLoading()) {
             <mat-spinner diameter="20"></mat-spinner>
