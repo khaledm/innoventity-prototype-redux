@@ -330,4 +330,336 @@ src/Innoventity.API/Features/
 
 ---
 
+## Registration UI Feature Research (Phase 1+)
+
+**Date**: April 6, 2026
+**Feature**: Registration User Interface (Section 8)
+**Status**: Phase 0 Research Complete
+
+### Overview
+
+Registration UI builds upon Phase 0 backend infrastructure (POST /auth/register, POST /auth/activate APIs already implemented). This section documents frontend-specific technology choices and best practices for implementing the browser-based registration workflow.
+
+---
+
+### Angular 19 Component Architecture
+
+**Decision**: Standalone Components (no NgModules)
+
+**Rationale**:
+- Angular 19 recommendation (standalone is the future of Angular)
+- Simpler dependency management (each component declares own imports)
+- Better tree-shaking (smaller bundle sizes)
+-Easier to test (no NgModule configuration boilerplate)
+- Aligns with Principle 3 (Simplicity Over Cleverness)
+
+**Components**:
+1. **RegisterComponent**: Main registration form (6 fields, Material Design, Reactive Forms)
+2. **PendingActivationComponent**: Success message after registration (router state for email display)
+3. **ActivateComponent**: Token validation and activation (query parameter from email link)
+
+**Implementation Pattern**:
+```typescript
+@Component({
+  selector: 'app-register',
+  standalone: true,
+  imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, CommonModule],
+  templateUrl: './register.component.html'
+})
+export class RegisterComponent { }
+```
+
+---
+
+### Reactive Forms Strategy
+
+**Decision**: Reactive Forms with FormBuilder
+
+**Rationale**:
+- Industry standard (proven pattern, extensive documentation)
+- Strong typing (FormGroup<RegistrationForm> for type safety)
+- Custom validators straightforward (ValidatorFn interface)
+- Cross-field validation (password match validator)
+- Observable valueChanges (password strength indicator)
+- Synchronous validation (easier to test than template-driven)
+- Existing codebase uses Reactive Forms (LoginComponent consistency)
+
+**Form Structure**:
+```typescript
+registrationForm = this.fb.group({
+  email: ['', [Validators.required, Validators.email]],
+  password: ['', [Validators.required, passwordStrengthValidator()]],
+  confirmPassword: ['', [Validators.required]],
+  actorType: ['', [Validators.required]],
+  fullName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
+  organizationName: ['', []] // Validators updated dynamically based on actorType
+}, { validators: passwordMatchValidator('password', 'confirmPassword') });
+```
+
+**Alternative Considered**:
+- Signal-based Forms (Angular 19 experimental): Rejected - not production-ready, limited documentation
+
+---
+
+### Material Design Component Selection
+
+**Decision**: Angular Material 19 with "outline" appearance
+
+**Form Fields**:
+- Text inputs (Email, Full Name, Organization Name): `<mat-form-field appearance="outline">` + `<input matInput>`
+- Password inputs: `<mat-form-field>` + `<input matInput [type]="hidePassword ? 'password' : 'text'>` + visibility toggle button
+- Dropdown (Actor Type): `<mat-select>` with 5 `<mat-option>` values
+- Password strength indicator: `<mat-progress-bar mode="determinate">` (color: warn/accent/primary)
+- Submit button: `<button mat-raised-button color="primary">`
+
+**Why "outline" appearance**: Modern style, clear field boundaries, good for data-heavy forms
+
+**Accessibility Built-in**:
+- ARIA attributes automatically added by Material components
+- Keyboard navigation (Tab order, Enter to submit)
+- Touch targets automatically 44x44px (WCAG compliant)
+- Color contrast meets WCAG 2.1 AA (Material Design system)
+
+**Responsive Strategy**:
+- Desktop: Centered form, max-width 480px
+- Mobile (<768px): Full-width, vertical stacking (Material default behavior)
+- Material handles responsive breakpoints automatically
+
+---
+
+### Custom Validators Implementation
+
+**Password Strength Validator**:
+- **Requirements**: 8 chars minimum, uppercase, lowercase, digit, special char
+- **Type**: Synchronous ValidatorFn
+- **Error Object**: `{ passwordStrength: { hasMinLength, hasUppercase, hasLowercase, hasDigit, hasSpecial } }`
+- **Display**: Show specific missing requirements in `<mat-error>`
+
+**Password Match Validator** (Cross-field):
+- **Type**: Form-level validator (applied to FormGroup)
+- **Logic**: Compare password and confirmPassword values
+- **Error**: `{ passwordMismatch: true }` when values don't match
+- **Display**: Show error on confirmPassword field only
+
+**Conditional Required Validator** (Organization Name):
+- **Strategy**: Dynamic validator update on actorType change
+- **Logic**:
+  - actorType === 'IdeaGenerator' → organizationName optional (no Validators.required)
+  - actorType !== 'IdeaGenerator' → organizationName required (add Validators.required)
+- **Implementation**: Subscribe to actorType valueChanges, call `setValidators()` and `updateValueAndValidity()`
+- **Clarification Applied**: Organization Name field ALWAYS VISIBLE, marked "(Optional)" for Idea Generator
+
+**Email Validator**:
+- **Decision**: Use built-in `Validators.email` (sufficient for RFC 5322 subset)
+- **Rationale**: Framework feature, no need for custom validator
+
+---
+
+### Password Strength Indicator
+
+**Decision**: Service-based calculation
+
+**Implementation**:
+```typescript
+@Injectable({ providedIn: 'root' })
+export class PasswordStrengthService {
+  calculateStrength(password: string): 'weak' | 'medium' | 'strong' {
+    if (password.length >= 16) return 'strong';
+    if (password.length >= 12) return 'medium';
+    return 'weak'; // 8-11 characters
+  }
+
+  getStrengthColor(strength: string): 'warn' | 'accent' | 'primary' { /* ... */ }
+  getStrengthPercentage(strength: string): number { /* ... */ }
+}
+```
+
+**Component Integration**:
+- Subscribe to `password` formControl valueChanges
+- Debounce 200ms (avoid flickering indicator)
+- Update `<mat-progress-bar>` value and color based on service output
+
+**Rationale**:
+- Separation of concerns (service = calculation, component = display)
+- Easily testable (pure functions, no DOM dependencies)
+- Reusable (future ChangePasswordForm can use same service)
+
+---
+
+### Routing & Navigation
+
+**Routes**:
+```typescript
+{
+  path: 'register',
+  component: RegisterComponent,
+  title: 'Register - Innoventity'
+},
+{
+  path: 'register/pending-activation',
+  component: PendingActivationComponent,
+  title: 'Activation Pending - Innoventity',
+  canActivate: [registrationGuard] // Prevent direct access without registration flow
+},
+{
+  path: 'activate',
+  component: ActivateComponent,
+  title: 'Activate Account - Innoventity'
+  // No guard - must allow direct access via email link
+}
+```
+
+**registrationGuard**:
+- **Purpose**: Prevent users from bookmarking /register/pending-activation
+- **Logic**: Check if router navigation state contains email address
+- **Redirect**: Navigate to /register if no email in state
+
+**State Management**: Router state for transient data (email passed to pending-activation page)
+- **Alternative Rejected**: Service or localStorage - over-engineering for single transient string, security concern (email persisted)
+
+**Navigation Flows**:
+1. Register → Pending Activation (router.navigate with state: { email })
+2. Pending Activation → Login (router.navigate)
+3. Activate → Login (router.navigate after success)
+4. Login ↔ Register (routerLink)
+
+**Clarification Applied**: Activate route uses query parameter format `/activate?token={token}` (not path parameter)
+
+---
+
+### Error Handling Strategy
+
+**Error Categories**:
+1. **Client-side validation**: Inline below form fields (`<mat-error>`)
+2. **HTTP 400 (Validation)**: Map API errors to form field errors (setErrors())
+3. **HTTP 409 (Duplicate Email)**: Set error on email field with custom message
+4. **HTTP 500 (Server Error)**: Global error banner (not inline)
+5. **Network Error (status 0)**: Retry mechanism + error message
+
+**HTTP Error Mapping**:
+```typescript
+error: (httpError: HttpErrorResponse) => {
+  if (httpError.status === 400) {
+    this.mapApiErrorsToForm(httpError.error); // Set errors on specific fields
+  } else if (httpError.status === 409) {
+    this.registrationForm.get('email')!.setErrors({
+      emailExists: 'Email already registered. Try logging in.'
+    });
+  } else if (httpError.status === 0) {
+    this.globalError = 'Network error. Check your connection and try again.';
+  } else {
+    this.globalError = 'Registration failed. Please try again later.';
+  }
+}
+```
+
+**User-Friendly Messages**: Never show raw HTTP status codes or stack traces
+
+---
+
+### Testing Strategy
+
+**Unit Tests (Jest)**:
+- **Component Tests**: Form validation, actorType change updates organizationName validators, password strength updates
+- **Validator Tests**: Password strength accepts/rejects based on requirements, password match detects mismatch
+- **Service Tests**: RegistrationService POST call, PasswordStrengthService calculations
+
+**Test Example**:
+```typescript
+it('should update organization name validators when actor type changes', () => {
+  component.registrationForm.get('actorType')!.setValue('IdeaGenerator');
+  component.registrationForm.get('organizationName')!.setValue('');
+  expect(component.registrationForm.get('organizationName')!.hasError('required')).toBeFalsy();
+
+  component.registrationForm.get('actorType')!.setValue('RDOrganization');
+  component.registrationForm.get('organizationName')!.updateValueAndValidity();
+  expect(component.registrationForm.get('organizationName')!.hasError('required')).toBeTruthy();
+});
+```
+
+**E2E Tests (Playwright)**:
+- **Happy Path**: Register → pending-activation → activate → login → dashboard
+- **Validation**: Test all 24 acceptance criteria from spec.md Section 8
+- **Errors**: Invalid token, network error, duplicate email
+- **Accessibility**: axe-core WCAG 2.1 AA validation, keyboard navigation test
+
+**Coverage Target**: 80%+ (measured by Jest coverage report)
+
+---
+
+### Best Practices Summary
+
+**Angular 19**:
+- ✅ Standalone components (no NgModules)
+- ✅ async pipe for subscriptions (automatic cleanup)
+- ✅ takeUntilDestroyed() for manual subscriptions in ngOnInit
+
+**Reactive Forms**:
+- ✅ FormBuilder for concise syntax
+- ✅ Type-safe FormGroup interfaces
+- ✅ Validators in separate files (shared/validators/)
+- ✅ Debounce valueChanges (avoid flickering)
+
+**Material Design**:
+- ✅ appearance="outline" for modern form fields
+- ✅ `<mat-label>` always included (accessibility)
+- ✅ `<mat-error>` for validation messages
+- ✅ `<mat-hint>` for helper text (e.g., password requirements)
+- ✅ color="primary" for primary action buttons
+
+**Security**:
+- ✅ Never log passwords
+- ✅ Never store passwords in localStorage/sessionStorage
+- ✅ HTTPS enforced (Azure Static Web App)
+- ✅ Client + server validation (defense in depth)
+
+**Accessibility**:
+- ✅ aria-label for icon buttons (password visibility toggle)
+- ✅ Keyboard navigation (Tab order, Enter to submit)
+- ✅ Color contrast (Material Design handles automatically)
+- ✅ Touch targets 44x44px (Material Design default)
+
+---
+
+### Risks & Mitigations
+
+**Risk 1: Password Strength Validator Complexity**
+- **Impact**: Medium (weak passwords allowed if validator has bugs)
+- **Mitigation**: TDD approach, test all requirement combinations
+
+**Risk 2: Conditional Validator Edge Cases**
+- **Impact**: Medium (required field not enforced or vice versa)
+- **Mitigation**: Test all 5 actor types, test actorType changes after user input
+
+**Risk 3: E2E Test Flakiness (Activation Token)**
+- **Impact**: Low (test reliability only, not production code)
+- **Mitigation**: Playwright waitFor(), mock email in test environment
+
+**Risk 4: Material 19 Breaking Changes**
+- **Impact**: Low (syntax changes from Material 18)
+- **Mitigation**: Follow official upgrade guide, use Material component harnesses for testing
+
+---
+
+### Technology Choices - Registration UI Summary
+
+| Aspect | Technology | Rationale |
+|--------|------------|-----------|
+| **Component Architecture** | Standalone Components | Angular 19 recommendation, simpler, future-proof |
+| **Form Strategy** | Reactive Forms + FormBuilder | Industry standard, strong typing, testable |
+| **UI Components** | Angular Material 19 | Accessible, responsive, consistent with existing app |
+| **Validation** | Custom ValidatorFn + built-in | Reusable, testable, specific error feedback |
+| **Password Strength** | Service-based calculation | Separation of concerns, reusable, testable |
+| **Routing** | Simple routes + 1 guard | Minimal complexity, allows email link access |
+| **State Management** | Router state (transient data) | Simplest solution, no persistence needed |
+| **Error Handling** | Inline (Material) + global banner | Clear UX, separates field errors from server errors |
+| **Unit Testing** | Jest + Material harnesses | Existing project standard, future-proof |
+| **E2E Testing** | Playwright + axe-core | Cross-browser, accessibility validation |
+
+---
+
+**Registration UI Research Complete** - Proceed to Phase 1 data-model.md generation.
+
+---
+
 **END OF RESEARCH PHASE**

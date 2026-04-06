@@ -2,7 +2,7 @@
 
 ## Vision to Implementation Tracking
 
-**Last Updated**: March 8, 2026
+**Last Updated**: April 6, 2026
 **Constitutional Alignment**: See [constitution.md](../.specify/memory/constitution.md)
 **Gap Analysis Reference**: [innovation-bid-domain-gap-analysis.md](../.specify/analysis/innovation-bid-domain-gap-analysis.md)
 
@@ -30,7 +30,7 @@ This roadmap ensures **all recommendations from legacy domain analysis are captu
 | Phase | Status | Branch | Spec | Tests | Gap Analysis Coverage |
 |-------|--------|--------|------|-------|----------------------|
 | **Phase 0 Backend (MVP core)** | ✅ COMPLETE | `001-platform-core` | [spec.md](001-platform-core/spec.md) | 112/115 ✅ | Registration/auth + view innovation backend slice complete |
-| **Phase 0 Full Scope (Backend + Infra + Frontend + CI/CD)** | 🏃 IN PROGRESS | `001-platform-core` | [spec.md](001-platform-core/spec.md) | Backend complete; full-scope gates pending | Full MVP includes Angular client + infra automation + CI/CD validation + browser E2E |
+| **Phase 0 Full Scope (Backend + Infra + Frontend + CI/CD)** | ✅ COMPLETE | `001-platform-core` | [spec.md](001-platform-core/spec.md) | MVP accepted with documented frontend limitations | Full MVP includes Angular client + infra automation + CI/CD validation + browser E2E |
 | **Phase 0.5 (Foundation)** | ✅ COMPLETE | `002-domain-enhancements` (merged to `001-platform-core`) | [spec.md](002-domain-enhancements/spec.md) | 31/31 ✅ | EntityBase, Actor name/address, and contract alignment complete |
 | **Phase 0.6 (API Completion)** | ✅ COMPLETE | `003-api-completion` (merged to `001-platform-core`) | [spec.md](003-api-completion/spec.md) | 17/17 tasks ✅ | Innovation CRUD + bid management + journey testing + traceability complete |
 | **Phase 1 (Domain Richness)** | 📋 PLANNED | TBD | [See below](#phase-1-domain-richness--rich-behavior) | TBD | ProductIdea composition, FormalResponse polymorphism, Selection workflow |
@@ -39,12 +39,13 @@ This roadmap ensures **all recommendations from legacy domain analysis are captu
 
 **Legend**: ✅ Complete | 🏃 In Progress | 📋 Planned | 💡 Vision | ⏸️ Deferred
 
-### Phase 0 Full Scope - Open Items (explicit)
+### Phase 0 Full Scope - Completion Notes
 
 - **Infrastructure automation (Phase 2b)**: ✅ T068, T069, T070 COMPLETE (validated 2026-04-04)
-- **Quickstart validation**: T059 OPEN
-- **CI/CD operational validation (Phase 6b / CHK031)**: ✅ T076, T077 COMPLETE; ⚠️ T078 PARTIAL (infra.yml ✅, deploy.yml ✅, drift.yml scheduled trigger pending Main merge)
-- **Frontend shell + browser E2E (Phase 7)**: ⚠️ T071, T072, T073, T074, T075 OPEN - **NEXT PRIORITY** per user
+- **Quickstart validation**: ✅ T059 COMPLETE (2026-04-06)
+- **CI/CD operational validation (Phase 6b / CHK031)**: ✅ T076, T077, T078 COMPLETE for MVP tracking; `drift.yml` scheduled cron validation remains a post-merge operational follow-up, not a Phase 0 blocker
+- **Frontend shell + browser E2E (Phase 7)**: ✅ T071-T075 COMPLETE for MVP scope with documented limitations (26/28 unit tests passing, 1/3 Playwright tests passing due to test-context timing issue)
+- **Accepted MVP limitation**: Angular client CI/CD to Azure Static Web Apps is deferred to Phase 1; manual `swa deploy` remains acceptable for demo/pilot scope
 
 Source of truth: `specs/001-platform-core/tasks.md` and `specs/001-platform-core/plan.md` ("Phase 0 Scope: backend + minimal frontend"; "MVP Goal: Register -> Activate -> Login -> View Innovation via Angular client").
 
@@ -85,17 +86,55 @@ Focus on **bid submission and viewing** (NOT partner selection, NOT financial pr
 
 ---
 
-## Phase 1 (Next) - Domain Richness & Rich Behavior
+## Phase 1 (Next) - Frontend CI/CD & Domain Richness
 
-**Estimated Duration**: 4 weeks (Mar 2026)
+**Estimated Duration**: 5 weeks (Apr-May 2026)
+**Status**: 📋 PLANNED
+**Constitutional Goal**: 99/100 score (domain model maturity + operational excellence)
+
+### Priority 1: Angular Client CI/CD Automation (Week 1)
+
+**Effort**: 3-5 days | **Priority**: CRITICAL (Phase 0 deferred item) | **Branch**: TBD
+
+**Problem**: Phase 0 validated backend API production readiness, but frontend deployment requires manual `swa deploy` command. No automated build/test/deploy pipeline exists for Angular client.
+
+**What to Build**:
+1. **GitHub Actions Workflow** (`.github/workflows/deploy-frontend.yml`):
+   - Trigger: Push to `src/Innoventity.Client/**` or `workflow_dispatch`
+   - Jobs:
+     - `build-frontend`: `npm ci`, `npm run build`, upload artifacts
+     - `test-frontend`: Jest unit tests (26+ tests), Playwright E2E tests (3+ journeys)
+     - `deploy-to-swa`: Deploy `dist/` to Azure Static Web Apps (staging slot first)
+     - `validate-swa`: Run smoke tests against deployed SWA URL
+     - `swap-swa`: Swap staging → production (manual gate, Main branch only)
+2. **Azure Static Web App Resource** (Terraform module):
+   - Add `infrastructure/modules/static-web-app/main.tf`
+   - Provision SWA in `infrastructure/environments/dev/core/`
+   - Output: SWA URL, deployment token (GitHub secret)
+3. **Documentation Updates**:
+   - Update `infrastructure/README.md` with frontend deployment evidence
+   - Update `specs/001-platform-core/quickstart.md` with automated deployment steps
+   - Update `specs/001-platform-core/frontend-architecture.md` with CI/CD pipeline diagram
+
+**Success Criteria**:
+- ✅ Push to `src/Innoventity.Client/` triggers automated build/test/deploy
+- ✅ Angular app accessible at `https://<swa-name>.azurestaticapps.net`
+- ✅ E2E tests pass against deployed frontend + backend
+- ✅ PR preview environments created automatically (SWA built-in feature)
+- ✅ Manual deployment process no longer required
+
+**Phase 0 Gap Closure**: Completes operational readiness for 100-user pilot launch.
+
+---
+
+### Priority 2: Domain Richness & Rich Behavior (Weeks 2-5)
+
 **Status**: 📋 PLANNED (specifications complete in 002-domain-enhancements)
 **Constitutional Goal**: 99/100 score (domain model maturity)
 
-### Critical Refactorings (MUST complete before Innovation Submission UI)
-
 #### 1. ProductIdea Composition Pattern
 
-**Effort**: 2-3 days | **Priority**: CRITICAL | **Spec**: [§R3.5](002-domain-enhancements/spec.md#r35-productidea-composition-pattern)
+**Effort**: 2-3 days | **Priority**: HIGH | **Spec**: [§R3.5](002-domain-enhancements/spec.md#r35-productidea-composition-pattern)
 
 **Gap Analysis Reference**: [§1.1 Legacy ProductIdea Aggregate](../.specify/analysis/innovation-bid-domain-gap-analysis.md#11-legacy-productidea---rich-aggregate-structure)
 

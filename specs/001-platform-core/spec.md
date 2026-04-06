@@ -1940,7 +1940,545 @@ Scenario: Environment costs are tracked
 
 ---
 
-## 8. Out of Scope (Deferred to v2.0)
+## 8. Registration User Interface (Phase 1+)
+
+**Context**: Phase 0 implemented backend registration APIs (POST /auth/register, POST /auth/activate) tested via Postman/curl. Phase 1+ adds browser-based user interface components for user registration workflow.
+
+**Traceability**: Extends Journey 1 (Innovation Submission & Publication - spec.md:L236) Account Creation & Activation step with graphical user interface layer.
+
+**Phase Constraint**: This section describes Phase 1+ enhancements. Registration UI components are explicitly OUT OF SCOPE for Phase 0.
+
+---
+
+### Clarifications
+
+#### Session 2026-04-06
+
+- Q: During form submission, where should the loading spinner appear? → A: Submit button replaced with inline spinner and "Submitting..." text (industry standard pattern, prevents duplicate submissions)
+- Q: What are the specific password strength criteria thresholds? → A: Length-based tiers - Weak: 8-11 characters, Medium: 12-15 characters, Strong: 16+ characters (encourages longer passwords per NIST guidelines)
+- Q: Should the Organization Name field be hidden or visible for Idea Generator actor type? → A: Always visible, marked "(Optional)" for Idea Generator (standard UX, no data loss, accommodates Idea Generators with organizations)
+- Q: What URL format should the email activation link use? → A: Query parameter format `/activate?token={token}` (industry standard for tokens, more resilient to email client URL parsing, aligns with OAuth/SAML conventions)
+- Q: Should successful activation auto-redirect or require manual navigation to login? → A: Manual navigation with "Continue to Login" button (gives users time to read confirmation, more accessible for screen readers, less rushed)
+
+---
+
+### FR8.1: Registration Form Component
+
+**WHO**: All prospective platform users (across all 5 actor types)
+
+**WHAT**: A web-based registration form accessible via browser that collects required registration information and submits to the existing POST /auth/register endpoint.
+
+**WHY**: Enable non-technical users to register without API tools (Postman/curl). Improve user acquisition by removing technical barriers. Support marketing campaigns with shareable registration URLs.
+
+**Required Form Fields**:
+
+1. **Email** (text input, required)
+   - Validation: RFC 5322 email format
+   - Real-time validation feedback (invalid format error)
+   - Unique per ActorType (server-side validation via API - see R1.3)
+
+2. **Password** (password input, required)
+   - Validation: Minimum 8 characters, at least one uppercase, one lowercase, one digit, one special character
+   - Real-time strength indicator (weak/medium/strong visual feedback):
+     - Weak: 8-11 characters (meets minimum requirements)
+     - Medium: 12-15 characters
+     - Strong: 16+ characters
+   - Toggle visibility button (show/hide password)
+
+3. **Confirm Password** (password input, required)
+   - Validation: Must exactly match Password field
+   - Real-time mismatch error feedback
+   - Toggle visibility button (show/hide password)
+
+4. **Actor Type** (dropdown/select, required)
+   - Options: Idea Generator, R&D Organization, Manufacturing Company, Sales & Marketing Company, Investor
+   - Default: No pre-selection (user must choose)
+   - Help text explaining each actor type (tooltip or info icon)
+
+5. **Full Name** (text input, required)
+   - Validation: 2-100 characters, allows letters, spaces, hyphens, apostrophes
+   - Used for display purposes across platform
+
+6. **Organization Name** (text input, conditionally required)
+   - Required for: R&D Organization, Manufacturing Company, Sales & Marketing Company, Investor
+   - Optional for: Idea Generator
+   - Validation: 2-200 characters when provided
+   - Conditional display: Always visible; marked "(Optional)" for Idea Generator
+
+**Form Behavior**:
+- All validation errors displayed inline below respective fields
+- Submit button disabled until all required fields valid
+- Loading spinner during API call: Submit button replaced with inline spinner and "Submitting..." text (prevents duplicate submissions)
+- Success: Redirect to activation pending page with instructions
+- Error: Display API error messages inline (e.g., "Email already registered for this actor type")
+
+**Acceptance Criteria**:
+
+```gherkin
+Scenario: User accesses registration form
+  Given user navigates to platform
+  When user clicks registration link or navigates to /register route
+  Then registration form displays with all 6 fields
+  And submit button is disabled (form initially invalid)
+
+Scenario: Client-side validation provides real-time feedback
+  Given user on registration form
+  When user enters invalid email "notanemail"
+  Then error message "Invalid email format" appears below email field
+  And submit button remains disabled
+
+Scenario: Password strength indicator updates in real-time
+  Given user on registration form
+  When user enters password "weak"
+  Then password strength indicator shows "Weak"
+  When user enters password "StrongPass123!"
+  Then password strength indicator shows "Strong"
+
+Scenario: Confirm Password validates match
+  Given user has entered password "SecurePass123!"
+  When user enters confirm password "Mismatch456!"
+  Then error message "Passwords do not match" appears
+  And submit button remains disabled
+  When user fixes confirm password to "SecurePass123!"
+  Then error disappears
+  And submit button becomes enabled (if all other fields valid)
+
+Scenario: Organization Name field shows/hides based on Actor Type
+  Given user on registration form
+  When user selects Actor Type "Idea Generator"
+  Then Organization Name field is hidden or marked optional
+  When user selects Actor Type "R&D Organization"
+  Then Organization Name field appears with "Required" indicator
+
+Scenario: Successful registration redirects to activation pending page
+  Given user has filled all required fields correctly
+  When user clicks "Register" button
+  Then form submits to POST /auth/register
+  And user redirects to /register/pending-activation
+  And user sees their email in confirmation message
+
+Scenario: Duplicate email error handled gracefully
+  Given existing user with email "existing@example.com" and ActorType "IdeaGenerator"
+  When new user fills form with same email and ActorType
+  And user clicks "Register"
+  Then error message displays: "Email already registered for this actor type"
+  And user remains on /register page
+  And form fields retain entered values
+
+Scenario: Form is keyboard-accessible
+  Given user on registration form
+  When user navigates using Tab key
+  Then all fields are reachable in logical order
+  And submit button activatable via Enter key
+
+Scenario: Form works on mobile viewports
+  Given user on mobile device (viewport 320px width)
+  When user navigates to /register
+  Then all form fields are visible without horizontal scrolling
+  And touch targets are minimum 44x44px
+  And form is usable with on-screen keyboard
+```
+
+---
+
+### FR8.2: Activation Pending Page
+
+**WHO**: Users who just completed registration
+
+**WHAT**: Informational page displayed after successful registration explaining next steps (email activation).
+
+**WHY**: Set user expectations, reduce support requests about "why can't I log in yet?"
+
+**Required Content**:
+
+1. Success icon/graphic
+2. Heading: "Registration Successful!"
+3. Body text:
+   - "We've sent an activation link to **{user's email}**"
+   - "Please check your inbox and click the link to activate your account"
+   - "The activation link is valid for 24 hours"
+4. Help text:
+   - "Didn't receive the email? Check your spam folder"
+   - Link to resend activation email (Phase 2+ feature, show "Coming Soon" for Phase 1)
+5. Back to login link
+
+**Acceptance Criteria**:
+
+```gherkin
+Scenario: Activation pending page displays after registration
+  Given user has successfully registered
+  When registration completes
+  Then user sees "Registration Successful!" heading
+  And user sees their email in confirmation message
+  And page URL is /register/pending-activation
+
+Scenario: Page guards against direct access
+  Given user has not gone through registration flow
+  When user navigates directly to /register/pending-activation
+  Then user redirects to /register
+  Or user sees error "No registration data found"
+
+Scenario: Back to Login link is functional
+  Given user on activation pending page
+  When user clicks "Back to Login" link
+  Then user navigates to /login page
+```
+
+---
+
+### FR8.3: Email Activation Link Handling
+
+**WHO**: Users with pending activation who click email link
+
+**WHAT**: Web page that consumes activation token from email link, calls POST /auth/activate, and handles success/error states.
+
+**WHY**: Complete browser-based registration workflow without requiring users to manually call API endpoints.
+
+**Required Functionality**:
+
+1. Route: `/activate?token={activationToken}` (query parameter format)
+2. Automatically extract token from URL query string on page load
+3. Call POST /auth/activate with extracted token
+4. Success state:
+   - Display success message: "Account activated successfully!"
+   - Display "Continue to Login" button
+   - Button navigates to /login when clicked
+5. Error states:
+   - Invalid token: "Activation link is invalid"
+   - Expired token: "Activation link has expired. Please register again."
+   - Already activated: "Account already activated. You can log in now."
+   - Network error: Retry button + error message
+
+**Acceptance Criteria**:
+
+```gherkin
+Scenario: Successful activation from email link
+  Given user has registered and received activation email
+  When user clicks activation link in email
+  Then browser opens /activate?token={validToken}
+  And page displays loading spinner
+  And page calls POST /auth/activate with token
+  Then success message "Account activated successfully!" displays
+  And "Continue to Login" button appears
+  When user clicks "Continue to Login" button
+  Then user navigates to /login
+
+Scenario: Invalid token shows error
+  Given user navigates to /activate?token=INVALID_TOKEN
+  When page loads and calls API
+  Then error message "Activation link is invalid" displays
+  And no countdown timer appears
+  And page shows "Back to Registration" link
+
+Scenario: Expired token shows helpful error
+  Given user navigates to /activate?token={expiredToken}
+  When page loads and calls API
+  Then error message "Activation link has expired" displays
+  And page shows "Please register again" link to /register
+
+Scenario: Already activated account handled gracefully
+  Given user clicks activation link for already-activated account
+  When page calls POST /auth/activate
+  Then message displays "Account already activated. You can log in now."
+  And page shows "Continue to Login" button
+
+Scenario: Network error allows retry
+  Given user on activation page
+  And network connection fails during API call
+  When error occurs
+  Then error message displays with "Retry" button
+  When user clicks "Retry"
+  Then page attempts activation again without navigating away
+```
+
+---
+
+### FR8.4: Integration with Existing Login Flow
+
+**WHO**: New users and returning users
+
+**WHAT**: Login page includes link to registration page; registration flow redirects to login after activation.
+
+**WHY**: Provide clear navigation between authentication workflows.
+
+**Required Changes to Login Page**:
+
+1. Add "Don't have an account? Register here" link below login form
+2. Link navigates to `/register`
+3. Link styled consistently with existing UI
+
+**Navigation Flow**:
+```
+/register → (submit) → /register/pending-activation → (email) → /activate?token=... → /login
+```
+
+**Acceptance Criteria**:
+
+```gherkin
+Scenario: Login page displays registration link
+  Given user on /login page
+  Then page displays "Don't have an account? Register here" link
+  And link is visible and accessible on mobile viewports
+
+Scenario: Registration link navigates correctly
+  Given user on /login page
+  When user clicks "Register here" link
+  Then user navigates to /register page
+
+Scenario: Error messages preserved during navigation
+  Given user on /login page with error message "Invalid credentials"
+  When user clicks registration link
+  Then user navigates to /register
+  And login page error message does not interfere with registration page state
+
+Scenario: Complete workflow accessible via browser
+  Given user has not registered
+  When user follows: /login → /register → fill form → /register/pending-activation → email link → /activate → /login
+  Then entire workflow completes using browser only (no API tools required)
+```
+
+---
+
+### User Story 8: Browser-Based Registration (Phase 1+)
+
+**WHO**: Prospective platform user (any actor type)
+
+**WHAT**: Complete registration workflow using web browser without API tools
+
+**WHY**: Remove technical barriers to user acquisition; enable marketing campaigns with direct registration links
+
+**Workflow**:
+
+1. User navigates to `/register` (via link from login page or direct URL)
+2. User fills registration form:
+   - Email: jane.doe@example.com
+   - Password: SecurePass123!
+   - Confirm Password: SecurePass123!
+   - Actor Type: R&D Organization
+   - Full Name: Jane Doe
+   - Organization Name: Innovatech Labs
+3. User clicks "Register" button
+4. Form validates all fields client-side
+5. Form submits POST /auth/register to backend API
+6. Success: User sees activation pending page with confirmation
+7. User receives activation email (via SendGrid—Phase 1+ feature)
+8. User clicks activation link in email
+9. Browser opens `/activate?token={activationToken}`
+10. Page automatically calls POST /auth/activate
+11. Success: User sees "Account activated!" message
+12. User clicks "Continue to Login" button and navigates to `/login`
+13. User logs in with email + password
+
+**Acceptance Criteria**:
+
+1. User can complete registration without Postman/curl
+2. All form validation errors visible before submission
+3. Duplicate email error handled gracefully (user-facing message)
+4. Activation link works from email client
+5. Expired token shows helpful error with re-registration path
+6. Entire workflow accessible via keyboard navigation
+7. Workflow functions on mobile browsers (iOS Safari, Android Chrome)
+8. All pages styled consistently with existing login page
+
+**Edge Cases**:
+
+- User registers, never activates, tries to login → Error: "Account pending activation"
+- User clicks activation link twice → Second click succeeds silently (idempotent per R1.1)
+- User registers with existing email + same ActorType → Error: "Email already registered for this actor type. Try logging in or use different email." (per R1.3)
+- User registers with existing email + different ActorType → Success (same email, different actor types allowed per R1.3)
+
+---
+
+### Non-Functional Requirements (Phase 1+ Registration UI)
+
+**NFR8.1: Performance**
+- Registration form submission completes in <2 seconds (p95)
+- Activation page token validation completes in <1 second (p95)
+- Form validation feedback displays in <100ms (real-time feedback)
+
+**NFR8.2: Accessibility**
+- All form fields have visible labels and ARIA attributes
+- Error messages announced to screen readers
+- Keyboard navigation functional (tab order logical)
+- Color contrast meets WCAG 2.1 AA standards
+- Form usable with screen magnification (200% zoom)
+
+**NFR8.3: Security**
+- Password never logged or sent to analytics
+- Activation token not persisted in browser storage
+- HTTPS required for all registration pages (redirect HTTP → HTTPS)
+- Password field uses autocomplete="new-password" attribute
+- Email field uses autocomplete="email" attribute
+
+**NFR8.4: Browser Compatibility**
+- Chrome 120+ (latest 2 versions)
+- Firefox 121+ (latest 2 versions)
+- Safari 17+ (latest 2 versions)
+- Edge 120+ (latest 2 versions)
+- Mobile: iOS Safari 17+, Android Chrome 120+
+
+**NFR8.5: Responsive Design**
+- Form usable on viewport widths 320px - 2560px
+- Touch targets minimum 44x44px on mobile
+- Form fields stack vertically on mobile (<768px)
+- No horizontal scrolling required
+
+---
+
+### E2E Testing Requirements (Phase 1+ Registration UI)
+
+**Test Suite: Browser-Based Registration Workflow**
+
+The following End-to-End tests must pass before Phase 1+ registration UI is considered complete:
+
+**Test 1: Happy Path - Complete Registration Flow**
+```gherkin
+Given user navigates to /register
+When user fills form:
+  | Field              | Value                          |
+  | Email              | e2e-test-user@example.com     |
+  | Password           | TestPass123!                   |
+  | Confirm Password   | TestPass123!                   |
+  | Actor Type         | R&D Organization               |
+  | Full Name          | E2E Test User                  |
+  | Organization Name  | Test Labs Inc                  |
+And user clicks "Register" button
+Then user sees "Registration Successful!" heading
+And user sees their email in confirmation message
+And page URL is /register/pending-activation
+When activation email arrives (mock token extraction from DB)
+And user navigates to /activate?token={extractedToken}
+Then user sees "Account activated successfully!" message
+And user clicks "Continue to Login" button
+When user enters email + password on login page
+Then user successfully logs in and sees innovation detail page
+```
+
+**Test 2: Validation Errors - Client-Side**
+```gherkin
+Given user on /register page
+When user enters invalid email "notanemail"
+Then error message "Invalid email format" appears below email field
+When user enters password "weak"
+Then password strength indicator shows "Weak"
+And submit button remains disabled
+When user enters password "StrongPass123!"
+And user enters confirm password "Mismatch456!"
+Then error message "Passwords do not match" appears
+And submit button remains disabled
+When user fixes confirm password to "StrongPass123!"
+Then passwords match error disappears
+And submit button becomes enabled
+```
+
+**Test 3: Duplicate Email Error - Server-Side**
+```gherkin
+Given existing user with email "existing@example.com" and ActorType "IdeaGenerator"
+When new user navigates to /register
+And user fills form with email "existing@example.com" and ActorType "IdeaGenerator"
+And user clicks "Register"
+Then error message appears: "Email already registered for this actor type"
+And user remains on /register page
+And form fields retain entered values
+```
+
+**Test 4: Organization Name Conditional Display**
+```gherkin
+Given user on /register page
+When user selects Actor Type "Idea Generator"
+Then Organization Name field is hidden (or marked optional with clear indication)
+When user selects Actor Type "R&D Organization"
+Then Organization Name field appears with "Required" indicator
+```
+
+**Test 5: Activation Token - Invalid**
+```gherkin
+Given user navigates to /activate?token=INVALID_TOKEN
+When page loads
+Then error message "Activation link is invalid" displays
+And user sees "Back to Registration" link
+```
+
+**Test 6: Activation Token - Expired**
+```gherkin
+Given expired activation token in URL
+When user navigates to /activate?token={expiredToken}
+Then error message "Activation link has expired" displays
+And user sees "Please register again" link to /register
+```
+
+**Test 7: Mobile Responsive Design**
+```gherkin
+Given user on mobile device (viewport 375px width)
+When user navigates to /register
+Then all form fields are visible without horizontal scrolling
+And touch targets are minimum 44x44px
+And form is usable with on-screen keyboard
+```
+
+**Test 8: Keyboard Accessibility**
+```gherkin
+Given user on /register page
+When user navigates using only keyboard (Tab, Shift+Tab, Enter)
+Then tab order is logical (top to bottom, left to right)
+And all form fields are reachable
+And submit button activatable via Enter or Space
+And password visibility toggle activatable via keyboard
+```
+
+**Test 9: Password Visibility Toggle**
+```gherkin
+Given user on /register page
+When user enters password "SecretPass123!"
+Then password field displays bullets/dots (type="password")
+When user clicks "Show" icon/button
+Then password field displays plain text "SecretPass123!"
+And icon changes to "Hide"
+When user clicks "Hide"
+Then password field returns to bullets/dots
+```
+
+**Test 10: Navigation Between Auth Pages**
+```gherkin
+Given user on /login page
+When user clicks "Don't have an account? Register here" link
+Then user navigates to /register page
+When user successfully registers
+And clicks "Back to Login" on pending activation page
+Then user navigates to /login page
+```
+
+---
+
+### Dependencies and Prerequisites (Phase 1+)
+
+**Backend Prerequisites (Already Complete in Phase 0)**:
+- ✅ POST /auth/register endpoint (returns 201 + activationToken in Phase 0; deferred email delivery to Phase 1+)
+- ✅ POST /auth/activate endpoint (200 OK for valid token, error codes for invalid/expired)
+- ✅ Actor entity with email uniqueness per ActorType validation (R1.3)
+- ✅ Password complexity validation (8 chars, upper/lower/digit/special per R8.4)
+
+**Frontend Prerequisites (Phase 1+ New Work)**:
+- Angular 19 application initialized (completed in Phase 0 T071)
+- Angular Material components available
+- Angular Router configured
+- HTTP Client configured with API base URL
+- AuthService skeleton exists (from Phase 7 T072 LoginComponent work)
+
+**Phase 1+ Email Integration** (not required for UI, but mentioned for completeness):
+- SendGrid API integration for sending activation emails
+- Email template design (activation email with link)
+- Environment variable for SendGrid API key
+
+**Design Consistency Requirements**:
+- Match Material Design styling from existing LoginComponent (Phase 7 T072)
+- Reuse color scheme, typography, spacing from login page
+- Consistent error message styling (red text, error icons)
+- Consistent button styling (primary action button, disabled state)
+
+---
+
+## 9. Out of Scope (Deferred to v2.0)
 
 **Explicitly NOT included in v1.0** (architectural support may exist, but features disabled):
 

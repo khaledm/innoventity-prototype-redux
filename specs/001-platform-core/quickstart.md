@@ -3,6 +3,7 @@
 Get the Innoventity Platform running locally for Phase 0 development in under 30 minutes.
 
 ## Table of Contents
+
 - [Prerequisites](#prerequisites)
 - [Clone Repository](#clone-repository)
 - [Backend Setup](#backend-setup)
@@ -24,7 +25,7 @@ Ensure you have the following tools installed before proceeding:
 |------|---------|---------|--------------|
 | **.NET SDK** | 8.0+ | Backend API runtime | [Download](https://dotnet.microsoft.com/download/dotnet/8.0) |
 | **Node.js** | 18.x or 20.x LTS | Frontend build tooling | [Download](https://nodejs.org/) |
-| **Angular CLI** | 18.x | Frontend development server | `npm install -g @angular/cli@18` |
+| **Angular CLI** | 19.x | Frontend development server | `npm install -g @angular/cli@19` |
 | **Git** | 2.40+ | Version control | [Download](https://git-scm.com/) |
 | **SQL Server** | 2019+ or LocalDB | Database (local dev) | [Download SQL Server Express](https://www.microsoft.com/sql-server/sql-server-downloads) |
 | **Azure CLI** *(optional)* | 2.50+ | Azure deployment | [Download](https://learn.microsoft.com/cli/azure/install-azure-cli) |
@@ -34,7 +35,7 @@ Ensure you have the following tools installed before proceeding:
 
 - **Docker Desktop**: Run SQL Server in a container (avoids local SQL Server installation)
 - **Visual Studio 2022** or **VS Code**: IDEs with excellent .NET/Angular support
-- **Postman** or **Scalar**: API testing tools (Scalar UI is auto-generated at `/scalar` endpoint)
+- **Postman** or **Scalar**: API testing tools (Scalar UI is auto-generated at `/scalar/v1` endpoint)
 
 ### Verify Installations
 
@@ -50,7 +51,7 @@ npm --version
 
 # Verify Angular CLI
 ng version
-# Expected: Angular CLI: 18.x
+# Expected: Angular CLI: 19.x
 
 # Verify Git
 git --version
@@ -73,13 +74,13 @@ git clone https://github.com/yourusername/innoventity-prototype-redux.git
 cd innoventity-prototype-redux
 ```
 
-2. **Checkout the feature branch**:
+1. **Checkout the feature branch**:
 
 ```powershell
 git checkout 001-platform-core
 ```
 
-3. **Verify you're on the correct branch**:
+1. **Verify you're on the correct branch**:
 
 ```powershell
 git branch --show-current
@@ -203,6 +204,7 @@ dotnet run --project src/Innoventity.API -- seed-data
 ```
 
 **Manual seeding** (if no script):
+
 - Connect to database using SQL Server Management Studio (SSMS) or Azure Data Studio
 - Insert test industries (Sectors and Subsectors)
 - Insert test actors with activated accounts
@@ -215,23 +217,27 @@ dotnet run
 ```
 
 **Expected output**:
+
 ```
 info: Microsoft.Hosting.Lifetime[14]
-      Now listening on: https://localhost:5001
+      Now listening on: https://localhost:5073
 info: Microsoft.Hosting.Lifetime[14]
-      Now listening on: http://localhost:5000
+      Now listening on: http://localhost:5073
 info: Microsoft.Hosting.Lifetime[0]
       Application started. Press Ctrl+C to shut down.
 ```
+
+**Note**: The actual port may vary depending on `launchSettings.json`. Check the console output for the exact URL.
 
 ### Step 7: Verify Backend is Running
 
 Open your browser and navigate to:
 
-- **Scalar API Documentation**: [https://localhost:5001/scalar](https://localhost:5001/scalar)
-- **Swagger/OpenAPI JSON**: [https://localhost:5001/swagger/v1/swagger.json](https://localhost:5001/swagger/v1/swagger.json)
+- **Scalar API Documentation**: [https://localhost:5073/scalar/v1](https://localhost:5073/scalar/v1)
+- **OpenAPI/Swagger JSON**: `{API_URL}/swagger/v1/swagger.json`- **OpenAPI/Swagger JSON**: `{API_URL}/swagger/v1/swagger.json`
 
 You should see interactive API documentation with all Phase 0 endpoints:
+
 - `POST /api/auth/register`
 - `POST /api/auth/activate`
 - `POST /api/auth/login`
@@ -275,6 +281,7 @@ ng serve --port 4200
 ```
 
 **Expected output**:
+
 ```
 ✔ Browser application bundle generation complete.
 
@@ -294,6 +301,7 @@ Watch mode enabled. Watching for file changes...
 Open your browser and navigate to: [http://localhost:4200](http://localhost:4200)
 
 **Expected behavior**:
+
 - Landing page displays
 - Registration/Login forms are accessible
 - Browser console shows no errors (F12 to open DevTools)
@@ -371,7 +379,7 @@ dotnet test --filter "Category=Integration&FullyQualifiedName~Authentication"
 cd src/Innoventity.Client
 
 # Run tests once
-ng test --watch=false --code-coverage
+ng test -- --watch=false --coverage
 
 # Run tests in watch mode
 ng test
@@ -460,6 +468,7 @@ azd up
 ```
 
 **What `azd up` does**:
+
 1. Creates Azure Resource Group
 2. Provisions Azure SQL Database
 3. Provisions Azure App Service (Linux)
@@ -468,6 +477,7 @@ azd up
 6. Builds and deploys Angular app to Azure Static Web Apps or App Service
 
 **Expected output**:
+
 ```
 SUCCESS: Your application was provisioned and deployed to Azure in 8 minutes.
 
@@ -532,6 +542,7 @@ az webapp deploy --resource-group innoventity-rg-dev --name innoventity-api-dev 
 ### Post-Deployment Steps
 
 1. **Run migrations on Azure SQL**:
+
    ```powershell
    # Get connection string from Azure Portal
    # Update appsettings.json or use environment variable
@@ -545,7 +556,7 @@ az webapp deploy --resource-group innoventity-rg-dev --name innoventity-api-dev 
 3. **Seed initial data** (industries, test actors if needed)
 
 4. **Verify deployment**:
-   - Navigate to `https://innoventity-api-dev.azurewebsites.net/scalar`
+   - Navigate to `https://innoventity-api-dev.azurewebsites.net/scalar/v1`
    - Test registration and login flows
 
 ---
@@ -557,12 +568,14 @@ az webapp deploy --resource-group innoventity-rg-dev --name innoventity-api-dev 
 **Symptom**: `SqlException: A network-related or instance-specific error occurred while establishing a connection to SQL Server.`
 
 **Solutions**:
+
 - **LocalDB not running**: Start SQL Server LocalDB: `sqllocaldb start mssqllocaldb`
 - **Docker container stopped**: Restart container: `docker start innoventity-sql`
 - **Connection string typo**: Verify connection string in `appsettings.Development.json` or user secrets
 - **SQL Server not installed**: Install SQL Server Express or use Docker (see Backend Setup Step 2)
 
 **Verify connection**:
+
 ```powershell
 sqlcmd -S "(localdb)\mssqllocaldb" -Q "SELECT @@VERSION"
 # OR for Docker
@@ -579,6 +592,7 @@ sqlcmd -S localhost,1433 -U sa -P "YourStrong!Passw0rd" -Q "SELECT @@VERSION"
 
 **Backend (API)**:
 Edit `src/Innoventity.API/Properties/launchSettings.json`:
+
 ```json
 {
   "profiles": {
@@ -590,11 +604,13 @@ Edit `src/Innoventity.API/Properties/launchSettings.json`:
 ```
 
 **Frontend (Angular)**:
+
 ```powershell
 ng serve --port 4300
 ```
 
 **OR** find and kill process using the port (Windows):
+
 ```powershell
 # Find process on port 5001
 netstat -ano | findstr :5001
@@ -609,12 +625,14 @@ taskkill /PID <PID> /F
 **Symptom**: `dotnet ef database update` fails with "Cannot find compilation library location for package 'Microsoft.EntityFrameworkCore.Design'"
 
 **Solutions**:
+
 - Ensure you're in the correct directory: `src/Innoventity.API`
 - Restore packages: `dotnet restore`
 - Update EF Core tools: `dotnet tool update --global dotnet-ef`
 - Verify SDK version: `dotnet --version` (should be 8.0+)
 
 **Nuclear option** (recreate database):
+
 ```powershell
 # Delete database
 dotnet ef database drop --force
@@ -630,6 +648,7 @@ dotnet ef database update
 **Symptom**: API returns 401 Unauthorized even after successful login
 
 **Solutions**:
+
 - **Token expired**: Access tokens expire after 1 hour (check `exp` claim in JWT at [jwt.io](https://jwt.io))
 - **Refresh token**: Call `POST /api/auth/refresh-token` to get new access token
 - **Clock skew**: Ensure system clock is accurate (JWT validation is time-sensitive)
@@ -637,6 +656,7 @@ dotnet ef database update
 - **CORS**: Check browser console for CORS errors (ensure API allows frontend origin)
 
 **Decode JWT token** (PowerShell):
+
 ```powershell
 $token = "your.jwt.token"
 $parts = $token.Split(".")
@@ -651,18 +671,24 @@ $payload | ConvertFrom-Json | Format-List
 **Symptom**: `ng serve` fails with "Cannot find module '@angular/core'"
 
 **Solutions**:
+
 - Delete `node_modules` and reinstall:
+
   ```powershell
   rm -r -fo node_modules
   rm package-lock.json
   npm install
   ```
+
 - Clear Angular cache:
+
   ```powershell
   ng cache clean
   ```
+
 - Verify Node.js version: `node --version` (should be 18.x or 20.x LTS)
 - Update Angular CLI:
+
   ```powershell
   npm uninstall -g @angular/cli
   npm cache clean --force
@@ -676,7 +702,9 @@ $payload | ConvertFrom-Json | Format-List
 **Symptom**: `Access to XMLHttpRequest at 'https://localhost:5001/api/auth/login' from origin 'http://localhost:4200' has been blocked by CORS policy`
 
 **Solutions**:
+
 - Ensure CORS is configured in `Program.cs`:
+
   ```csharp
   builder.Services.AddCors(options =>
   {
@@ -692,6 +720,7 @@ $payload | ConvertFrom-Json | Format-List
   // BEFORE app.MapControllers()
   app.UseCors();
   ```
+
 - Verify frontend is calling correct API URL in `environment.development.ts`
 - Check browser DevTools Network tab for preflight (OPTIONS) requests
 
@@ -708,6 +737,7 @@ $payload | ConvertFrom-Json | Format-List
    - [API Contracts](./contracts/openapi.yaml) - OpenAPI specification
 
 2. **Execute TASKS Phase**:
+
    ```powershell
    # Generate work breakdown structure
    /speckit.tasks specs/001-platform-core/plan.md

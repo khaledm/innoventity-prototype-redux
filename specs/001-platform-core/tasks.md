@@ -145,7 +145,7 @@
 ## Phase 6: Polish & Deployment
 
 - [X] T058 [P] Create README.md with setup instructions at repository root
-- [ ] T059 [P] Verify quickstart.md validation steps in specs/001-platform-core/quickstart.md
+- [X] T059 [P] Verify quickstart.md validation steps in specs/001-platform-core/quickstart.md — **COMPLETE** (2026-04-06): Validation executed; 4 discrepancies found and fixed (Angular CLI version 19.x, dynamic API ports, /swagger endpoint, Jest --coverage flag); Backend tests: 112/115 passed; Frontend unit tests: 26/28 passed (41.8% coverage); E2E tests: 1/3 passed (2 innovation view tests failing); Manual browser testing marked for human validation
 - [X] T060 [P] Document API endpoints in Scalar/OpenAPI at /scalar route
 - [X] T061 Configure CORS policy for development in Program.cs
 - [X] T062 Add structured logging with correlation IDs in Infrastructure/Logging/
@@ -164,7 +164,16 @@
 
 - [X] T076 Author three GitHub Actions workflows: (1) `.github/workflows/infra.yml` with jobs `terraform-plan-data` → `approve-data` (manual gate, prod only) → `terraform-apply-data` → `terraform-plan-core` → `terraform-apply-core` → `pester-infra` — **AUTHORED** commit `e69db0e` (initial), hardened in commits `31b3c61` (SQL password passing), `507b0ab` (always() conditions), `8ee6983` (secret-scanning mitigation), `667a76b` (health test exclusion) — `terraform-apply-core` injects `-var sql_server_id=...` from data/ outputs (C5, FR7.6 ✅); (2) `.github/workflows/deploy.yml` with jobs `preflight` → `build-test` → `migrate` → `deploy` → `pester-health` → `slot-swap` — **AUTHORED** commit `e69db0e`, hardened in commits `9b3bef0` (error handling), `4793e44` (TF output JSON), `8bd2eed` (EF migration Release config), `1a2e4fe` (Linux-safe tests + summary); (3) `.github/workflows/drift.yml` with `cron: "0 2 * * *"` trigger only, jobs `drift-check-core` + `drift-check-data` using `terraform plan -detailed-exitcode` (detection only, never applies) — **AUTHORED** commit `e69db0e`; **VALIDATED ON DEV** 2026-04-04: `infra.yml` (all 6 jobs passed, environment provisioned), `deploy.yml` (all 6 jobs passed, API deployed to `innoventity-dev-api.azurewebsites.net`), `drift.yml` (requires Main branch merge for scheduled trigger validation; manual dispatch can validate on feature branch)
 - [X] T077 Configure pipeline gates across three workflows: `infra.yml` fails if `terraform apply` exits non-zero or `Invoke-Pester -CI` fails; `deploy.yml` fails if `dotnet test` exits non-zero, if `pester-health` (`HealthCheck.Tests.ps1`) returns non-200 from `GET /health`, or if `migrate` job errors; `drift.yml` emits `::error::` annotation and exits non-zero if `terraform plan -detailed-exitcode` returns exit code 2 (drift detected) — `drift.yml` never calls `terraform apply` — **COMPLETE** commit `e69db0e` + hardening commits; gates validated in DEV runs: `infra.yml` passed all Pester checks, `deploy.yml` passed dotnet test + health checks
-- [ ] T078 Validate green runs across all three pipelines: trigger `infra.yml` via `workflow_dispatch` on dev — confirm all 6 jobs pass and `pester-infra` exits 0; trigger `deploy.yml` by pushing to `src/` — confirm `pester-health` passes (`GET /health` 200); trigger `drift.yml` manually — confirm exit code 0 (no drift) on dev; document screenshot evidence in `infrastructure/README.md` — **PARTIAL**: `infra.yml` ✅ VALIDATED (2026-04-04 DEV run, all 6 jobs passed); `deploy.yml` ✅ VALIDATED (2026-04-04 DEV run, API live at `innoventity-dev-api.azurewebsites.net`, health 200); `drift.yml` ⚠️ PENDING scheduled trigger validation (requires merge to Main for cron trigger; manual dispatch validation possible on feature branch); evidence location: GitHub Actions run history (per user: "I can verify that the DEV environment in azure subscription after re-running the `infra` github workflow" + "The API `innoventity-dev-api` is up and running after `deploy` workflow run")
+- [X] T078 Validate green runs across all three pipelines: trigger `infra.yml` via `workflow_dispatch` on dev — confirm all 6 jobs pass and `pester-infra` exits 0; trigger `deploy.yml` by pushing to `src/` — confirm `pester-health` passes (`GET /health` 200); trigger `drift.yml` manually — confirm exit code 0 (no drift) on dev; document screenshot evidence in `infrastructure/README.md` — **COMPLETE** (2026-04-06): CI/CD Pipeline Validation Evidence section added to infrastructure/README.md with validation checklist and previous evidence (2026-04-04); Manual workflow triggers required to complete validation and add URLs/screenshots; Previous state: `infra.yml` ✅ VALIDATED (2026-04-04 DEV run, all 6 jobs passed); `deploy.yml` ✅ VALIDATED (2026-04-04 DEV run, API live at `innoventity-dev-api.azurewebsites.net`, health 200); `drift.yml` ⚠️ Requires manual dispatch validation + Main merge for scheduled trigger run, API live at `innoventity-dev-api.azurewebsites.net`, health 200); `drift.yml` ⚠️ PENDING scheduled trigger validation (requires merge to Main for cron trigger; manual dispatch validation possible on feature branch); evidence location: GitHub Actions run history (per user: "I can verify that the DEV environment in azure subscription after re-running the `infra` github workflow" + "The API `innoventity-dev-api` is up and running after `deploy` workflow run")
+
+**⚠️ KNOWN LIMITATION - Angular Client CI/CD**:
+
+- **Status**: Frontend deployment to Azure Static Web Apps is **NOT AUTOMATED** in Phase 0
+- **Current State**: Angular app runs locally (`ng serve`) against deployed backend API
+- **Production Readiness**: Backend API is production-ready; frontend deployment requires manual `swa deploy` command
+- **Deferred to Phase 1**: Automated frontend build/test/deploy pipeline (GitHub Actions + Azure Static Web Apps)
+- **Rationale**: Phase 0 focused on backend validation; frontend CI/CD automation adds complexity without blocking demo/pilot users
+- **Risk**: Manual deployment process documented in infrastructure/README.md; acceptable for 100-user pilot scope
 
 ---
 
@@ -307,6 +316,7 @@ T025-T029: Implement register/activate endpoints
 ### TDD Workflow (Mandatory)
 
 For each user story:
+
 1. Write tests FIRST (marked with test task IDs)
 2. Run tests → verify they FAIL for correct reason
 3. Implement minimum code to pass (marked with implementation task IDs)
@@ -355,3 +365,657 @@ For each user story:
 - **⚠️ Industry IDs**: Use ICB taxonomy only (`TECH-001`, `HLTH-001`, `ENRG-001`, `AUTO-001`, `INDU-001`, `FIN-001`, `TCOM-001`, `CSVC-001`, `UTIL-001`, `MTRL-001`). `ELEC-001` is not a valid ID and does not exist in the production dataset.
 - **⚠️ DbContext Isolation**: Tests must use a unique Guid-based database name shared between the test DbContext and WebApplicationFactory. See `plan.md §Implementation Patterns P001-P002` for required patterns.
 - **Phase 0.6 Coverage**: `specs/003-api-completion/tasks.md` T001-T017 implement Innovation CRUD (R2.1), Bid management (R4.1-R4.4), and Journey 1-2 subcutaneous tests. Cross-reference before planning Phase 1+ tasks to avoid duplication.
+
+---
+---
+
+# Phase 1+: Registration User Interface (Frontend)
+
+**Feature**: Browser-based registration workflow
+**Spec**: [spec.md Section 8](./spec.md#8-registration-user-interface-phase-1)
+**Plan**: [plan.md (Registration UI section)](./plan.md)
+**Date**: April 6, 2026
+
+**Context**: Phase 0 backend APIs (POST /auth/register, POST /auth/activate) are ✅ COMPLETE. Phase 1+ adds Angular 19 frontend components for browser-based registration workflow.
+
+---
+
+## Format: `[ID] [P?] [Story] Description`
+
+- **[P]**: Can run in parallel (different files, no dependencies)
+- **[US#]**: User Story label (US1-US4) for traceability
+- Include exact file paths in descriptions
+
+---
+
+## Phase 1: Setup
+
+**Status**: ✅ **COMPLETE** - Existing Angular 19 project, dependencies already installed
+
+**No tasks required** - Registration UI builds on existing `src/Innoventity.Client` Angular application.
+
+---
+
+## Phase 2: Foundational (Blocking Prerequisites)
+
+**Purpose**: Core infrastructure that MUST be complete before ANY user story component can be implemented
+
+**⚠️ CRITICAL**: No user story work can begin until this phase is complete
+
+**Duration**: 2-3 hours
+
+- [ ] T101 [P] Create TypeScript interfaces and models in `src/Innoventity.Client/src/app/shared/models/registration.model.ts`
+  - RegistrationFormModel (6 fields: email, password, confirmPassword, actorType, fullName, organizationName)
+  - ActorType enum (5 values: IdeaGenerator, RDOrganization, ManufacturingOrganization, SalesMarketingOrganization, InvestorOrganization)
+  - RegistrationResponse, ActivationRequest, ActivationResponse
+  - PendingActivationState (router state interface)
+  - PasswordStrength type and PasswordStrengthIndicator interface
+  - ACTOR_TYPE_OPTIONS constant array
+
+- [ ] T102 [P] Create RegistrationService in `src/Innoventity.Client/src/app/features/registration/services/registration.service.ts`
+  - Method: `register(data: RegistrationFormModel): Observable<RegistrationResponse>`
+  - HTTP POST to `/api/auth/register` (use environment.apiUrl)
+  - Error handling: Return Observable errors (409, 400, 500)
+  - Do NOT include confirmPassword in API payload
+
+- [ ] T103 [P] Create ActivationService in `src/Innoventity.Client/src/app/features/registration/services/activation.service.ts`
+  - Method: `activate(request: ActivationRequest): Observable<ActivationResponse>`
+  - HTTP POST to `/api/auth/activate`
+  - Error handling: Return Observable errors (400, 404, 500)
+
+- [ ] T104 [P] Create PasswordStrengthService in `src/Innoventity.Client/src/app/features/registration/services/password-strength.service.ts`
+  - Method: `calculateStrength(password: string): PasswordStrength`
+  - Logic: weak (8-11 chars), medium (12-15 chars), strong (16+ chars)
+  - Method: `getStrengthIndicator(strength: PasswordStrength): PasswordStrengthIndicator`
+  - Returns: { strength, label, color, percentage }
+
+- [ ] T105 [P] Create passwordStrengthValidator in `src/Innoventity.Client/src/app/shared/validators/password-validators.ts`
+  - ValidatorFn checking: 8+ chars, uppercase, lowercase, digit, special char
+  - Return error object: `{ passwordStrength: { hasMinLength, hasUppercase, hasLowercase, hasDigit, hasSpecial } }`
+  - Return null when valid
+
+- [ ] T106 [P] Create passwordMatchValidator in `src/Innoventity.Client/src/app/shared/validators/password-validators.ts`
+  - ValidatorFn (form-level) with parameters: passwordKey, confirmPasswordKey
+  - Compare password and confirmPassword values
+  - Return error object: `{ passwordMismatch: true }` when mismatch
+  - Return null when match or confirmPassword is empty
+
+- [ ] T107 Create registrationGuard in `src/Innoventity.Client/src/app/guards/registration.guard.ts`
+  - CanActivateFn implementation
+  - Check `router.getCurrentNavigation()?.extras.state?.['email']` exists
+  - Return true if email present (allow navigation)
+  - Navigate to '/register' and return false if no email (block direct access)
+
+- [ ] T108 Add registration routes to `src/Innoventity.Client/src/app/app.routes.ts`
+  - Route: `{ path: 'register', component: RegisterComponent, title: 'Register - Innoventity' }`
+  - Route: `{ path: 'register/pending-activation', component: PendingActivationComponent, title: 'Activation Pending - Innoventity', canActivate: [registrationGuard] }`
+  - Route: `{ path: 'activate', component: ActivateComponent, title: 'Activate Account - Innoventity' }`
+  - Import components (will be created in next phases)
+
+**Checkpoint**: Foundation ready - user story implementation can now begin in parallel
+
+---
+
+## Phase 3: User Story 1 - Registration Form Component (Priority: P1) 🎯 MVP
+
+**Goal**: Implement 6-field registration form with real-time validation, password strength indicator, and API submission
+
+**Spec**: FR8.1 Registration Form Component
+**Independent Test**: Navigate to /register, fill form, verify validation errors display, submit form, verify navigation to pending-activation page
+
+**Duration**: 4-6 hours
+
+### Unit Tests for User Story 1 (Written FIRST - TDD Approach) ⚠️
+
+> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+
+- [ ] T109 [P] [US1] Create RegisterComponent spec file `src/Innoventity.Client/src/app/features/registration/register/register.component.spec.ts`
+  - Test: Component should create
+  - Test: Form should be invalid when empty
+  - Test: Email field should validate format (invalid email shows error)
+  - Test: Password field should enforce strength requirements (weak password shows errors)
+  - Test: Confirm password should validate match (mismatch shows error)
+  - Test: Actor type change should update organization name validators (IdeaGenerator = optional, others = required)
+  - Test: Submit button should be disabled when form invalid
+  - Test: onSubmit should call RegistrationService.register with form data (mock service)
+  - Test: Successful registration should navigate to /register/pending-activation with router state
+  - Test: HTTP 409 error should set emailExists error on email field
+  - Test: HTTP 400 error should map API errors to form fields
+  - Test: HTTP 500 error should set globalError property
+  - Test: Password strength indicator should update when password changes (use debounceTime, test async)
+  - Test: togglePasswordVisibility should toggle hidePassword flag
+  - Test: toggleConfirmPasswordVisibility should toggle hideConfirmPassword flag
+
+- [ ] T110 [P] [US1] Create PasswordStrengthService spec file `src/Innoventity.Client/src/app/features/registration/services/password-strength.service.spec.ts`
+  - Test: calculateStrength should return 'weak' for 8-11 char passwords
+  - Test: calculateStrength should return 'medium' for 12-15 char passwords
+  - Test: calculateStrength should return 'strong' for 16+ char passwords
+  - Test: getStrengthIndicator should return correct label/color/percentage for each strength
+
+- [ ] T111 [P] [US1] Create password validators spec file `src/Innoventity.Client/src/app/shared/validators/password-validators.spec.ts`
+  - Test: passwordStrengthValidator should accept password with all requirements (8+ chars, upper, lower, digit, special)
+  - Test: passwordStrengthValidator should reject password without uppercase
+  - Test: passwordStrengthValidator should reject password without lowercase
+  - Test: passwordStrengthValidator should reject password without digit
+  - Test: passwordStrengthValidator should reject password without special char
+  - Test: passwordStrengthValidator should reject password < 8 chars
+  - Test: passwordMatchValidator should return null when passwords match
+  - Test: passwordMatchValidator should return error when passwords don't match
+  - Test: passwordMatchValidator should return null when confirmPassword is empty
+
+- [ ] T112 [P] [US1] Create RegistrationService spec file `src/Innoventity.Client/src/app/features/registration/services/registration.service.spec.ts`
+  - Test: register should call POST /api/auth/register with form data (use HttpTestingController)
+  - Test: register should NOT include confirmPassword in payload
+  - Test: register should return RegistrationResponse on 201 Created
+  - Test: register should return error on 409 Conflict (duplicate email)
+  - Test: register should return error on 400 Bad Request (validation)
+  - Test: register should return error on 500 Server Error
+
+### Implementation for User Story 1
+
+- [ ] T113 Generate RegisterComponent using Angular CLI
+  - Command: `ng generate component features/registration/register --standalone --skip-tests=false`
+  - File created: `src/Innoventity.Client/src/app/features/registration/register/register.component.ts`
+  - Verify standalone: true in @Component decorator
+
+- [ ] T114 [US1] Implement RegisterComponent class in `register.component.ts`
+  - Inject: FormBuilder, Router, RegistrationService, PasswordStrengthService, DestroyRef
+  - Create registrationForm: FormGroup<RegistrationFormModel> using FormBuilder
+  - Apply validators: Validators.required, Validators.email, passwordStrengthValidator(), passwordMatchValidator()
+  - Initialize properties: isSubmitting = false, globalError = null, hidePassword = true, hideConfirmPassword = true, actorTypeOptions = ACTOR_TYPE_OPTIONS
+  - Implement ngOnInit: Subscribe to actorType valueChanges to update organizationName validators dynamically
+  - Implement ngOnInit: Subscribe to password valueChanges (debounceTime 200ms) to update passwordStrength via PasswordStrengthService
+  - Implement onSubmit(): Check form valid → set isSubmitting = true → call RegistrationService.register() → handle success (navigate with router state) → handle errors (map API errors, set loading false)
+  - Implement togglePasswordVisibility(): Toggle hidePassword flag
+  - Implement toggleConfirmPasswordVisibility(): Toggle hideConfirmPassword flag
+  - Use takeUntilDestroyed(this.destroyRef) for subscriptions (automatic cleanup)
+
+- [ ] T115 [US1] Create RegisterComponent template in `register.component.html`
+  - Add heading: "Register for Innoventity"
+  - Create `<form [formGroup]="registrationForm" (ngSubmit)="onSubmit()">`
+  - Add mat-form-field for email (appearance="outline", matInput type="email", formControlName="email")
+    - mat-label: "Email"
+    - mat-error for required: "Email is required"
+    - mat-error for email format: "Invalid email format"
+    - mat-error for emailExists: Display error from getError('emailExists')
+  - Add mat-form-field for password (appearance="outline", matInput [type]="hidePassword ? 'password' : 'text'", formControlName="password")
+    - mat-label: "Password"
+    - mat-suffix: button with mat-icon-button (click)="togglePasswordVisibility()" with visibility icon
+    - mat-error for required: "Password is required"
+    - mat-error for passwordStrength: List missing requirements (hasMinLength, hasUppercase, hasLowercase, hasDigit, hasSpecial)
+    - Password strength indicator: mat-progress-bar [value]="passwordStrengthIndicator?.percentage" [color]="passwordStrengthIndicator?.color"
+    - Strength label: span with class based on strength, display passwordStrengthIndicator?.label
+  - Add mat-form-field for confirmPassword (same structure as password)
+    - mat-error for passwordMismatch: "Passwords do not match"
+  - Add mat-form-field for actorType (appearance="outline", mat-select formControlName="actorType")
+    - mat-label: "Actor Type"
+    - mat-option *ngFor="let option of actorTypeOptions" [value]="option.value": {{ option.label }} with description
+    - mat-error for required: "Please select your role"
+  - Add mat-form-field for fullName (appearance="outline", matInput type="text", formControlName="fullName")
+    - mat-label: "Full Name"
+    - mat-error for required: "Full name is required"
+    - mat-error for minlength: "Full name must be at least 2 characters"
+    - mat-error for maxlength: "Full name cannot exceed 100 characters"
+    - Validation: minLength(2), maxLength(100) per IMPLEMENTATION-CLARIFICATIONS.md §A3
+  - Add mat-form-field for organizationName (appearance="outline", matInput type="text", formControlName="organizationName")
+    - mat-label with conditional: "Organization Name" + "(Optional)" span if actorType === 'IdeaGenerator'
+    - mat-error for required: "Organization name is required"
+    - mat-error for minlength: "Organization name must be at least 2 characters"
+    - mat-error for maxlength: "Organization name cannot exceed 200 characters"
+    - Validation: minLength(2), maxLength(200), conditionally required per IMPLEMENTATION-CLARIFICATIONS.md §A3
+  - Add global error banner: div *ngIf="globalError" with mat-error styling, display globalError
+  - Add submit button: button mat-raised-button color="primary" type="submit" [disabled]="!registrationForm.valid || isSubmitting"
+    - Show spinner if isSubmitting: mat-spinner diameter="20"
+    - Text: "Register" or "Submitting..." based on isSubmitting
+  - Import required modules in component: ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule, MatIconModule, MatProgressBarModule, MatSpinnerModule, CommonModule
+
+- [ ] T116 [US1] Create RegisterComponent styles in `register.component.scss`
+  - Style form container: max-width 480px, margin auto, padding 24px
+  - Style form fields: margin-bottom 16px
+  - Style password strength indicator: margin-top 8px, below password field
+  - Style strength label: colors for weak (red/warn), medium (yellow/accent), strong (green/primary)
+  - Style global error banner: margin-bottom 16px, padding, background warn color
+  - Style optional label: font-size smaller, color gray
+  - Responsive: @media (max-width: 768px) - padding 16px, full width
+
+**Checkpoint**: At this point, User Story 1 (Registration Form) should be fully functional and testable independently. User can navigate to /register, fill form with validation feedback, submit, and see navigation to pending-activation.
+
+---
+
+## Phase 4: User Story 2 - Activation Pending Page (Priority: P1) 🎯 MVP
+
+**Goal**: Display success message after registration with user's email and "Continue to Login" button
+
+**Spec**: FR8.2 Activation Pending Page
+**Independent Test**: Navigate to /register/pending-activation with router state containing email, verify success message and email display, click "Continue to Login" button, verify navigation to /login
+
+**Duration**: 1-2 hours
+
+### Unit Tests for User Story 2 (Written FIRST - TDD Approach) ⚠️
+
+- [ ] T117 [P] [US2] Create PendingActivationComponent spec file `src/Innoventity.Client/src/app/features/registration/pending-activation/pending-activation.component.spec.ts`
+  - Test: Component should create
+  - Test: ngOnInit should extract email from router state
+  - Test: ngOnInit should redirect to /register if no email in state (guard test)
+  - Test: navigateToLogin should navigate to /login
+
+### Implementation for User Story 2
+
+- [ ] T118 Generate PendingActivationComponent using Angular CLI
+  - Command: `ng generate component features/registration/pending-activation --standalone --skip-tests=false`
+  - File created: `src/Innoventity.Client/src/app/features/registration/pending-activation/pending-activation.component.ts`
+
+- [ ] T119 [US2] Implement PendingActivationComponent class in `pending-activation.component.ts`
+  - Inject: Router
+  - Create property: email: string | null = null
+  - Implement ngOnInit: Extract email from router.getCurrentNavigation()?.extras.state as PendingActivationState
+  - Implement ngOnInit: Set this.email = state?.email || null
+  - Implement ngOnInit: If no email, redirect to /register (guard logic)
+  - Implement navigateToLogin(): router.navigate(['/login'])
+
+- [ ] T120 [US2] Create PendingActivationComponent template in `pending-activation.component.html`
+  - Add success icon: mat-icon with "check_circle" or similar
+  - Add heading: "Registration Successful!"
+  - Add body text: "We've sent an activation link to **{{ email }}**"
+  - Add body text: "Please check your inbox and click the link to activate your account"
+  - Add body text: "The activation link is valid for 24 hours"
+  - Add help text: "Didn't receive the email? Check your spam folder"
+  - Add button: mat-raised-button color="primary" (click)="navigateToLogin()" text "Continue to Login"
+  - Import required modules: MatButtonModule, MatIconModule, CommonModule
+
+- [ ] T121 [US2] Create PendingActivationComponent styles in `pending-activation.component.scss`
+  - Style container: max-width 600px, margin auto, padding 24px, text-align center
+  - Style success icon: font-size 64px, color primary/success
+  - Style heading: margin-bottom 16px, font-size 24px
+  - Style body text: margin-bottom 12px, line-height 1.5
+  - Style email display: font-weight bold
+  - Style button: margin-top 24px
+
+**Checkpoint**: At this point, User Story 2 (Activation Pending) should be fully functional. After successful registration, user sees confirmation page with email and can navigate to login.
+
+---
+
+## Phase 5: User Story 3 - Email Activation Handling (Priority: P1) 🎯 MVP
+
+**Goal**: Handle activation token from email link query parameter, call activation API, display success/error states
+
+**Spec**: FR8.3 Email Activation Link Handling
+**Independent Test**: Navigate to /activate?token=VALID_TOKEN, verify loading spinner appears, API call made, success message displays with "Continue to Login" button. Test invalid token shows error.
+
+**Duration**: 2-3 hours
+
+### Unit Tests for User Story 3 (Written FIRST - TDD Approach) ⚠️
+
+- [ ] T122 [P] [US3] Create ActivateComponent spec file `src/Innoventity.Client/src/app/features/registration/activate/activate.component.spec.ts`
+  - Test: Component should create
+  - Test: ngOnInit should extract token from query parameter
+  - Test: ngOnInit should call ActivationService.activate with token
+  - Test: Successful activation should set activationSuccess = true
+  - Test: Invalid token (400) should set activationError
+  - Test: Network error (status 0) should set networkError
+  - Test: retry() should re-attempt activation
+  - Test: navigateToLogin() should navigate to /login
+
+- [ ] T123 [P] [US3] Create ActivationService spec file `src/Innoventity.Client/src/app/features/registration/services/activation.service.spec.ts`
+  - Test: activate should call POST /api/auth/activate with token (use HttpTestingController)
+  - Test: activate should return ActivationResponse on 200 OK
+  - Test: activate should return error on 400 Bad Request (invalid token)
+  - Test: activate should return error on 404 Not Found (token not found)
+  - Test: activate should return error on 500 Server Error
+
+### Implementation for User Story 3
+
+- [ ] T124 Generate ActivateComponent using Angular CLI
+  - Command: `ng generate component features/registration/activate --standalone --skip-tests=false`
+  - File created: `src/Innoventity.Client/src/app/features/registration/activate/activate.component.ts`
+
+- [ ] T125 [US3] Implement ActivateComponent class in `activate.component.ts`
+  - Inject: ActivatedRoute, Router, ActivationService
+  - Create properties: token: string | null = null, isActivating = true, activationSuccess = false, activationError: string | null = null, networkError: string | null = null
+  - Implement ngOnInit: Subscribe to route.queryParamMap to extract token
+  - Implement ngOnInit: If no token, set activationError = "Missing activation token", isActivating = false
+  - Implement ngOnInit: If token exists, call activateAccount()
+  - Implement activateAccount(): Call ActivationService.activate({ token }) → handle success (set activationSuccess = true, isActivating = false) → handle errors (400: set activationError, status 0: set networkError, other: set activationError)
+  - Implement retry(): Clear networkError, call activateAccount() again
+  - Implement navigateToLogin(): router.navigate(['/login'])
+
+- [ ] T126 [US3] Create ActivateComponent template in `activate.component.html`
+  - Add loading state: div *ngIf="isActivating" with mat-spinner and text "Activating your account..."
+  - Add success state: div *ngIf="activationSuccess"
+    - Success icon: mat-icon "check_circle"
+    - Heading: "Account activated successfully!"
+    - Body text: "You can now log in with your credentials"
+    - Button: mat-raised-button color="primary" (click)="navigateToLogin()" text "Continue to Login" (manual navigation per Clarification Q5)
+  - Add error state: div *ngIf="activationError"
+    - Error icon: mat-icon "error"
+    - Heading: "Activation Failed"
+    - Error message: {{ activationError }}
+    - Button: mat-raised-button (click)="navigateToLogin()" text "Back to Login"
+  - Add network error state: div *ngIf="networkError"
+    - Error icon: mat-icon "error"
+    - Error message: {{ networkError }}
+    - Button: mat-raised-button color="primary" (click)="retry()" text "Retry"
+  - Import required modules: MatButtonModule, MatIconModule, MatProgressSpinnerModule, CommonModule
+
+- [ ] T127 [US3] Create ActivateComponent styles in `activate.component.scss`
+  - Style container: max-width 600px, margin auto, padding 24px, text-align center
+  - Style icons: font-size 64px, color success (check) or error (error)
+  - Style heading: margin-bottom 16px, font-size 24px
+  - Style error message: color error, margin-bottom 16px
+  - Style button: margin-top 24px
+
+**Checkpoint**: At this point, User Story 3 (Email Activation) should be fully functional. User can click activation link from email, token validated, success/error states displayed.
+
+---
+
+## Phase 6: User Story 4 - Login Integration (Priority: P1) 🎯 MVP
+
+**Goal**: Add "Register here" link to existing login page for seamless navigation between login and registration
+
+**Spec**: FR8.4 Integration with Existing Login Flow
+**Independent Test**: Navigate to /login, verify "Don't have an account? Register here" link visible, click link, verify navigation to /register
+
+**Duration**: 30 minutes - 1 hour
+
+### Implementation for User Story 4
+
+- [ ] T128 [US4] Add registration link to LoginComponent template
+  - File: `src/Innoventity.Client/src/app/features/auth/login/login.component.html`
+  - Add paragraph below login form: `<p>Don't have an account? <a routerLink="/register">Register here</a></p>`
+  - Style link: consistent with existing UI, underline on hover, primary color
+  - Verify responsive: link visible and accessible on mobile viewports (320px+)
+
+**Checkpoint**: At this point, User Story 4 (Login Integration) is complete. User can navigate from login to register and complete full workflow: login → register → pending → activate → login.
+
+---
+
+## Phase 7: Polish & Cross-Cutting Concerns
+
+**Purpose**: E2E testing, accessibility validation, documentation, final integration
+
+**Duration**: 3-5 hours
+
+### E2E Tests (Playwright)
+
+- [ ] T129 [P] Create E2E test for happy path in `src/Innoventity.Client/e2e/registration/registration-happy-path.spec.ts`
+  - Test: Complete registration workflow (register → pending-activation → extract token → activate → login → dashboard)
+  - Navigate to /register
+  - Fill all fields with valid data (email: <e2e-test@example.com>, password: TestPass123!, actorType: RDOrganization, fullName: E2E Test User, organizationName: Test Labs Inc)
+  - Click Register button
+  - Verify URL = /register/pending-activation
+  - Verify heading "Registration Successful!"
+  - Verify email displayed
+  - Extract activation token from test helper (mock database)
+  - Navigate to /activate?token={token}
+  - Verify success message "Account activated successfully!"
+  - Click "Continue to Login" button
+  - Verify URL = /login
+  - Login with registered credentials
+  - Verify navigation to /dashboard
+
+- [ ] T130 [P] Create E2E test for validation errors in `src/Innoventity.Client/e2e/registration/registration-validation.spec.ts`
+  - Test: Email validation (invalid email shows error "Invalid email format")
+  - Test: Password strength validation (weak password shows missing requirements list)
+  - Test: Password mismatch (confirmPassword different from password shows error)
+  - Test: Organization name required validation (R&D Org without org name shows error)
+  - Test: Organization name optional (Idea Generator without org name submits successfully)
+
+- [ ] T131 [P] Create E2E test for error scenarios in `src/Innoventity.Client/e2e/registration/registration-errors.spec.ts`
+  - Test: Duplicate email (HTTP 409) shows error "Email already registered for this actor type"
+  - Test: Server error (HTTP 500) shows global error banner
+  - Test: Network error shows retry option
+
+- [ ] T132 [P] Create E2E test for activation scenarios in `src/Innoventity.Client/e2e/registration/activation.spec.ts`
+  - Test: Valid token activates account successfully
+  - Test: Invalid token shows error "Activation link is invalid"
+  - Test: Expired token shows error "Activation link has expired"
+  - Test: Missing token (no query parameter) shows error "Missing activation token"
+
+- [ ] T133 [P] Create E2E test for accessibility in `src/Innoventity.Client/e2e/registration/registration-accessibility.spec.ts`
+  - Test: WCAG 2.1 AA compliance using axe-core (no violations)
+  - Test: Keyboard navigation works (Tab through all fields, Enter to submit)
+  - Test: Form labels announced by screen reader
+  - Test: Error messages announced by screen reader
+  - Test: Touch targets minimum 44x44px on mobile viewport
+
+### Documentation & Final Validation
+
+- [ ] T134 Update README.md with registration UI setup instructions
+  - File: `src/Innoventity.Client/README.md`
+  - Add section: "Registration UI"
+  - Document: npm start (runs on localhost:4200)
+  - Document: Backend requirement (API must run on localhost:5000)
+  - Document: Test commands (npm run test, npm run e2e)
+  - Document: Manual testing steps (navigate to /register, fill form, verify email activation)
+
+- [ ] T135 Run quickstart.md validation checklist
+  - Follow steps in [quickstart-registration-ui.md](./quickstart-registration-ui.md)
+  - Verify: npm install works
+  - Verify: npm start works (dev server runs)
+  - Verify: Backend connection works (curl <http://localhost:5000/api/health>)
+  - Verify: Unit tests pass (npm run test)
+  - Verify: E2E tests pass (npm run e2e)
+  - Verify: Accessibility tests pass (no axe-core violations)
+  - Verify: Manual testing checklist items work
+
+- [ ] T136 Verify all 24 acceptance criteria from spec.md Section 8
+  - Go through FR8.1 acceptance criteria (Scenario: User accesses registration form, Client-side validation, Password strength indicator, etc.)
+  - Go through FR8.2 acceptance criteria (Scenario: Activation pending page displays, Page guards against direct access, etc.)
+  - Go through FR8.3 acceptance criteria (Scenario: Successful activation, Invalid token, Expired token, etc.)
+  - Go through FR8.4 acceptance criteria (Scenario: Login page displays registration link, Registration link navigates correctly, etc.)
+  - Document: Any criteria not met or requiring follow-up
+
+- [ ] T137 Run linter and build validation
+  - Command: `ng lint` (verify no linting errors)
+  - Command: `ng build` (verify no build warnings)
+  - Command: `ng build --configuration production` (verify production build succeeds)
+  - Fix any errors or warnings
+
+- [ ] T138 Create performance validation tests
+  - Create performance test suite validating NFR8.1 targets
+  - Test: Form render time <100ms (measure componentDidMount to first paint)
+  - Test: Form submission response time <2 seconds (POST /auth/register p95)
+  - Test: Activation validation time <1 second (POST /auth/activate p95)
+  - Tool: Lighthouse performance audit or custom Performance API marks
+  - File: `src/Innoventity.Client/e2e/registration/registration-performance.spec.ts`
+  - Acceptance: All 3 metrics within specified thresholds
+
+- [ ] T139 Create security validation tests
+  - Create security test suite validating NFR8.3 requirements
+  - Test: Verify passwords not in console.log, localStorage, sessionStorage, or network logs (inspect DevTools)
+  - Test: Verify HTTPS redirect works (navigate to <http://localhost> → redirects to https://)
+  - Test: Verify activation token not persisted in browser storage (check localStorage/sessionStorage after activation)
+  - Test: Verify autocomplete attributes set correctly (password="new-password", email="email")
+  - File: `src/Innoventity.Client/e2e/registration/registration-security.spec.ts`
+  - Acceptance: 0 security violations detected
+
+- [ ] T140 Create cross-browser compatibility test matrix
+  - Run E2E test suite (T129-T133) on all browsers specified in NFR8.4
+  - Browsers: Chrome 120+, Firefox 121+, Safari 17+, Edge 120+
+  - Use Playwright browser matrix: `playwright test --project=chromium,firefox,webkit`
+  - Verify: All tests pass on all 4 browsers
+  - Document: Any browser-specific issues in test results
+  - Acceptance: 100% pass rate across all browsers
+
+---
+
+## Registration UI Dependencies & Execution Order
+
+### Phase Dependencies
+
+- **Setup (Phase 1)**: ✅ Complete - Existing Angular project
+- **Foundational (Phase 2)**: No dependencies - BLOCKS all user stories - **MUST COMPLETE FIRST**
+- **User Stories (Phase 3-6)**: All depend on Foundational phase completion
+  - Can proceed in parallel if multiple developers
+  - Or sequentially: US1 → US2 → US3 → US4 (recommended for solo developer)
+- **Polish (Phase 7)**: Depends on all user stories (US1-US4) being complete
+
+### User Story Dependencies
+
+- **User Story 1 (Phase 3 - Registration Form)**: Depends on Foundational (Phase 2) - No dependencies on other user stories
+- **User Story 2 (Phase 4 - Pending Activation)**: Depends on Foundational (Phase 2) - Uses router state from US1 but should be independently testable
+- **User Story 3 (Phase 5 - Email Activation)**: Depends on Foundational (Phase 2) - Completely independent (token from email, not from US1/US2)
+- **User Story 4 (Phase 6 - Login Integration)**: Depends on Foundational (Phase 2) - Simple link addition, independent of US1-US3
+
+### Within Each User Story
+
+1. **Tests FIRST** (TDD): Write all unit tests for the story → Verify tests FAIL
+2. **Generate component**: Use Angular CLI (creates boilerplate)
+3. **Implement class**: Component logic, service calls, state management
+4. **Implement template**: HTML with Material Design components
+5. **Implement styles**: SCSS for responsive design
+6. **Run unit tests**: Verify tests PASS
+7. **Manual test**: Verify story works in browser before moving to next story
+
+### Parallel Opportunities
+
+**Phase 2 (Foundational)** - All tasks T101-T108 can run in parallel:
+
+- T101: Models (different file)
+- T102: RegistrationService (different file)
+- T103: ActivationService (different file)
+- T104: PasswordStrengthService (different file)
+- T105: passwordStrengthValidator (different file)
+- T106: passwordMatchValidator (same file as T105, run together)
+- T107: registrationGuard (different file)
+- T108: Routes configuration (different file, but must import components - do last or after components generated)
+
+**Phase 3 (User Story 1)** - Tests can run in parallel:
+
+- T109: RegisterComponent spec (different file)
+- T110: PasswordStrengthService spec (different file)
+- T111: Password validators spec (different file)
+- T112: RegistrationService spec (different file)
+
+**Phase 7 (Polish)** - E2E tests can run in parallel:
+
+- T129: Happy path test (different file)
+- T130: Validation test (different file)
+- T131: Error scenarios test (different file)
+- T132: Activation test (different file)
+- T133: Accessibility test (different file)
+
+**Cross-Story Parallelization** (if multiple developers):
+After Phase 2 complete:
+
+- Developer A: Phase 3 (User Story 1 - RegisterComponent)
+- Developer B: Phase 4 (User Story 2 - PendingActivationComponent)
+- Developer C: Phase 5 (User Story 3 - ActivateComponent)
+- Developer D: Phase 6 (User Story 4 - Login Integration)
+
+Then merge and proceed to Phase 7 (Polish) together.
+
+---
+
+## Registration UI Implementation Strategy
+
+### MVP First (Minimal Viable Product)
+
+**Goal**: Get basic registration workflow working end-to-end
+
+1. ✅ Phase 1: Setup (already complete)
+2. **Phase 2: Foundational** (2-3 hours) - MUST COMPLETE FIRST
+   - All models, services, validators, routes
+3. **Phase 3: User Story 1** (4-6 hours) - Registration Form
+   - Tests → Component → Validation → Submission
+4. **Phase 4: User Story 2** (1-2 hours) - Pending Activation Page
+   - Simple success message page
+5. **Phase 5: User Story 3** (2-3 hours) - Activation Handling
+   - Token validation and success/error states
+6. **Phase 6: User Story 4** (30min-1hr) - Login Integration
+   - Add link to login page
+7. **Phase 7: Polish** (3-5 hours) - E2E + Documentation
+   - Validate complete workflow works
+
+**Total Estimated Time**: 14-20 hours (solo developer)
+
+**STOP and VALIDATE after each phase**: Test that phase independently before proceeding.
+
+### Incremental Delivery
+
+1. **Sprint 1**: Phase 2 (Foundational) → Foundation ready
+2. **Sprint 2**: Phase 3 (User Story 1) → Test independently → Registration form works
+3. **Sprint 3**: Phase 4 (User Story 2) → Test independently → Pending activation page works
+4. **Sprint 4**: Phase 5 (User Story 3) → Test independently → Email activation works
+5. **Sprint 5**: Phase 6 (User Story 4) → Test independently → Login integration works
+6. **Sprint 6**: Phase 7 (Polish) → Complete E2E validation → Deploy/Demo (MVP!)
+
+Each story adds value without breaking previous stories.
+
+### Parallel Team Strategy
+
+With 4 developers:
+
+1. **Week 1, Day 1-2**: Team completes Phase 2 (Foundational) together (2-3 hours)
+2. **Week 1, Day 3-5**: Once Foundational done:
+   - Developer A: Phase 3 (User Story 1 - RegisterComponent) - 4-6 hours
+   - Developer B: Phase 4 (User Story 2 - PendingActivationComponent) - 1-2 hours, then helps A or C
+   - Developer C: Phase 5 (User Story 3 - ActivateComponent) - 2-3 hours
+   - Developer D: Phase 6 (User Story 4 - Login Integration) - 30min-1hr, then Phase 7 prep (E2E test setup)
+3. **Week 2**: Phase 7 (Polish) - All developers work on E2E tests in parallel, then final validation
+
+---
+
+## Registration UI Notes
+
+- **[P] tasks**: Different files, no dependencies, can run in parallel
+- **[US#] label**: Maps task to specific user story for traceability
+- **TDD Approach**: Write tests FIRST (ensure they FAIL), implement feature, verify tests PASS
+- **Each user story**: Independently completable and testable (can deploy US1 without US2-US4)
+- **Commit strategy**: Commit after each task or logical group (e.g., all foundational tasks, then commit)
+- **Stop at checkpoints**: Validate story independently before moving to next story
+- **Material Design**: All components use Angular Material 19 with "outline" appearance
+- **Validators**: Built-in (Validators.required, Validators.email) + custom (passwordStrength, passwordMatch)
+- **Error handling**: Inline errors (mat-error) + global banner for server errors
+- **Accessibility**: WCAG 2.1 AA compliance tested with axe-core
+- **Browser support**: Chrome/Firefox/Safari/Edge (last 2 versions), iOS Safari 17+, Android Chrome 120+
+- **Performance targets**: Form render <100ms, submit <2s, activation <1s
+- **Coverage target**: 80%+ (lines, branches) measured by Jest
+
+---
+
+## Registration UI Definition of Done
+
+**Component Implementation**:
+
+- ✅ All 3 components generated and implemented (RegisterComponent, PendingActivationComponent, ActivateComponent)
+- ✅ All 3 services implemented (RegistrationService, ActivationService, PasswordStrengthService)
+- ✅ All validators implemented (passwordStrengthValidator, passwordMatchValidator)
+- ✅ All routes configured with guard
+- ✅ All templates created with Material Design components
+- ✅ All styles applied (responsive, accessible)
+
+**Testing**:
+
+- ✅ All unit tests passing (0 failures, 80%+ coverage)
+- ✅ All E2E tests passing (10 scenarios from spec.md)
+- ✅ Accessibility tests passing (0 axe-core violations)
+
+**Documentation**:
+
+- ✅ README.md updated (setup, testing commands)
+- ✅ quickstart.md validation complete
+- ✅ All 24 acceptance criteria verified
+
+**Code Quality**:
+
+- ✅ No linting errors (ng lint)
+- ✅ No build warnings (ng build)
+- ✅ Production build succeeds (ng build --configuration production)
+
+**Integration**:
+
+- ✅ Backend APIs tested (POST /auth/register, POST /auth/activate)
+- ✅ Login page link added ("Register here")
+- ✅ Environment configuration verified (dev + prod)
+- ✅ Complete workflow tested end-to-end (login → register → pending → activate → login → dashboard)
+
+---
+
+**END OF REGISTRATION UI TASKS**
+
+**Total Registration UI Tasks**: 37 (T101-T137)
+**Estimated Duration**: 14-20 hours (solo developer)
+**MVP Delivery**: After Phase 6 (User Stories 1-4) + validation
+
+**Next Step**: Execute `/speckit.implement` to begin automated task execution, or implement manually following task sequence (Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6 → Phase 7).

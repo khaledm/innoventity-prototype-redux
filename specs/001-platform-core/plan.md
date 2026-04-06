@@ -1,1367 +1,1204 @@
-# Implementation Plan: Platform Core (v1.0)
+# Implementation Plan: Registration User Interface (Phase 1+)
 
-**Branch**: `001-platform-core` | **Date**: February 8, 2026 | **Spec**: [spec.md](spec.md)
-**Input**: Feature specification from `/specs/001-platform-core/spec.md`
+**Branch**: `001-platform-core` | **Date**: 2026-04-06 | **Spec**: [spec.md Section 8](./spec.md#8-registration-user-interface-phase-1)
+**Input**: Feature specification from `/specs/001-platform-core/spec.md` Section 8
 
-**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
+**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/plan-template.md` for the execution workflow.
 
 ## Summary
 
-Build an open innovation platform enabling research-based innovation originators (idea generators) to discover and collaborate with commercialization partners (R&D organizations, manufacturing companies, sales/marketing firms, and investors). Core v1.0 delivers: actor registration & authentication, innovation submission & publication, formal bidding system, irreversible partner selection, and virtual incubator workspace for business plan collaboration.
+**Primary Requirement**: Browser-based user registration workflow enabling prospective users (all 5 actor types) to register, activate via email, and login without requiring API tools (Postman/curl). Removes technical barrier to user acquisition and enables marketing campaigns with shareable registration URLs.
 
-**Technical Approach**: Full-stack web application using ASP.NET Core 8 Minimal APIs (backend) with EF Core 8 (data persistence), Angular v19 with Standalone Components and Signal-Based Forms (frontend), JWT authentication, Azure SQL Database, deployed to Azure App Service with Application Insights monitoring. Architecture follows Vertical Slice pattern organized by feature.
+**Technical Approach**:
+- **Frontend**: Three standalone Angular 19 components (RegisterComponent, PendingActivationComponent, ActivateComponent) using Angular Material Design and Reactive Forms
+- **Form Strategy**: Reactive Forms with FormBuilder, custom validators for password strength and conditional Organization Name field
+- **Backend Integration**: Leverages existing Phase 0 APIs (POST /auth/register, POST /auth/activate) without modification
+- **UI/UX**: Material Design components, responsive layout (320px-2560px), WCAG 2.1 AA accessible
+- **Testing**: Jest unit tests + Playwright E2E tests covering 24 acceptance criteria scenarios
 
 ## Technical Context
 
-**Language/Version**: C# 12 / .NET 8 (backend), TypeScript 5.4+ / Angular 19 (frontend)
-
+**Language/Version**: TypeScript 5.x / Angular 19
 **Primary Dependencies**:
-- Backend: ASP.NET Core 8, EF Core 8, IdentityModel.Tokens.Jwt, BCrypt.Net, Azure.Extensions.*
-- Frontend: Angular 19 (standalone components, Signal-based forms, Vite builder), RxJS, Angular Material 19 (MDC-based components)
-- Testing: xUnit, Playwright (E2E), Stryker.NET (mutation testing)
+- Angular 19 (standalone components, signals)
+- Angular Material 19 (mat-form-field, mat-select, mat-button, mat-spinner, mat-icon)
+- Angular Reactive Forms (@angular/forms)
+- RxJS 7.x (asynchronous state management)
+- Existing AuthService (from Phase 0)
 
-**Storage**: Azure SQL Database (via EF Core 8), Azure Blob Storage (future document management)
-> **Note**: Azure Service Bus deferred to Phase 1+. v1.0 notifications use DB-persisted API poll model (no message bus required). See spec.md §Clarifications 2026-02-21 Q3.
-
+**Storage**: N/A (frontend only; backend APIs handle persistence)
 **Testing**:
-- Unit: xUnit with test data builders
-- Integration: WebApplicationFactory with test database
-- E2E: Playwright for critical user journeys (J1-J3)
-- Mutation: Stryker.NET (>70% mutation score target)
+- Jest 29.x (unit tests, component tests)
+- Playwright 1.x (E2E tests covering 10 scenarios)
+- Angular Material component harnesses (testing Material components)
 
-**Target Platform**: Azure App Service (Linux), modern browsers (Chrome, Edge, Firefox, Safari latest 2 versions)
+**Target Platform**: Modern web browsers
+- Chrome/Edge 120+ (last 2 versions)
+- Firefox 121+ (last 2 versions)
+- Safari 17+ (last 2 versions)
+- Mobile browsers: iOS Safari 17+, Android Chrome 120+
 
-**Project Type**: Web application (backend API + frontend SPA)
+**Project Type**: Web application (frontend SPA - feature addition to existing Angular app)
 
 **Performance Goals**:
-- API response time p95: <200ms
-- Database query p95: <100ms
-- Page load (First Contentful Paint) p95: <2s
-- Notification visibility: within one poll interval, v1.0 (DB-persisted API poll); <1s target deferred to Phase 1+ (SignalR). See spec.md §Clarifications 2026-02-21 Q3.
+- Form rendering: <100ms on standard device
+- Form submission: <2 seconds (API dependent)
+- Activation page token validation: <1 second
+- Real-time validation feedback: <100ms
 
 **Constraints**:
-- Solo development (10-month timeline)
-- Production-ready from Phase 0 (no "prototype" quality)
-- Test-first development (TDD: red → green → refactor)
-- No data migration (fresh database, reference legacy for business rules only)
-- v2.0 extensibility required (multi-tenancy, new actor types, organization features)
-- **Validation strategy**: Data Annotations on DTOs for simple constraints (required, length, range); FluentValidation `AbstractValidator<T>` for complex business rules (see Implementation Patterns §P004). Defense-in-depth: both layers always active. See CHK073.
-- **⚠️ Industry taxonomy**: All industry IDs/names MUST match ICB taxonomy from legacy MVC system. Generic placeholder IDs (e.g. `ELEC-001`) are invalid — they do not exist in the production dataset. Reference: `SchemaBuilder/Program.cs::GetCommonLookupSql()` in the legacy-mvc repo.
+- WCAG 2.1 Level AA accessibility compliance
+- Responsive design: 320px - 2560px viewport width
+- Touch targets minimum 44x44px (mobile)
+- Passwords never stored in browser storage
+- HTTPS-only in production
 
 **Scale/Scope**:
-- v1.0 Target: 100 concurrent users (load tested)
-- 5 actor types, 3 P0 user journeys (innovation submission, bid submission, partner selection)
-- Phase 0: Registration + authentication + view single innovation (1-2 weeks)
-- Full v1.0: ~10 months solo development
-
-## Implementation Patterns
-
-> Patterns discovered during Phase 0 and Phase 0.6 implementation. These MUST be followed in all subsequent phases to avoid known failure modes (see `specs/003-api-completion/implementation-lessons.md` for full context).
-
-### P001: EF Core In-Memory Database Isolation (CRITICAL)
-
-**Problem**: EF Core in-memory provider creates **separate database instances** even with the same name string used in different `DbContextOptionsBuilder` calls. Data seeded in the test constructor is invisible when `WebApplicationFactory` is configured independently.
-
-**Required Pattern** (unique Guid-based name, shared between test `DbContext` AND factory):
-```csharp
-_databaseName = $"TestDb_{GetType().Name}_{Guid.NewGuid()}";
-var options = new DbContextOptionsBuilder<AppDbContext>()
-    .UseInMemoryDatabase(_databaseName).Options;
-_dbContext = new AppDbContext(options);
-_dbContext.Database.EnsureCreated();
-SeedTestData(_dbContext);
-
-_factory = new WebApplicationFactory<Program>()
-    .WithWebHostBuilder(builder => builder.ConfigureServices(services =>
-    {
-        services.Remove(services.Single(d => d.ServiceType == typeof(DbContextOptions<AppDbContext>)));
-        services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(_databaseName));
-    }));
-_client = _factory.CreateClient();
-```
-**Reference**: All `tests/Innoventity.API.Tests/E2E/Journeys/` and `Integration/Features/` classes.
-
----
-
-### P002: HasData() + Manual Test Seeding — AnyAsync() Guard (CRITICAL)
-
-**Problem**: `EnsureCreated()` triggers EF Core `HasData()` seed migrations automatically. If tests then manually insert the same reference entities (e.g., Industries), SQL Server throws PRIMARY KEY constraint violations.
-
-**Required Pattern**:
-```csharp
-await context.Database.EnsureCreatedAsync();
-if (!await context.Industries.AnyAsync())  // ✅ ALWAYS guard
-{
-    context.Industries.AddRange(/* ... */);
-    await context.SaveChangesAsync();
-}
-```
-**Reference**: `tests/Innoventity.API.Tests/Integration/Features/Industries/GetIndustriesTests.cs`.
-
----
-
-### P003: JWT Claims — Sub Claim Required (CRITICAL)
-
-**Problem**: Resource-ownership authorization policies (`InnovationOwnerRequirement`, `BidActorRequirement`, etc.) resolve the caller’s `actorId` via `ClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier)`. This returns `null` if `JwtRegisteredClaimNames.Sub` is absent, causing silent failures or wrong actor lookups.
-
-**Required claims in `JwtTokenService`**:
-```csharp
-new Claim(JwtRegisteredClaimNames.Sub, actor.Id.ToString()),
-new Claim(ClaimTypes.NameIdentifier, actor.Id.ToString()),
-new Claim("actorType", actor.ActorType.ToString()),
-new Claim(JwtRegisteredClaimNames.Email, actor.Email),
-```
-**Reference**: `src/Innoventity.API/Infrastructure/Authentication/JwtTokenService.cs`.
-
----
-
-### P004: Server-Side Validation Strategy
-
-**Two-layer approach** (defense-in-depth, CHK073):
-
-- **Data Annotations** on request DTOs — simple, declarative constraints (`[Required]`, `[MaxLength]`, `[Range]`, `[EmailAddress]`). ASP.NET Core model binding applies these automatically before the handler runs.
-- **FluentValidation `AbstractValidator<T>`** — complex business rules that require database lookups, cross-field logic, or conditional validation (e.g., "proposal must be ≥200 chars *and* actor must not already have a bid for this innovation"). Phase 1+ for multi-step business rule validators.
-
-**Never trust client data**: Both layers run server-side. Client-side Angular Reactive Forms validation is a UX optimization only.
-
-```csharp
-// ✅ Data Annotation (simple, on DTO)
-public class SubmitBidRequest
-{
-    [Required] public string Location { get; set; } = string.Empty;
-    [MinLength(200)] public string ParticipationProposal { get; set; } = string.Empty;
-}
-
-// ✅ FluentValidation (complex business rules requiring DB or cross-field logic)
-public class SubmitBidValidator : AbstractValidator<SubmitBidRequest>
-{
-    public SubmitBidValidator(AppDbContext db, Guid actorId, Guid innovationId)
-    {
-        RuleFor(x => x.ParticipationProposal)
-            .MinimumLength(200).WithMessage("Proposal must be at least 200 characters");
-        RuleFor(x => x)
-            .MustAsync(async (_, ct) =>
-                !await db.Bids.AnyAsync(b => b.ActorId == actorId && b.InnovationId == innovationId, ct))
-            .WithMessage("You have already submitted a bid for this innovation");
-    }
-}
-```
-
-**Return format**: `400 Bad Request` with RFC 7807 `ValidationProblemDetails` (`errors` dictionary keyed by field name) for all validation failures. See CHK065–CHK073.
-
----
-
-### P005: Minimal API Parameter Ordering
-
-**Requirement**: Injected services (`AppDbContext`, `ClaimsPrincipal`) MUST precede `[FromQuery]` parameters in Minimal API handlers to avoid dependency injection failures.
-
-```csharp
-// ✅ CORRECT
-public static async Task<IResult> Handle(
-    AppDbContext context,
-    ClaimsPrincipal user,
-    [FromQuery] string? filter)
-
-// ❌ INCORRECT — query param before injected service
-public static async Task<IResult> Handle(
-    [FromQuery] string? filter,
-    AppDbContext context)
-```
-
----
-
-### P006: Program.Public.cs — WebApplicationFactory Test Access
-
-`WebApplicationFactory<Program>` in the test project requires `Program` to be public. `src/Innoventity.API/Program.Public.cs` contains:
-```csharp
-public partial class Program { }
-```
-This file MUST NOT be deleted. Every test class using `WebApplicationFactory<Program>` depends on it.
-
----
-
-### P007: Subcutaneous Tests — Preferred Over Playwright for J1-J3
-
-**Decision** (validated in Phase 0.6): Subcutaneous tests (HTTP-level journey orchestration via `WebApplicationFactory`) are the **preferred** E2E strategy for Journey 1, 2, and 3 — not Playwright browser automation.
-
-| | Subcutaneous | Playwright |
-|---|---|---|
-| Execution time | ~20 seconds | ~2-5 minutes |
-| Stability | High (no DOM) | Lower (selectors, rendering) |
-| Frontend dependency | None | Requires Angular client |
-| J1-J3 coverage | Full API coverage | Full UI coverage |
-
-**Architecture**:
-- `tests/Innoventity.API.Tests/E2E/Journeys/` — subcutaneous journey tests (J1, J2 complete)
-- `tests/Innoventity.Client.Tests/e2e/` — Playwright tests (deferred until Angular client complete)
-
-**Testing Strategy Clarification** (2026-04-04):
-- **Backend API (ASP.NET Core)**: Use subcutaneous tests via `WebApplicationFactory` for all Journey 1-3 validation
-  - Rationale: Faster, more stable, no UI dependency, proves backend completeness
-  - Pattern: Direct HTTP calls to API endpoints with real EF Core in-memory database
-  - Example: `tests/Innoventity.API.Tests/E2E/Journeys/Phase0JourneyTests.cs`
-- **Frontend UI (Angular)**: Use Playwright for browser E2E tests targeting Angular components/pages
-  - Rationale: Validates actual user experience, form interactions, routing, UI state management
-  - Pattern: Browser automation driving Angular SPA against real backend API
-  - Example: `tests/Innoventity.Client.Tests/e2e/journey-1-registration.spec.ts` (future)
-  - **Angular-specific testing**: Signal-based forms, RxJS observables, OpenAPI-generated client integration
-
-**Playwright remains required for**:
-- Angular UI E2E validation (Phase 7: T075 browser journey test)
-- J4 (Virtual Incubator) multi-party collaboration UX once Angular client is built
-- Any tests validating browser-specific behavior (routing, navigation, UI state)
-
-**Constitution Principle 5 Compliance**: Both strategies honor TDD red→green→refactor — subcutaneous tests written BEFORE API implementation, Playwright tests written BEFORE Angular component implementation.
-
----
-
-### P008: Angular 19 Signal-Based Forms Pattern
-
-**Decision** (validated in Angular 19.0+): Signal-Based Forms are the **preferred** form strategy for new Angular development — not Reactive Forms.
-
-**Rationale**:
-- **API Stability**: Signal-based forms graduated from experimental to stable API in Angular 19.0 (November 2025). Semantic versioning guarantees backward compatibility.
-- **Simpler Mental Model**: Signal-based forms eliminate RxJS Observable boilerplate for common form scenarios (synchronous validation, basic async validators).
-- **Better Integration**: Signal-based forms integrate natively with Angular 19 Signal state management, reducing impedance mismatch.
-- **Angular Team Recommendation**: Angular docs now recommend Signal-based forms for new projects (as of Angular 19.1 docs, January 2026).
-
-**When to Use Reactive Forms** (edge cases only):
-- Complex nested form arrays with dynamic add/remove (Signal-based arrays still maturing)
-- Legacy form libraries (ngx-formly, Angular Material dynamic forms) built for Reactive Forms
-- Migrating existing Angular <18 codebase with heavy Reactive Forms investment
-
-**Architecture** (Phase 0 context):
-- `LoginComponent`, `RegisterComponent`: Signal-based forms with synchronous validators (email format, password strength)
-- `AuthService.login()`: Consumes Signal form values via `.value()` method
-- Cross-field validation: Use `computed()` signals for reactive validation (e.g., "passwords must match")
-
-**Code Pattern** (Signal-based form with validators):
-```typescript
-import { Component, signal, computed } from '@angular/core';
-import { FormControl, FormGroup, Validators } from '@angular/forms';
-
-@Component({
-  selector: 'app-login',
-  standalone: true,
-  template: `
-    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-      <input type="email" formControlName="email" />
-      @if (emailError()) {
-        <span class="error">{{ emailError() }}</span>
-      }
-      <input type="password" formControlName="password" />
-      <button [disabled]="!isFormValid()">Log In</button>
-    </form>
-  `
-})
-export class LoginComponent {
-  // Signal-based form (Angular 19 stable API)
-  loginForm = new FormGroup({
-    email: new FormControl('', [Validators.required, Validators.email]),
-    password: new FormControl('', [Validators.required, Validators.minLength(8)])
-  });
-
-  // Computed signals for reactive UI
-  isFormValid = computed(() => this.loginForm.valid);
-  emailError = computed(() => {
-    const emailControl = this.loginForm.get('email');
-    if (emailControl?.hasError('required')) return 'Email is required';
-    if (emailControl?.hasError('email')) return 'Invalid email format';
-    return null;
-  });
-
-  // Signal for async state
-  isLoading = signal(false);
-
-  onSubmit(): void {
-    if (this.loginForm.invalid) return;
-    this.isLoading.set(true);
-    // ... call AuthService with this.loginForm.value
-  }
-}
-```
-
-**Migration from Reactive Forms** (if Phase 0 started with Reactive Forms):
-- Signal-based forms use same `FormControl`, `FormGroup` primitives (no breaking change)
-- Replace RxJS `valueChanges` subscriptions with `computed()` signals
-- Replace manual `unsubscribe()` cleanup with automatic Signal reactivity
-- ~2-3 hour refactor for Phase 0 scope (login + register forms only)
-
-**Constitutional Alignment**:
-- ✅ Principle 2 (Quality): Production-ready API (GA November 2025, 5 months stable)
-- ✅ Principle 3 (Simplicity): Simpler than RxJS Observable subscriptions for common cases
-- ✅ Principle 6 (AI Augments): Angular 19+ Copilot training data includes Signal-based patterns
-
-## Phase 0 Authorization
-
-**Authentication Strategy**:
-- JWT Bearer token authentication required for all endpoints EXCEPT `/auth/*` (register, activate, login, refresh)
-- Access tokens expire after 1 hour, refresh tokens after 7 days
-- Tokens stored client-side (localStorage/sessionStorage)
-
-**Resource-Level Authorization** (Phase 0):
-- **None implemented** - Phase 0 has only public innovation read after authentication
-- `GET /api/innovations/{id}` requires authentication but no ownership check (public discovery)
-
-**Authorization Pattern** (deferred to Phase 1+):
-- Policy-based authorization using `IAuthorizationRequirement` + `IAuthorizationHandler` (per Research §Decision 3)
-- Resource policies defined per feature:
-  - `InnovationOwnerRequirement`: Validates user owns innovation (for edit, delete, submit operations)
-  - `BidActorRequirement`: Validates user is bid owner (for withdraw bid)
-  - `InnovationAccessRequirement`: Validates user is owner or accepted partner (for virtual incubator access)
-  - `BusinessPlanAccessRequirement`: Validates user is owner or accepted partner (for business plan edit)
-- Composable handlers enable v2.0 organization policies without rewriting resource ownership checks
-
-**Implementation**:
-- Phase 0: `[Authorize]` attribute on non-auth endpoints (JWT validation only)
-- Phase 1+: `[Authorize(Policy = "InnovationOwner")]` for resource-specific operations
-
-**v2.0 Extensibility** (per Architecture Guardrails):
-- Repository abstractions support organization context filtering: `GetByIdAsync(Guid id, Guid? organizationId = null)`
-- Policy handlers can check organization membership without modifying existing ownership checks
-- Actor type inheritance (TPH) supports new actor types (Government, TechnologyPark) without policy refactoring
-
-## Session Management
-
-**Phase 0 Approach** (KISS principle - Simplicity Over Cleverness):
-
-**Client-Side Logout**:
-```typescript
-// Frontend (Angular service)
-logout(): void {
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
-  this.router.navigate(['/login']);
-}
-```
-
-**Server-Side Token Revocation**: **Deferred to v2.0**
-- Rationale: Implementing revocation requires stateful infrastructure (token blacklist/whitelist), violates JWT stateless design
-- Security mitigation: Short access token lifetime (1hr) limits exposure window after logout
-- Trade-off: User must wait ≤1hr for token expiration after client-side logout (acceptable for v1.0 with 100 concurrent users)
-
-**Implicit Session Invalidation** (Phase 0):
-1. **Account Suspension**: `/auth/refresh-token` checks `AccountStatus` - suspended accounts blocked from token renewal
-2. **Password Change**: New password hash invalidates all tokens (user must re-authenticate via `/auth/login`)
-3. **Natural Expiry**: Access tokens expire after 1hr, refresh tokens after 7d (enforced by JWT validation)
-
-**Multi-Device Behavior**:
-- Multiple devices CAN log in simultaneously (no device tracking in v1.0)
-- Client-side logout affects ONLY the device where logout is triggered
-- Other devices remain authenticated until token expires (max 1hr exposure)
-- **Refresh tokens are NOT device-specific**: Logout on Device A does not invalidate tokens on Device B until natural expiration (1hr max exposure for access tokens)
-- Explicit decision: Multi-device tracking excluded from v1.0 scope (per checklist CHK018)
-
-**v2.0 Upgrade Path** (if "logout all devices" becomes requirement):
-```csharp
-// Add RefreshToken entity with revocation flag
-public class RefreshToken {
-    public Guid Id { get; set; }
-    public Guid ActorId { get; set; }
-    public string Token { get; set; }
-    public bool IsRevoked { get; set; }  // Enable server-side revocation
-    public DateTime ExpiresAt { get; set; }
-}
-
-// Check revocation during token refresh
-public async Task<Result<TokenResponse>> RefreshTokenAsync(string refreshToken) {
-    var token = await _tokenRepository.GetByTokenAsync(refreshToken);
-    if (token?.IsRevoked == true) {
-        return Result.Fail("Token revoked");
-    }
-    // ... generate new access token
-}
-
-// Revoke all tokens for actor (logout all devices)
-public async Task RevokeAllTokensAsync(Guid actorId) {
-    await _tokenRepository.RevokeAllForActorAsync(actorId);
-}
-```
-
-**Security Alignment**:
-- Maintains JWT stateless design (Principle 3: Simplicity Over Cleverness)
-- 1hr access token lifetime balances security and UX (Research §Decision 3)
-- Account suspension + password change provide immediate invalidation for critical security events
-- v2.0 can add stateful revocation without breaking v1.0 authentication flow
-
-## Security Requirements
-
-### CHK088: Password Hashing
-- **Algorithm**: BCrypt with work factor 12 (Research §Decision 3)
-- **Implementation**: ASP.NET Core Identity PasswordHasher<TUser>
-- **Validation**: Password complexity enforced before hashing (Spec R8.4)
-
-### CHK089: JWT Signing Key Management
-- **Algorithm**: HMAC-SHA256 (HS256) for symmetric signing
-- **Key Requirements**:
-  - Minimum 256 bits (32 characters) for HS256 security
-  - Generated using cryptographically secure random number generator (e.g., `openssl rand -base64 32`)
-- **Storage**:
-  - Development: User Secrets (`dotnet user-secrets set "Jwt:SecretKey" "<generated-key>"`) or appsettings.Development.json
-  - Production: Azure App Service Configuration (Application settings blade)
-  - Configuration Key: `Jwt__SecretKey` (double underscore for nested config)
-- **Rotation Policy**:
-  - Phase 0: Manual rotation if compromised (invalidates all existing tokens)
-  - v2.0: Automated rotation with key versioning (multi-key validation support)
-- **Security**: Never commit to source control, mask in logs, store in App Service Configuration (not appsettings.json)
-
-### CHK090: HTTPS Requirements
-- **Production**: HTTPS enforced for ALL endpoints
-  - Azure App Service HTTPS-only mode enabled
-  - HTTP requests automatically redirected to HTTPS (ASP.NET Core UseHttpsRedirection middleware)
-  - HSTS (HTTP Strict Transport Security) enabled with 1-year max-age
-- **Development**: HTTP allowed for localhost only (5000/5001)
-- **API Contract**: OpenAPI servers list HTTPS URLs for dev/prod environments
-
-### CHK091: SQL Injection Prevention
-- **Strategy**: Parameterized queries exclusively
-  - EF Core LINQ queries use parameterization by default (no manual escaping)
-  - No raw SQL in Phase 0 (defer to Phase 1+ with FromSqlRaw parameterized commands)
-- **Validation**: Input validation performed by ASP.NET Core model binding (Data Annotations)
-- **Code Review**: Manual check during PR review - reject any string concatenation in queries
-
-### CHK092: CORS Policy Requirements
-- **Development**:
-  - Allowed Origins: `http://localhost:4200` (Angular dev server)
-  - Credentials: Allowed (for future cookie support if needed)
-  - Methods: GET, POST, PUT, DELETE, OPTIONS
-  - Headers: Content-Type, Authorization
-- **Production**:
-  - Allowed Origins: Specific frontend origin only (e.g., `https://innoventity.azurewebsites.net`)
-  - No wildcard (*) origins in production
-  - Credentials: Allowed
-  - Same methods and headers as development
-- **Implementation**: ASP.NET Core `AddCors()` with named policy "AllowFrontend"
-
-### CHK093: Secret Management
-- **Secrets to Manage**:
-  - Database connection string (Azure SQL): `ConnectionStrings:InnoventityDb`
-  - JWT signing key (symmetric HS256): `Jwt:SecretKey`
-  - Email service API key (Phase 1+): `SendGrid:ApiKey`
-
-**Production Pattern** (Azure App Service - **Recommended for Learning Project**):
-- **Approach**: App Service Configuration (Environment Variables)
-  - Store secrets directly in App Service Configuration blade (Azure Portal)
-  - Secrets encrypted at rest, accessible only via Azure RBAC
-  - **Cost**: $0 additional (included with App Service)
-  - **Complexity**: Low
-
-- **Setup Steps** (Azure Portal):
-  1. Navigate to App Service → Configuration → Application settings
-  2. Click "+ New application setting" for each secret:
-     - **Name**: `ConnectionStrings__InnoventityDb` (note: double underscore maps to `:` in config)
-     - **Value**: `Server=tcp:innoventity-sql.database.windows.net;Database=Innoventity;User ID=innoventity-admin;Password=<password>`
-     - **Deployment slot setting**: ✅ (checked - keeps secrets per environment)
-  3. Repeat for `Jwt__SecretKey` and `SendGrid__ApiKey` (Phase 1+)
-  4. Click "Save" → app restarts with new configuration
-
-- **Configuration Binding** (No code changes needed):
-  ```csharp
-  // ASP.NET Core automatically reads from environment variables
-  var connectionString = builder.Configuration.GetConnectionString("InnoventityDb");
-  var jwtKey = builder.Configuration["Jwt:SecretKey"];
-  ```
-
-- **Trade-offs**:
-  - ✅ **Simple**: No additional infrastructure required
-  - ✅ **Cost-effective**: $0 additional
-  - ✅ **Suitable for learning projects with 100 concurrent users**
-  - ❌ **Less granular access control**: Anyone with App Service Contributor role can view secrets
-  - ❌ **No audit logging**: Can't track who accessed which secret
-  - ❌ **Manual secret rotation**: Must update in portal + restart app
-
-**Development Pattern** (Local Environment):
-- **User Secrets** (recommended for sensitive values):
-  - Initialize: `dotnet user-secrets init --project src/Innoventity.API`
-  - Set secrets: `dotnet user-secrets set "ConnectionStrings:InnoventityDb" "Server=localhost;Database=Innoventity;Integrated Security=true"`
-  - Stored outside project directory: `%APPDATA%\Microsoft\UserSecrets\<user-secrets-id>\secrets.json`
-  - Never committed to source control
-- **appsettings.Development.json** (for non-sensitive config):
-  - Connection strings pointing to localhost SQL Server or LocalDB
-  - JWT signing key (development-only key, NOT production key)
-  - File excluded from git via `.gitignore`
-- **Required .gitignore entries**:
-  ```
-  appsettings.Development.json
-  appsettings.*.json
-  !appsettings.json
-  ```
-
-**Access Control** (App Service Configuration):
-- **Azure RBAC**: Only users/service principals with App Service Contributor role can view/edit configuration
-- **Deployment Slot Setting**: Enable "Deployment slot setting" checkbox to prevent secrets from swapping between Staging/Production slots
-- **Least Privilege**: Developers should have Reader role + specific Configuration write access (not full Contributor)
-
-**Secret Rotation Requirements**:
-- **Database Connection String**:
-  1. Update App Service Configuration with new value (Azure Portal or Azure CLI)
-  2. Restart app: Azure Portal → Restart button (triggers configuration reload)
-  3. Test connectivity before decommissioning old password
-- **JWT Signing Key**:
-  - Phase 0: Manual rotation → update Configuration → restart app (invalidates all existing tokens, users must re-login)
-  - v2.0: Multi-key validation (store key version in token claims, support 2 concurrent keys during rotation)
-- **Rotation Testing**: Always test in Staging deployment slot before swapping to Production
-
-**Security Rules**:
-- ❌ **NEVER** commit secrets to source control (scan with `git-secrets` or GitHub secret scanning)
-- ❌ **NEVER** log secret values (mask in Application Insights, use `[SensitiveData]` attribute)
-- ❌ **NEVER** expose secrets in API responses or client-side code
-- ✅ **ALWAYS** use App Service Configuration for production secrets (NOT appsettings.json or plaintext environment variables)
-- ✅ **ALWAYS** enable "Deployment slot setting" to prevent secret leakage during slot swaps
-- ✅ **ALWAYS** review Azure Activity Log for Configuration changes (who modified secrets, when)
-
-## Frontend/UX Requirements
-
-### CHK019: Loading State Requirements
-- **Asynchronous Operations**: Display loading indicators for all API calls
-  - HTTP requests: Angular Material `<mat-spinner>` or `<mat-progress-bar>`
-  - Minimum display time: 300ms (prevent flicker for fast responses)
-  - Long operations (>2s): Progress indicator with status text
-- **Page Transitions**: Skeleton screens for initial page load (innovations list, detail view)
-- **Button States**: Disable submit buttons during form submission, show spinner inside button
-- **Implementation**: RxJS `loading$` signal per feature, updated via HTTP interceptor
-
-### CHK020: Error Message Content Requirements
-- **Validation Errors** (Client-Side):
-  - Display inline below form field with red text and error icon
-  - Format: "Field Name: Specific reason" (e.g., "Email: Must be a valid email address")
-  - Show on blur or submit attempt (not on every keystroke)
-- **API Errors** (Server-Side):
-  - 400 Bad Request: Display specific field errors from ProblemDetails response
-  - 401 Unauthorized: Redirect to login with message "Session expired. Please log in again."
-  - 403 Forbidden: Banner message "You don't have permission to perform this action."
-  - 404 Not Found: Replace content area with "Resource not found" message and back button
-  - 500 Internal Server Error: Generic message "Something went wrong. Please try again or contact support." (log full error)
-- **Network Errors**: Banner message "Connection lost. Check your internet and try again."
-- **Error Persistence**: Dismissable via close button or automatic timeout (5s for info, persistent for errors)
-
-### CHK021: Form Validation Requirements
-- **Client-Side Validation** (UX optimization):
-  - Angular Reactive Forms with Validators (required, email, minLength, pattern)
-  - Real-time feedback after field blur (not on every keystroke unless already invalid)
-  - Disable submit button until form valid
-  - Purpose: Immediate feedback, reduce unnecessary API calls
-- **Server-Side Validation** (Security enforcement):
-  - ASP.NET Core Data Annotations on DTOs (required, range, regex)
-  - FluentValidation for complex business rules (Phase 1+)
-  - Always validate server-side (never trust client data)
-  - Return 400 Bad Request with ProblemDetails for validation failures
-- **Strategy**: Duplicate validation rules client/server (DRY violation accepted for defense-in-depth)
-
-### CHK022: Accessibility Requirements
-- **Target**: WCAG 2.1 Level AA compliance
-- **Implementation**:
-  - Angular Material components (built-in ARIA attributes, keyboard navigation)
-  - Semantic HTML5 elements (`<nav>`, `<main>`, `<article>`, `<section>`)
-  - ARIA labels for icon-only buttons and dynamic content regions
-  - Focus management (trap focus in modals, return focus after close)
-  - Color contrast: 4.5:1 for normal text, 3:1 for large text (Material theme handles this)
-- **Testing**: Lighthouse Accessibility audit score ≥90 (CI/CD gate)
-- **Keyboard Navigation**: All interactive elements reachable via Tab, Enter/Space activate
-
-### CHK023: Responsive Design Requirements
-- **Approach**: Mobile-first with breakpoints
-- **Breakpoints** (Angular Material/CSS):
-  - XSmall: <600px (mobile portrait)
-  - Small: 600px-959px (mobile landscape, small tablets)
-  - Medium: 960px-1279px (tablets, small laptops)
-  - Large: 1280px-1919px (desktops)
-  - XLarge: ≥1920px (large desktops)
-- **Layout Strategy**:
-  - Angular Material Layout or CSS Grid/Flexbox
-  - Single-column layout for XSmall/Small (stacked forms, full-width tables)
-  - Multi-column layout for Medium+ (sidebar navigation, responsive tables)
-  - Touch targets: Minimum 44x44px for mobile (Material buttons comply)
-- **Testing**: Manual testing on Chrome DevTools device emulation (iPhone, iPad, desktop)
-
-### CHK024: Navigation Requirements
-- **Consistency**:
-  - Top navigation bar: Logo (home link), authenticated user menu, logout button
-  - Side navigation (Medium+ breakpoints): Feature navigation (innovations, bids, profile)
-  - Breadcrumbs for multi-level pages (Innovation > Detail > Edit)
-  - Angular Router for all navigation (no hard links)
-- **Authentication Guards**:
-  - AuthGuard: Redirect to login if not authenticated
-  - RoleGuard: Redirect to 403 page if wrong actor type (Phase 1+)
-- **Active Route Highlighting**: `routerLinkActive` directive on navigation links
-- **Browser History**: Support back/forward buttons (Angular Router handles this)
-
-## Exception Flow Coverage
-
-### CHK065: Duplicate Email on Registration
-- **Scenario**: User attempts registration with email already registered for same `ActorType`
-- **Business Rule**: Spec §R1.3 "Email must be unique per ActorType"
-- **API Response**: `400 Bad Request` with RFC 7807 ValidationProblemDetails
-  ```json
-  {
-    "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-    "title": "Validation Error",
-    "status": 400,
-    "errors": {
-      "Email": ["This email address is already registered for the selected actor type"]
-    }
-  }
-  ```
-- **Frontend Handling**: Display inline error below email field, allow user to modify email or try login
-
-### CHK066: Invalid or Expired Activation Token
-- **Scenario**: User clicks activation link with invalid/expired token (e.g., already activated, token tampered)
-- **API Response**: `400 Bad Request` (Contracts §/auth/activate, line 147-159)
-  ```json
-  {
-    "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-    "title": "Invalid Activation Token",
-    "status": 400,
-    "detail": "The activation token is invalid or has expired"
-  }
-  ```
-- **Frontend Handling**: Banner error with "Request new activation email" button (see CHK071)
-
-### CHK067: Login with Unactivated Account
-- **Scenario**: User attempts login before clicking activation email link (AccountStatus = PendingActivation)
-- **Business Rule**: Spec §R1.1 "New actors start with PendingActivation status"
-- **API Response**: `401 Unauthorized` (Contracts §/auth/login, notActivated example, line 225-232)
-  ```json
-  {
-    "type": "https://tools.ietf.org/html/rfc7231#section-6.5.2",
-    "title": "Account Not Activated",
-    "status": 401,
-    "detail": "Please activate your account using the link sent to your email"
-  }
-  ```
-- **Frontend Handling**: Banner error with "Resend activation email" link
-
-### CHK068: Unauthorized Resource Access (403 Forbidden)
-- **Phase 0 Scope**: Not applicable - Phase 0 implements authentication only (JWT validation), no resource-level authorization
-- **Phase 1+ Implementation**:
-  - **Scenario**: User attempts to edit/delete innovation owned by another user
-  - **Authorization**: Policy-based (`InnovationOwnerRequirement` handler checks ActorId)
-  - **API Response**: `403 Forbidden`
-    ```json
-    {
-      "type": "https://tools.ietf.org/html/rfc7231#section-6.5.3",
-      "title": "Forbidden",
-      "status": 403,
-      "detail": "You do not have permission to perform this action"
-    }
-    ```
-  - **Frontend Handling**: Banner error "You don't have permission to perform this action" (Frontend/UX §CHK020)
-- **Reference**: Plan §Phase 0 Authorization (line 54-78)
-
-### CHK069: Innovation Not Found (404)
-- **Scenario**: User requests innovation with non-existent GUID or soft-deleted innovation (Phase 1+)
-- **API Response**: `404 Not Found` (Contracts §/api/innovations/{id}, line 328-338)
-  ```json
-  {
-    "type": "https://tools.ietf.org/html/rfc7231#section-6.5.4",
-    "title": "Innovation Not Found",
-    "status": 404,
-    "detail": "Innovation with ID '7c9e6679-7425-40de-944b-e07fc1f90ae7' was not found"
-  }
-  ```
-- **Frontend Handling**: Display "Resource not found" page with back button (Frontend/UX §CHK020)
-
-### CHK070: Database Failures and Network Errors (500)
-- **Scenarios**:
-  - Database connection timeout (e.g., Azure SQL throttling)
-  - Unhandled application exceptions (e.g., null reference in business logic)
-  - External service failures
-- **API Response**: `500 Internal Server Error` (Contracts §InternalServerError schema, line 740-757)
-  ```json
-  {
-    "type": "https://tools.ietf.org/html/rfc7231#section-6.6.1",
-    "title": "Internal Server Error",
-    "status": 500,
-    "detail": "An unexpected error occurred while processing your request"
-  }
-  ```
-- **Frontend Handling**:
-  - Generic banner error message (do NOT expose stack traces/DB details to users)
-  - Log full error details to browser console for debugging
-  - Provide "Retry" button for transient failures (network, timeouts)
-- **Backend Requirements**:
-  - Global exception handler middleware (ASP.NET Core UseExceptionHandler)
-  - Log errors to Application Insights with correlation IDs
-  - Return ProblemDetails with generic message (security best practice)
-
-### CHK071: Resend Activation Email Recovery Flow
-- **Current State**: **Gap identified** - Spec §R1.0 Error Scenario 1 mentions "Resend activation email" option (line 303), but NO API endpoint defined in Contracts
-- **Phase 0 Decision**: **Defer to Phase 1** due to implementation complexity vs. value trade-off
-  - **Complexity**: Requires Actor lookup by email + ActorType, additional endpoint security
-  - **Workaround**: User can re-register with same email/ActorType - backend should allow overwriting PendingActivation accounts
-  - **Phase 0 Activation UX**: `POST /auth/register` response body includes `activationToken` directly (no email sent). The test client reads this value and immediately calls `POST /auth/activate`. This is an intentional Phase 0 shortcut — do NOT treat the token-in-response as a bug. See `spec.md §Journey 1 Step 1` for the in-spec note.
-- **Phase 1 Implementation Requirements**:
-  - **Endpoint**: `POST /auth/resend-activation`
-  - **Request Body**: `{ "email": "user@example.com", "actorType": "IdeaGenerator" }`
-  - **Business Rules**:
-    - Return 200 even if email not found (security - hide account existence)
-    - Only resend if AccountStatus = PendingActivation (ignore Active accounts)
-  - **Response**: `200 OK` with generic message "If your account exists and is pending activation, a new email has been sent"
-
-### CHK072: Refresh Token Expiry Handling
-- **Scenario**: User's refresh token expires after 7 days of inactivity, attempts to refresh access token
-- **API Response**: `400 Bad Request` (Contracts §/auth/refresh-token, line 267-278)
-  ```json
-  {
-    "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-    "title": "Invalid Refresh Token",
-    "status": 400,
-    "detail": "The refresh token is invalid or has expired"
-  }
-  ```
-- **Frontend Handling**:
-  - HTTP interceptor catches 400 on refresh-token endpoint
-  - Clear tokens from localStorage
-  - Redirect to login with banner "Your session has expired. Please log in again."
-- **Prevention**: Warn user 24hrs before expiry with "Your session expires soon. Please log in to continue."
-
-### CHK073: Form Validation Failure Recovery
-- **Scenario**: User submits form with missing/invalid fields (e.g., registration with weak password)
-- **Client-Side Validation**: Angular Reactive Forms (immediate feedback before submit)
-  - Display inline error messages below each invalid field
-  - Disable submit button until form is valid
-  - Error messages match server validation (avoid "validation passed client but failed server")
-- **Server-Side Validation**: ASP.NET Data Annotations + FluentValidation
-  - Return `400 Bad Request` with ValidationProblemDetails (errors dictionary keyed by field name)
-  - Frontend maps errors to form controls, displays inline
-- **Recovery Flow**:
-  1. User sees red error messages below invalid fields
-  2. User corrects values (errors clear dynamically as user types)
-  3. Submit button enables when all validations pass
-  4. User resubmits (successful 200/201 response)
-- **Example**: Password complexity validation (Spec §R8.4)
-  - Frontend: Custom validator checks 8+ chars, uppercase, lowercase, digit, special char
-  - Backend: `[MinLength(8)]`, `[PasswordComplexity]` attribute validates same rules
-  - Error message: "Password must be at least 8 characters and include uppercase, lowercase, digit, and special character"
-- **Reference**: Frontend/UX Requirements §CHK021 Form Validation (line 236-247)
-
-## Edge Case Requirements
-
-### CHK074: Zero-State Scenarios (No Innovations Exist)
-- **Phase 0 Scope**: Not applicable - Phase 0 displays single innovation by ID (GET /api/innovations/{id}), no list/discovery page
-- **Phase 1 Implementation** (when innovation browse/search added):
-  - **Empty State UI**:
-    - Display empty state illustration (e.g., Material icon: search_off)
-    - Message: "No innovations found. Be the first to submit your research-based innovation!"
-    - Call-to-action button: "Submit Innovation" (if user is IdeaGenerator actor type)
-  - **Filters Applied with No Results**:
-    - Message: "No innovations match your filters. Try adjusting your search criteria."
-    - Show "Clear Filters" button
-  - **User's Own Innovations List (Empty)**:
-    - Message: "You haven't submitted any innovations yet."
-    - Button: "Submit Your First Innovation"
-
-### CHK075: Minimum Bid Threshold (Exactly 1 Bid)
-- **Business Rule**: Spec §R5.1 "Minimum one bid per required category" (R&D, Manufacturing, SalesMarketing)
-- **Scenario**: Innovation requires R&D + Manufacturing, receives exactly 1 bid for each category
-- **Expected Behavior**: Innovation owner can proceed to partner selection (sufficient bids received)
-- **Notification**: "Your innovation has received sufficient bids. You can now select partners." (Spec line 956)
-- **UI Requirements**: Partner selection page displays all bids, even if only 1 per category (no "need more bids" gating)
-
-### CHK076: Maximum Concurrent Bids per Innovation
-- **Phase 0 Decision**: **No maximum limit** - uncapped bid submissions allowed in v1.0
-- **Rationale**:
-  - v1.0 user scale (100 concurrent users) prevents bid spam naturally
-  - Innovation owner benefits from more partnership options (competitive bidding)
-  - Database can handle unlimited bids per innovation (Bid table has FK + index on InnovationId)
-- **Phase 1+ Considerations** (if spam becomes issue):
-  - UI: Display "You have submitted the maximum number of bids for this innovation" if limit reached
-
-### CHK077: String Length Boundary Validations
-- **Comprehensive Coverage**: Data Model §Validation Rules defines min/max for ALL string fields
-- **Key Boundaries**:
-  | Field | Minimum | Maximum | Source |
-  |-------|---------|---------|--------|
-  | Actor.Email | - | 256 chars | Data Model line 153 |
-  | Actor.FullName | - | 200 chars | Data Model line 154 |
-  | Actor.ContactAddress | - | 500 chars | Data Model line 155 |
-  | Innovation.Title | - | 200 chars | Data Model line 232 |
-  | Innovation.ResearchBackground | - | 2000 chars | Data Model line 234 |
-  | Innovation.ProductDescription | - | 2000 chars | Data Model line 240 |
-  | Innovation.KeyAdvantages | - | 1000 chars | Data Model line 241 |
-  | Innovation.ProductKeywords | - | 500 chars | Data Model line 244 |
-  | Bid.ParticipationProposal | **200 chars** | 5000 chars | Data Model line 515 (CHECK constraint) |
-- **Frontend Validation**:
-  - Display character counter below textareas: "250 / 2000 characters"
-  - Real-time validation: Turn counter red when exceeding max
-  - Disable submit if any field exceeds max length
-- **Backend Validation**:
-  - ASP.NET `[MaxLength(n)]` attribute on DTOs
-  - EF Core validates during SaveChanges, throws DbUpdateException if exceeded
-  - Return 400 Bad Request with ValidationProblemDetails indicating which field exceeded limit
-
-### CHK078: Empty Optional Fields (Null vs Empty String Handling)
-- **Data Model Convention**: Nullable fields use `string?` type, required fields use `string` (never null)
-- **Examples**:
-  - **Optional**: `Actor.ActivationToken` (string?, nullable - null after activation)
-  - **Optional**: `Innovation.IPRExplanation` (string?, nullable - null if HasIPR=false)
-  - **Required**: `Innovation.Title` (string, never null - empty string blocked by frontend validation)
-- **Backend Business Rules**:
-  - Nullable fields: Accept null OR non-empty string (reject empty string "", treat as validation error)
-  - Required fields: Reject null AND empty string (both fail `[Required]` validation)
-- **API Serialization**:
-  - JSON null: Optional field omitted or `"field": null` both deserialize to C# null
-  - JSON empty string: `"field": ""` → Validation error "Field cannot be empty"
-- **Database Storage**:
-  - Nullable columns: Store NULL (not empty string) to preserve distinction and save storage
-  - Required columns: NOT NULL constraint prevents null, empty string blocked by validation (CHECK constraint: `LEN(field) > 0` for critical fields)
-
-### CHK079: Concurrent Bid Submissions to Same Innovation
-- **Scenario**: Two actors (Actor A, Actor B) submit bid to Innovation X simultaneously (within same second)
-- **Phase 0 Decision**: **No special concurrency control** - rely on database UNIQUE constraint + application validation
-- **Constraints Preventing Conflicts**:
-  1. **Unique Index**: `UQ_Bid_ActorId_InnovationId` prevents duplicate bids from same actor (Data Model line 492)
-  2. **Business Rule Check**: Application validates "Actor cannot submit multiple bids for same innovation" (Spec line 805)
-- **Race Condition Scenario**:
-  - Actor A submits bid at T+0ms → DB insert succeeds
-  - Actor B submits bid at T+5ms → DB insert succeeds (different ActorId, no conflict)
-  - **Outcome**: Both bids successfully recorded (expected behavior, not a bug)
-- **Same Actor Retry Race**:
-  - Actor A clicks submit twice quickly (T+0ms, T+10ms)
-  - First request: Check existing bid → none found → insert succeeds
-  - Second request: Check existing bid → found (from first request) → return 400 "You cannot submit multiple bids"
-  - **OR** Second request: Check passes (race) → insert fails UNIQUE constraint → catch SqlException → return 400
-- **Transaction Isolation**: Use default Read Committed (SQL Server default) - sufficient for this scenario
-
-### CHK080: Concurrent Partner Selection Attempts
-- **Scenario**: Innovation Owner clicks "Select Partners" button twice quickly, or two browser tabs open
-- **Phase 0 Scope**: Not applicable - Phase 0 has no partner selection API endpoint
-- **Phase 1 Implementation Requirements**:
-  - **Idempotency**: `PUT /api/innovations/{id}/select-partners` endpoint must be idempotent
-  - **Optimistic Concurrency Control**:
-    - Innovation entity has `RowVersion` timestamp column (EF Core concurrency token)
-    - First request: Update Innovation.Status = PartnerSelectionComplete, increment RowVersion
-    - Second request: EF Core throws DbUpdateConcurrencyException (RowVersion mismatch)
-    - Catch exception → return 409 Conflict: "Partner selection already completed"
-  - **Frontend Prevention**:
-    - Disable "Select Partners" button after click (show loading spinner)
-    - HTTP interceptor ignores duplicate requests to same URL within 500ms
-
-### CHK081: Database Transaction Isolation Requirements
-- **Phase 0 Strategy**: Use SQL Server defaults with minimal customization (KISS principle)
-- **Default Isolation Level**: **Read Committed** (SQL Server default)
-  - Prevents dirty reads (reading uncommitted data)
-  - Allows non-repeatable reads and phantom reads (acceptable trade-off for performance in v1.0)
-- **EF Core Transaction Behavior**:
-  - **Implicit Transactions**: Single `SaveChanges()` call wrapped in transaction automatically
-  - **Explicit Transactions**: Not required for Phase 0 (all operations are single-entity creates/updates)
-- **Phase 1+ Scenarios Requiring Explicit Transactions**:
-  - Partner Selection: Update Innovation.Status + create multiple Partnership records + set BidStatus = Rejected on ALL remaining Pending bids for this innovation — all in one atomic transaction (spec.md §Clarifications 2026-02-21 Q2)
-  - Bid Withdrawal: Delete Bid + log audit record (atomic)
-  ```csharp
-  using var transaction = await _context.Database.BeginTransactionAsync();
-  try {
-      innovation.Status = InnovationStatus.PartnersSelected;
-      _context.Partnerships.AddRange(selectedPartnerships);
-      // Atomically reject all non-selected bids (spec R4.3 / Q2)
-      var pendingBidIds = selectedBidIds; // bids that were accepted
-      await _context.Bids
-          .Where(b => b.InnovationId == innovation.Id
-                   && !pendingBidIds.Contains(b.Id)
-                   && b.Status == BidStatus.Pending)
-          .ExecuteUpdateAsync(s => s.SetProperty(b => b.Status, BidStatus.Rejected));
-      await _context.SaveChangesAsync();
-      await transaction.CommitAsync();
-  } catch {
-      await transaction.RollbackAsync();
-      throw;
-  }
-  ```
-- **Concurrency Conflicts**: Rely on EF Core optimistic concurrency (RowVersion) rather than pessimistic locking (SELECT FOR UPDATE)
-
-### CHK082: Orphaned Records (Deleted Actors with Innovations)
-- **Constraint**: Actor deletion **RESTRICTED** if actor owns innovations or bids (Data Model line 496-497)
-  - `Innovation.OwnerId → Actor.Id` (ON DELETE RESTRICT)
-  - `Bid.ActorId → Actor.Id` (ON DELETE RESTRICT)
-- **Business Rule**: Cannot delete actor account if they have created innovations or submitted bids
-- **User Scenario**:
-  - Actor attempts account deletion via UI (Phase 1+ feature)
-  - Backend checks: `SELECT COUNT(*) FROM Innovation WHERE OwnerId = @actorId`
-  - If count > 0: Return 400 "Cannot delete account: You have active innovations. Please delete innovations first."
-- **Alternative: Account Suspension** (Preferred for Phase 0):
-  - Update `Actor.AccountStatus = Suspended` instead of DELETE
-  - Suspended actors:
-    - Cannot log in (401 during login, Spec line 1112)
-    - Cannot perform any actions (auth middleware checks AccountStatus)
-    - Historical innovations/bids remain intact (audit trail preserved)
-- **Cascading Deletes**: Innovation deletion cascades to Bids, BusinessPlan, InnovationTargetIndustry (Data Model line 498-500)
-
-### CHK083: Referential Integrity and Cascade Rule Consistency
-- **Full Cascade Rules Definition** (Data Model §Foreign Keys, line 495-503):
-  | Foreign Key | ON DELETE Behavior | Rationale |
-  |-------------|-------------------|-----------|
-  | Innovation.OwnerId → Actor.Id | **RESTRICT** | Prevent orphaned innovations, require explicit actor suspension |
-  | Bid.ActorId → Actor.Id | **RESTRICT** | Preserve bid history for audit |
-  | Bid.InnovationId → Innovation.Id | **CASCADE** | Delete bids when innovation deleted (bids meaningless without innovation) |
-  | BusinessPlan.InnovationId → Innovation.Id | **CASCADE** | Delete business plan when innovation deleted |
-  | InnovationTargetIndustry.InnovationId → Innovation.Id | **CASCADE** | Delete junction table entries when innovation deleted |
-  | InnovationTargetIndustry.IndustryId → Industry.Id | **RESTRICT** | Prevent deleting industries in use (master data) |
-  | ActorIndustry.ActorId → Actor.Id | **CASCADE** | Delete actor industry affiliations when actor suspended/deleted |
-  | ActorIndustry.IndustryId → Industry.Id | **RESTRICT** | Protect master industry data |
-- **Consistency Verification**:
-  - RESTRICT on all Actor references: Prevents data loss, forces explicit account suspension
-  - CASCADE on all innovation child records: Ensures cleanup when innovation deleted
-  - RESTRICT on master data (Industry): Prevents accidental deletion of reference data
-- **EF Core Migration**: Cascade rules enforced via Fluent API in OnModelCreating:
-  ```csharp
-  modelBuilder.Entity<Bid>()
-      .HasOne<Innovation>()
-      .WithMany()
-      .HasForeignKey(b => b.InnovationId)
-      .OnDelete(DeleteBehavior.Cascade);  // DELETE CASCADE
-
-  modelBuilder.Entity<Innovation>()
-      .HasOne<Actor>()
-      .WithMany()
-      .HasForeignKey(i => i.OwnerId)
-      .OnDelete(DeleteBehavior.Restrict);  // DELETE RESTRICT
-  ```
-
-## Operational & Testing Requirements
-
-### CHK114: Email Uniqueness Per Actor Type - UX Clarity
-- **Design Decision**: Email is unique PER actor type, not globally unique (Spec §R1.3)
-- **Scenario**: User registers `maria@example.com` as IdeaGenerator, later registers same email as Investor
-  - Result: Two separate accounts with same email, different ActorType
-- **Login UX Flow**:
-  1. User enters email: `maria@example.com`
-  2. **Frontend checks** (optional optimization): `GET /api/auth/check-email?email=maria@example.com` returns list of registered actor types
-  3. If multiple actor types found: Display dropdown "Which account?" (IdeaGenerator | Investor)
-  4. User selects actor type
-  5. User enters password
-  6. POST `/auth/login` with `{ email, actorType, password }` (Contracts §LoginRequest, line 188-193)
-- **Rationale**: Domain supports users wearing multiple hats (e.g., professor as IdeaGenerator + Investor via VC fund)
-- **No Conflict**: Login endpoint already requires `actorType` parameter - design is internally consistent
-
-### CHK116: JWT Expiration vs Security Best Practices - Already Addressed
-- **Resolution**: Fully documented in Plan §Session Management (lines 80-143)
-- **Key Points**:
-  - 1hr access token expiration is deliberate security trade-off (KISS principle)
-  - Client-side logout acceptable for v1.0 scale (100 concurrent users)
-  - Implicit invalidation for critical events (account suspension, password change)
-  - v2.0 upgrade path documented with RefreshToken entity for server-side revocation
-- **Status**: No additional documentation required
-
-### CHK029: Performance Test Requirements (Load & Stress Testing)
-- **Phase 0 Target**: 100 concurrent users (Plan §Scale/Scope, line 49)
-- **Pre-Production Testing Requirements**:
-
-  **1. Load Testing** (sustained usage):
-  - **Tool**: JMeter or k6 (open-source load testing)
-  - **Scenario**: 100 concurrent users, 30-minute duration
-  - **User Flows**:
-    - 40% Read-only: GET /api/innovations/{id} (10 req/min per user)
-    - 30% Authentication: POST /auth/login followed by innovation reads (1 login + 5 reads per session)
-    - 20% Innovation submission: POST /api/innovations (Phase 1+, 1 req/5min per user)
-    - 10% Bid submission: POST /api/bids (Phase 1+, 1 req/10min per user)
-  - **Success Criteria**:
-    - 95th percentile response time ≤ 500ms (authentication, reads)
-    - 95th percentile response time ≤ 2000ms (writes - innovation/bid creation)
-    - Error rate < 0.1% (exclude 4xx validation errors)
-    - CPU utilization < 70% (Azure App Service B1 tier)
-    - Memory utilization < 80%
-
-  **2. Stress Testing** (breaking point):
-  - **Goal**: Identify failure threshold beyond expected load
-  - **Ramp-up**: Start at 100 users, increase by 50 users every 5 minutes until errors > 5%
-  - **Expected Failure Point**: 200-300 concurrent users (B1 tier App Service limit)
-  - **Graceful Degradation Requirements**:
-    - API returns 503 Service Unavailable (not internal errors)
-    - Application Insights logs saturation warnings
-    - Frontend displays: "The platform is experiencing high traffic. Please try again in a few minutes."
-
-  **3. Database Connection Pool Testing**:
-  - **Configuration**: EF Core connection pool (default: 100 connections)
-  - **Test**: Verify no connection exhaustion under 100 concurrent users
-  - **Monitoring**: Azure SQL DTU usage should remain < 80% under load
-
-- **Phase 1 Requirements**: Re-run tests after adding innovation list/search endpoints (higher query complexity)
-
-### CHK102: Deployment Rollback Requirements
-- **Azure App Service Deployment Slots** (zero-downtime strategy):
-  - **Slots**: Production (active), Staging (pre-validation)
-  - **Deployment Flow**:
-    1. CI/CD deploys new version to Staging slot
-    2. Automated smoke tests run against Staging (health check, login test)
-    3. Manual validation: QA tests critical user flows
-    4. **Swap** Staging ↔ Production (instant switch, ~2 seconds downtime)
-  - **Rollback**: Swap Production ↔ Staging (reverts to previous version instantly)
-
-- **Database Migration Rollback**:
-  - **Challenge**: EF Core migrations are forward-only (no automatic rollback)
-  - **Strategy 1: Point-in-Time Restore** (for breaking schema changes):
-    - Restore database to state before migration (see CHK101)
-    - Re-deploy previous application version
-    - Downtime: ~15 minutes
-  - **Strategy 2: Compensating Migration** (for data migrations):
-    - Write reverse migration manually: `dotnet ef migrations add RevertFeatureX`
-    - Apply: `dotnet ef database update`
-    - Deploy previous app version
-  - **Prevention**:
-    - Always make schema changes **additive** (add nullable columns, not drop)
-    - Use feature flags to disable new features without redeployment
-    - Test migrations in Staging environment before Production
-
-- **Failure Scenarios**:
-
-  **Scenario 1: App Deployment Succeeds but App Crashes**
-  - **Detection**: Application Insights alerts (>10% HTTP 500 errors in 5 minutes)
-  - **Response**: Automatic rollback via deployment slot swap (2-second downtime)
-
-  **Scenario 2: Database Migration Breaks App**
-  - **Detection**: Health check endpoint fails (cannot connect to DB)
-  - **Response**:
-    1. Rollback app deployment (slot swap)
-    2. Assess migration impact:
-       - Non-breaking: Deploy hotfix migration
-       - Breaking: Restore database to pre-migration state (CHK101)
-
-  **Scenario 3: Frontend Deployment Incompatible with Backend**
-  - **Prevention**: Version API endpoints (`/api/v1/auth/login`) to support gradual migration
-  - **Detection**: Frontend Angular app shows network errors, CORS issues
-  - **Response**: Roll back frontend deployment to CDN (Azure Static Web Apps has revision history)
-
-### CHK103: Database Migration Failure Recovery Requirements
-- **Pre-Migration Validation** (prevent failures):
-  - **Local Testing**: Always test migrations against copy of Production data (anonymized)
-  - **Staging Environment**: Run `dotnet ef database update` on Staging database first
-  - **Review Checklist**:
-    - [ ] Migration adds only nullable columns OR provides default values
-    - [ ] No `DROP COLUMN` operations (use feature flags to hide columns instead)
-    - [ ] Foreign key constraints have appropriate ON DELETE behavior
-    - [ ] Check constraints are not overly restrictive (allow existing data)
-    - [ ] Indexes added on large tables (may take >5 minutes, plan maintenance window)
-
-- **Failure Scenarios & Recovery**:
-
-  **Scenario 1: Migration Timeout** (e.g., adding index on 1M+ row table)
-  - **Symptom**: `dotnet ef database update` hangs or times out
-  - **Recovery**:
-    1. Cancel migration (may take minutes to rollback)
-    2. Check database state: `SELECT * FROM __EFMigrationsHistory` (last applied migration)
-    3. If migration partially applied: Manually complete SQL operations
-    4. If migration rolled back: Increase timeout (`Database.SetCommandTimeout(600)`) and retry
-
-  **Scenario 2: Constraint Violation** (e.g., adding NOT NULL column with existing NULL values)
-  - **Symptom**: Migration fails with constraint violation error
-  - **Recovery**:
-    1. Migration auto-rolls back (EF Core transaction)
-    2. Fix data: `UPDATE Actor SET FullName = 'Unknown' WHERE FullName IS NULL`
-    3. Retry migration
-
-  **Scenario 3: Foreign Key Mismatch** (orphaned records prevent constraint creation)
-  - **Symptom**: `ALTER TABLE Bid ADD CONSTRAINT FK_Bid_Innovation FOREIGN KEY... failed`
-  - **Recovery**:
-    1. Identify orphaned records: `SELECT * FROM Bid WHERE InnovationId NOT IN (SELECT Id FROM Innovation)`
-    2. Decision: Delete orphans OR create placeholder Innovation records
-    3. Retry migration
-
-  **Scenario 4: Production Migration Breaks App** (cannot rollback schema)
-  - **Symptom**: App crashes on startup (EF Core model mismatch with database schema)
-  - **Recovery Steps**:
-    1. **Immediate**: Roll back app deployment (slot swap) - restores previous app version
-    2. **Assess schema state**:
-       - If migration completed: Deploy hotfix app version compatible with new schema
-       - If migration failed midway: Manually fix partial migration
-    3. **Validate**: Run integration tests against Production database
-    4. **Re-deploy**: Fixed app version to Production
-
-  **Scenario 5: Complete Database Corruption from Failed Migration**
-  - **Last Resort**: Contact Azure support for database recovery options
-  - **Downtime**: Variable depending on issue severity
+- 3 standalone components (Register, PendingActivation, Activate)
+- 1 registration service (API integration)
+- 6-field registration form with complex validation
+- Custom validators: password strength (3 tiers), conditional required field, RFC 5322 email, password match
+- 15+ unit tests (5 per component minimum)
+- 10 E2E test scenarios (Playwright)
+- 24 acceptance criteria from spec.md Section 8
+**Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]
+**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]
+**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]
+**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
 ### Principle 1: User Experience First ✅
+**Assessment**: **PASS** - This feature is entirely focused on improving user experience by removing technical barriers to registration (no more Postman/curl requirement).
 
-**Assessment**: PASS
 **Evidence**:
-- Specification focuses on user needs and pain points for all 5 personas
-- Error scenarios documented with user-facing messages and recovery paths
-- Performance goals user-centric (page load <2s, API response <200ms)
-- Phase 0 proves end-to-end user journey (registration → authentication → view innovation)
+- Spec-driven user stories with clear WHOs, WHATs, WHYs
+- Real-time validation feedback (error messages as user types)
+- Accessibility requirements (keyboard navigation, screen reader support)
+- Responsive design (mobile-friendly, touch targets)
+- Clear error messages (e.g., "Email already registered for this actor type" vs. generic 409 error)
 
-**Architecture Alignment**:
-- Angular Material provides consistent, accessible UI components
-- Frontend signals enable responsive, performant UI updates
-- Error messages defined in specification (clear, actionable, non-technical)
+**Risks**: None - feature directly serves user needs
 
 ---
 
 ### Principle 2: Quality is Non-Negotiable ✅
+**Assessment**: **PASS** - Comprehensive testing and validation strategy in place before implementation.
 
-**Assessment**: PASS
 **Evidence**:
-- Test-first development mandated (TDD: red → green → refactor)
-- Coverage targets: >80% unit, 100% integration, P0 journeys E2E
-- Mutation testing (>70% score) validates test quality
-- Security from day one: JWT authentication, bcrypt passwords, App Service Configuration for secrets
-- Production-ready from Phase 0 (no "prototype" mindset)
+- 15+ unit tests specified (minimum 5 per component)
+- 10 E2E test scenarios covering complete workflows
+- 24 acceptance criteria from spec.md
+- Security requirements (password never logged, HTTPS-only, no browser storage)
+- Accessibility requirements (WCAG 2.1 AA)
+- Performance requirements (quantified latency targets)
 
-**Architecture Alignment**:
-- xUnit for unit tests with test data builders
-- WebApplicationFactory for integration testing
-- Playwright for E2E testing of critical user journeys
-- Stryker.NET for mutation testing
-- Azure Application Insights for monitoring and observability
-
----
-
-### Phase 0 Production-Ready Checklist (CHK031)
-
-For Phase 0 to be considered "production-ready" (even as a constrained first slice), all of the following MUST be true:
-
-1. **Security & Secrets**
-  - All secrets (JWT signing key, DB connection string) are provided via App Service Configuration or equivalent external configuration
-  - No secrets are committed to source control, configuration files, or container images
-  - HTTPS is enforced end-to-end for all public endpoints
-
-2. **Testing & Quality**
-  - Unit test coverage for core authentication and innovation read paths is at least 80%
-  - Integration tests cover all Phase 0 API endpoints (registration, activation, login, refresh, view innovation, health)
-  - At least one Playwright E2E test exercises the full Phase 0 journey via the Angular client
-  - Mutation score for core authentication domain and token generation is at least 70%
-  - **Mutation Testing Priority** (if <70% score): Fix in order: (1) Authentication logic (JWT validation, token generation), (2) Password hashing (BCrypt parameters, salt handling), (3) Business rule validation (account status checks)
-
-3. **Infrastructure & Operations**
-  - Dev environment can be created and destroyed from infrastructure code within 10 minutes (FR7.1)
-  - Infrastructure provisioning is idempotent (re-applying configuration produces no changes) (FR7.2)
-  - `/health` endpoint validates connectivity to database and critical configuration values (FR7.2)
-  - Application emits request logs, dependency telemetry, and basic custom events to Application Insights
-
-4. **Deployment Pipeline**
-  - CI/CD pipeline builds, tests, and deploys the Phase 0 slice to the dev environment with no manual steps other than approvals
-  - Pipeline fails on test failures, failed health checks, or infrastructure drift requiring manual intervention
-  - A tagged release artifact (image or build output) is produced for each successful deployment
-
-5. **Documentation & Runbooks**
-  - README contains clear instructions for local development, running tests, and deploying to the dev environment
-  - A short runbook describes how to rotate secrets (Phase 0: config change + restart), recover from failed deployments, and validate system health
-  - Known limitations of Phase 0 (e.g., no multi-tenant isolation, simplified authorization) are explicitly listed
-
-These checklist items provide the concrete interpretation of "production-ready from Phase 0" used throughout this plan and should be re-validated before cutting any Phase 0 release.
-
-**Status Distinction** (Updated 2026-04-04 per C2 finding resolution):
-
-Two separate completion milestones exist for Phase 0:
-
-1. **"Backend Complete"** (Current State - April 4, 2026):
-   - ✅ All backend API endpoints implemented and tested (112/115 tests passing, 97.4%)
-   - ✅ Infrastructure code authored, validated, and deployed to DEV (`innoventity-dev-api.azurewebsites.net`)
-   - ✅ CI/CD pipelines authored + validated on DEV (infra.yml ✅, deploy.yml ✅)
-   - ✅ Mutation testing threshold met (80% score, threshold: ≥70%)
-   - ✅ Subcutaneous journey tests validate J1-J3 via API (no UI dependency)
-   - ⚠️ **Does NOT include**: Angular client, browser E2E tests, quickstart validation
-
-2. **"Full Phase 0 Complete"** (Pending Frontend + Final Gates):
-   - Requires: Backend Complete (above) + Frontend Shell (T071-T075) + Quickstart Validation (T059)
-   - ✅ Backend: All items from "Backend Complete" above
-   - ⏳ Frontend: Angular 19 app with login + innovation detail pages (T071-T074)
-   - ⏳ Browser E2E: Playwright test exercising Register → Activate → Login → View Innovation (T075)
-   - ⏳ Quickstart: Manual validation of quickstart.md steps (T059)
-   - ⏳ Drift Detection: Scheduled trigger validation on Main branch (T078 partial)
-
-**Roadmap Reporting** (per I1, C2 findings):
-- ROADMAP.md must distinguish "Backend Complete" vs "Full Phase 0 Complete" in status column
-- Phase completion percentages must specify scope: "Backend: 100%" vs "Full Scope: 68%" (example)
-- Prevent false baseline: declaring Phase 0 "done" without frontend creates governance debt
-
-**Next Milestone**: Complete T071-T075 (Angular shell + Playwright E2E) to achieve "Full Phase 0 Complete" status.
+**Risks**: None - quality gates are explicit and testable
 
 ---
 
 ### Principle 3: Simplicity Over Cleverness ✅
+**Assessment**: **PASS** - Uses industry-standard Angular patterns without clever abstractions.
 
-**Assessment**: PASS
 **Evidence**:
-- Standard technology choices: ASP.NET Core Minimal APIs, EF Core, Angular (Microsoft template)
-- Vertical Slice Architecture (feature-oriented, simple to navigate)
-- Phase 0 minimized to registration + authentication + single innovation view
-- No premature optimization or clever abstractions
+- Three standalone components (simplest Angular 19 pattern)
+- Reactive Forms with FormBuilder (industry standard, well-documented)
+- Material Design components (framework used as intended)
+- No custom state management libraries (router state + service sufficient)
+- Explicit validation (no magic validators)
 
-**Architecture Alignment**:
-- Use frameworks as intended (ASP.NET Core, Angular) without creative customization
-- Repository abstraction simple: enables v2.0 multi-tenancy without over-engineering v1.0
-- Direct EF Core queries in slices (no complex ORM abstractions)
+**Risks**: None - straightforward implementation
 
 ---
 
 ### Principle 4: Specification Drives Implementation ✅
+**Assessment**: **PASS** - Complete spec exists with clarifications; this plan follows spec-kit workflow.
 
-**Assessment**: PASS
 **Evidence**:
-- Functional specification approved before technical design (95.5/100 constitutional compliance)
-- Specification contains zero implementation details (functional requirements only)
-- PLAN phase follows SPECIFY phase per Spec-Kit workflow
-- Acceptance tests written in Given/When/Then format in specification
+- spec.md Section 8 is complete (FR8.1-FR8.4 + User Story 8)
+- 5 clarifications applied via interactive Q&A (Session 2026-04-06)
+- This plan.md created via `/speckit.plan` workflow
+- tasks.md will be generated via `/speckit.tasks` workflow (next step)
+- Implementation follows SPECIFY → PLAN → TASKS → IMPLEMENT
 
-**Architecture Alignment**:
-- Technical decisions deferred to this PLAN phase
-- API contracts will be generated from functional requirements in Phase 1
-- Data model will be extracted from entities/relationships in Phase 1
+**Risks**: None - specification-driven workflow followed
 
 ---
 
-###Principle 5: Tests Must Prove They Work ✅
+### Principle 5: Tests Must Prove They Work ✅
+**Assessment**: **PASS** - E2E tests include observable failure scenarios; unit tests follow TDD.
 
-**Assessment**: PASS
 **Evidence**:
-- TDD workflow enforced: observe test failing before implementation
-- Critical business logic (partner selection, authorization, bid validation) requires human-written tests
-- Mutation testing validates tests actually catch bugs (>70% score target)
-- Phase 0 testing strategy: unit → integration → E2E progression
+- E2E Test 2: Validation errors (deliberately invalid inputs)
+- E2E Test 3: Duplicate email error (tests business rule R1.3)
+- E2E Test 5-6: Invalid/expired tokens (tests error handling)
+- Unit tests for custom validators (password strength, conditional required)
+- Tests validate business rules, not just "returns 200 OK"
 
-**Architecture Alignment**:
-- Test pyramid: unit tests for business logic, integration tests for API endpoints, E2E for critical journeys
-- Test data builders for readable, maintainable test setup
-- Characterization testing for existing code (if needed)
+**TDD Approach**:
+1. Write unit test for password strength validator (expect specific thresholds:8-11=weak, 12-15=medium, 16+=strong)
+2. See test fail (validator doesn't exist yet)
+3. Implement validator
+4. See test pass
+
+**Risks**: None - tests have epistemic value (can fail if implementation wrong)
 
 ---
 
 ### Principle 6: AI Augments, Humans Decide ✅
+**Assessment**: **PASS** - Human-driven architecture; AI can generate boilerplate after design locked.
 
-**Assessment**: PASS
 **Evidence**:
-- Architectural decisions made by human (this PLAN phase)
-- Critical business logic to be human-implemented:
-  - Partner selection (irreversible, exactly-one-per-type rule)
-  - Authorization policies (resource ownership, role-based access)
-  - Business plan calculations (financial projections)
-  - State transitions (innovation workflow states)
-- AI can generate boilerplate (DTOs, validators, scaffolding)
+- **Human decisions** (documented in this plan):
+  - Component architecture: 3 standalone components (vs. feature module or smart/dumb pattern)
+  - Form strategy: Reactive Forms (vs. template-driven or signal-based)
+  - Routing: Query param for activation token (vs. path param)
+  - Validation: Password strength service (vs. directive or validator)
+  - State management: Router state for pending email (vs. localStorage or service)
+- **AI can generate**:
+  - Component boilerplate (ng generate component)
+  - Form HTML templates (Material component syntax)
+  - Test stubs (describe/it blocks)
+  - Validator function signatures
 
-**Architecture Alignment**:
-- Domain model design: human
-- Authorization policies: human
-- Critical business rules: human-implemented, human-tested
-- Boilerplate DTOs, mappers: AI-assisted, human-validated
+**Critical areas requiring human implementation**:
+- Password strength calculation logic (business rule from clarifications)
+- Conditional OrganizationName validator (depends on ActorType)
+- HTTP error mapping (400/409/500 to form field errors)
+- E2E test scenarios (requires business context understanding)
+
+**Risks**: None - clear separation of human design vs. AI generation
 
 ---
 
 ### Principle 7: Architecture Must Support Evolution ✅
+**Assessment**: **PASS** - Registration feature is extensible for v2.0 enhancements without breaking v1.0.
 
-**Assessment**: PASS
 **Evidence**:
-- v2.0 features explicitly deferred (multi-tenancy, organizations, closed/hybrid modes)
-- Repository abstractions enable v2.0 tenant filtering without rewrite
-- Policy-based authorization can extend with organization policies
-- Actor extensibility via inheritance allows new types (Government, Technology Parks)
+- **Standalone components**: Can evolve independently (e.g., v2.0 adds OAuth providers → new SocialLoginComponent doesn't affect RegisterComponent)
+- **Reusable validators**: Password strength and conditional validators can be used in future forms (Profile EditForm, ChangePasswordForm)
+- **Service abstraction**: RegistrationService can gain new methods (v2.0: resendActivationEmail, verifyEmailAvailability)
+- **Testable boundaries**: Unit tests validate component behavior independently of backend
 
-**Architecture Alignment**:
-- Repository pattern: `IInnovationRepository` abstracts data access (can add `WHERE TenantId = @tenantId` in v2.0)
-- Authorization policies: `IAuthorizationHandler` implementations composable (can add `OrganizationMemberHandler` in v2.0)
-- Actor types: Base `Actor` entity with inheritance (R&D, Manufacturing, Sales, Investor, Idea Generator) extendable
-- Avoid anti-patterns: No hardcoded `WHERE OrganizationId IS NULL`, no actor-type switch statements
+**v2.0 Evolution Path** (future, not in this plan):
+- Add OrganizationRegistrationComponent (extends RegisterComponent pattern)
+- Add multi-factor authentication (add MFASetupComponent after activation)
+- Add social login (SocialLoginComponent reuses auth patterns)
+
+**Avoiding v2.0 Premature Implementation**:
+- NOT building organization fields in v1.0
+- NOT building social login in v1.0
+- NOT building MFA in v1.0
+- Keeping v1.0 focused: individual user registration only
+
+**Risks**: None - clean boundaries enable evolution
 
 ---
 
-### Gate Summary
+### **CONSTITUTION CHECK RESULT: ✅ PASS ALL GATES**
 
-**Status**: ✅ ALL GATES PASS - PROCEED TO PHASE 0
+**Summary**: Registration UI feature aligns with all 7 constitutional principles. No violations. No trade-offs required. Proceed to Phase 0 research.
 
-| Principle | Status | Notes |
-|-----------|--------|-------|
-| P1: User Experience First | ✅ PASS | User-centric design, error handling comprehensive |
-| P2: Quality Non-Negotiable | ✅ PASS | Test-first, production-ready from Phase 0 |
-| P3: Simplicity Over Cleverness | ✅ PASS | Standard tech stack, minimal Phase 0 scope |
-| P4: Specification Drives Implementation | ✅ PASS | Functional spec approved before technical design |
-| P5: Tests Must Prove They Work | ✅ PASS | TDD enforced, mutation testing validates quality |
-| P6: AI Augments, Humans Decide | ✅ PASS | Critical business logic human-designed/implemented |
-| P7: Architecture Supports Evolution | ✅ PASS | Repository/policy patterns enable v2.0 extensibility |
+**Gates Cleared**:
+- ✅ User Experience First
+- ✅ Quality is Non-Negotiable
+- ✅ Simplicity Over Cleverness
+- ✅ Specification Drives Implementation
+- ✅ Tests Must Prove They Work
+- ✅ AI Augments, Humans Decide
+- ✅ Architecture Must Support Evolution
 
-**No violations requiring justification.**
+**Next Phase**: Phase 0 - Research (identify unknowns, evaluate technology choices, document best practices)
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-specs/[###-feature]/
+specs/001-platform-core/
 ├── plan.md              # This file (/speckit.plan command output)
-├── research.md          # Phase 0 output (/speckit.plan command)
-├── data-model.md        # Phase 1 output (/speckit.plan command)
-├── quickstart.md        # Phase 1 output (/speckit.plan command)
-├── contracts/           # Phase 1 output (/speckit.plan command)
+├── research.md          # Phase 0 output (technology choices, best practices)
+├── data-model.md        # Phase 1 output (form data models, validation rules)
+├── quickstart.md        # Phase 1 output (developer setup guide)
+├── contracts/           # Phase 1 output (component interfaces)
+│   ├── registration-form.interface.ts
+│   ├── registration-service.interface.ts
+│   └── validators.interface.ts
 └── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
 ```
 
 ### Source Code (repository root)
 
 ```text
-# Web application structure (ASP.NET Core + Angular)
-
-# Backend (ASP.NET Core 8 Minimal APIs)
-src/Innoventity.API/
-├── Features/                  # Vertical slices organized by feature
-│   ├── Authentication/       # Phase 0: JWT auth, registration, activation
-│   ├── Innovations/          # Innovation submission, publication, retrieval
-│   ├── Bids/                 # Bid submission, management
-│   ├── PartnerSelection/     # Partner evaluation and selection
-│   └── VirtualIncubator/     # Business plan collaboration workspace
-├── Domain/                    # Shared domain entities
-│   ├── Entities/             # EF Core entities (Innovation, Actor, Bid, etc.)
-│   ├── ValueObjects/         # Immutable value types
-│   └── Interfaces/           # Repository abstractions, policy interfaces
-├── Infrastructure/            # Cross-cutting concerns
-│   ├── Persistence/          # EF Core DbContext, migrations
-│   ├── Authentication/       # JWT token generation/validation
-│   └── Authorization/        # Policy handlers, requirements
-└── Program.cs                # Minimal API endpoint registration
-
-# Frontend (Angular 19 Standalone Components + Signal-Based Forms)
 src/Innoventity.Client/
 ├── src/
 │   ├── app/
-│   │   ├── features/         # Feature modules (standalone components)
-│   │   │   ├── auth/         # Login, registration, activation
-│   │   │   ├── innovations/  # Innovation submission, browse, view
-│   │   │   ├── bids/         # Bid submission, management
-│   │   │   ├── selection/    # Partner selection workflow
-│   │   │   └── incubator/    # Virtual incubator workspace
-│   │   ├── core/             # Shared services, interceptors, guards
-│   │   ├── shared/           # Reusable components, pipes, directives
-│   │   └── app.component.ts  # Root component
-│   ├── environments/         # Environment-specific config
-│   └── main.ts               # Bootstrap
-
-# Testing
-tests/Innoventity.API.Tests/
-├── Unit/                      # Unit tests for business logic
-│   ├── Features/             # Feature-specific unit tests
-│   ├── Domain/               # Entity/value object tests
-│   └── Builders/             # Test data builders
-├── Integration/               # API integration tests
-│   ├── Features/             # Feature endpoint tests
-│   └── Infrastructure/       # WebApplicationFactory setup
-└── E2E/                       # End-to-end tests (Playwright)
-    ├── Journeys/             # User journey tests (J1-J3 priority)
-    └── Support/              # Page objects, helpers
-
-tests/Innoventity.Client.Tests/
-├── unit/                      # Angular unit tests (Jasmine/Karma)
-└── e2e/                       # Client-side E2E tests (Playwright)
-
-# Infrastructure as Code (future)
-infra/
-└── bicep/                     # Azure resource definitions
+│   │   ├── features/
+│   │   │   └── registration/          # NEW: Registration feature
+│   │   │       ├── register/
+│   │   │       │   ├── register.component.ts
+│   │   │       │   ├── register.component.html
+│   │   │       │   ├── register.component.scss
+│   │   │       │   └── register.component.spec.ts
+│   │   │       ├── pending-activation/
+│   │   │       │   ├── pending-activation.component.ts
+│   │   │       │   ├── pending-activation.component.html
+│   │   │       │   ├── pending-activation.component.scss
+│   │   │       │   └── pending-activation.component.spec.ts
+│   │   │       ├── activate/
+│   │   │       │   ├── activate.component.ts
+│   │   │       │   ├── activate.component.html
+│   │   │       │   ├── activate.component.scss
+│   │   │       │   └── activate.component.spec.ts
+│   │   │       └── services/
+│   │   │           ├── registration.service.ts
+│   │   │           ├── registration.service.spec.ts
+│   │   │           └── password-strength.service.ts
+│   │   │
+│   │   ├── shared/
+│   │   │   ├── validators/            # NEW: Shared validators
+│   │   │   │   ├── password-validators.ts
+│   │   │   │   ├── password-validators.spec.ts
+│   │   │   │   ├── conditional-validators.ts
+│   │   │   │   ├── conditional-validators.spec.ts
+│   │   │   │   ├── email-validators.ts
+│   │   │   │   └── email-validators.spec.ts
+│   │   │   └── models/
+│   │   │       └── registration.model.ts  # NEW: TypeScript interfaces
+│   │   │
+│   │   └── app.routes.ts              # MODIFIED: Add registration routes
+│   │
+│   └── environments/
+│       ├── environment.ts
+│       └── environment.prod.ts
+│
+└── e2e/
+    └── registration/                   # NEW: E2E test suite
+        ├── registration-happy-path.spec.ts
+        ├── registration-validation.spec.ts
+        ├── registration-errors.spec.ts
+        ├── activation.spec.ts
+        └── registration-accessibility.spec.ts
 ```
 
 **Structure Decision**:
-- **Backend**: Vertical Slice Architecture organized by feature (each feature = cohesive slice with its own APIs, logic, persistence)
-- **Frontend**: Angular standalone components grouped by feature area
-- **Testing**: Separate test project mirroring backend structure (Unit/Integration/E2E)
-- **Rationale**:
-  - Vertical slices reduce coupling, improve maintainability
-  - Feature-oriented structure aligns with Spec-Kit workflow (one spec = one or more feature slices)
-  - Repository abstractions in Domain layer enable v2.0 multi-tenancy without rewrite
+
+**Feature-based organization** chosen for registration components (under `src/app/features/registration/`). This aligns with Angular best practices for bounded contexts and supports future feature growth (v2.0 could add `features/organizations/`, `features/partnerships/`, etc.).
+
+**Standalone components** used throughout (Angular 19 recommendation). No feature module created - components declare their own dependencies directly.
+
+**Shared validators** placed in `src/app/shared/validators/` for reusability across future forms (e.g., ChangePasswordForm in v2.0 can reuse password strength validator).
+
+**E2E tests** organized by scenario type (happy path, validation, errors, accessibility) for clarity and maintainability.
 
 ## Complexity Tracking
 
-> **Fill ONLY if Constitution Check has violations that must be justified**
+**Status**: ✅ **NO VIOLATIONS** - Complexity tracking not required
+
+**Ratification**: Constitution Check passed all 7 principles without violations. No trade-offs, exceptions, or justifications needed.
+
+**Historical Record**:
+- Constitution Check Date: 2026-04-06
+- Violations: 0
+- Trade-offs Justified: 0
+- Exceptions Granted: 0
+
+**Re-evaluation Trigger**: Phase 1 design completion (after data-model.md, contracts/, quickstart.md generated). If architectural decisions introduce complexity concerns, this section will be updated.
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
 | [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
 | [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+
+---
+
+## Phase 0: Research & Technology Choices
+
+**Status**: ✅ **COMPLETE** (Generated: research.md - Registration UI section)
+
+**Research Completed**: All technical unknowns resolved. Registration UI research documented in [research.md](./research.md#registration-ui-feature-research-phase-1).
+
+### Technology Choices Validated
+
+**Component Architecture** (Research Decision 1):
+- **Choice**: Standalone Components (no NgModules)
+- **Rationale**: Angular 19 best practice, simpler, future-proof
+- **Alternatives Rejected**: Feature modules (outdated), smart/dumb pattern (over-engineering)
+
+**Form Strategy** (Research Decision 2):
+- **Choice**: Reactive Forms with FormBuilder
+- **Rationale**: Industry standard, strong typing, testable, custom validators straightforward
+- **Alternatives Rejected**: Template-driven forms (weak typing), signal-based forms (experimental)
+
+**Material Component Selection** (Research Decision 3):
+- **Choice**: Angular Material 19 with "outline" appearance
+- **Rationale**: Accessible, responsive, consistent with existing app, handles WCAG 2.1 AA automatically
+- **Components**: mat-form-field, mat-input, mat-select, mat-progress-bar, mat-raised-button
+
+**Custom Validators** (Research Decision 4):
+- **Password Strength**: Custom ValidatorFn with detailed error object
+- **Password Match**: Cross-field validator on FormGroup
+- **Conditional Required**: Dynamic validator update on actorType change
+- **Email**: Built-in Validators.email (sufficient)
+
+**Password Strength Indicator** (Research Decision 5):
+- **Choice**: Service-based calculation
+- **Rationale**: Separation of concerns, testable, reusable
+- **Implementation**: PasswordStrengthService with calculateStrength(), getStrengthColor(), getStrengthPercentage()
+
+**Routing & Navigation** (Research Decision 6):
+- **Routes**: `/register`, `/register/pending-activation` (guarded), `/activate?token={token}` (no guard)
+- **Guard**: registrationGuard prevents direct access to pending-activation
+- **State**: Router state for transient data (email passed to pending-activation)
+
+**Error Handling** (Research Decision 7):
+- **Strategy**: Inline errors (Material mat-error) + global banner for server errors
+- **Mapping**: HTTP 400 → form field errors, HTTP 409 → email field error, HTTP 500 → global banner
+
+**State Management** (Research Decision 8):
+- **Choice**: Router state for transient data
+- **Rationale**: Simplest solution, no persistence needed, security benefit (email doesn't persist)
+- **Alternatives Rejected**: Service (over-engineering), localStorage (security risk)
+
+**Testing Strategy** (Research Decision 9):
+- **Unit Tests**: Jest with Material component harnesses, 80%+ coverage
+- **E2E Tests**: Playwright with axe-core for accessibility, 10 scenarios from spec.md
+- **TDD Approach**: Write test → implement → verify green
+
+**Risks Identified & Mitigated**:
+1. Password strength validator complexity → TDD approach, test all combinations
+2. Conditional validator edge cases → Test all 5 actor types
+3. E2E test flakiness → Playwright waitFor methods
+4. Material 19 breaking changes → Follow upgrade guide, use component harnesses
+
+**Best Practices Documented**:
+- Angular 19: Standalone components, async pipe, takeUntilDestroyed
+- Reactive Forms: FormBuilder, type-safe FormGroup, validators in separate files
+- Material Design: appearance="outline", mat-label, mat-error, mat-hint
+- Security: Never log passwords, never store in localStorage, HTTPS enforced
+- Accessibility: aria-label, keyboard navigation, color contrast, touch targets
+
+**Research Output**: See [research.md](./research.md) for complete research findings.
+
+---
+
+## Phase 1: Design & Contracts
+
+**Status**: ✅ **COMPLETE** (Generated: data-model-registration-ui.md, quickstart-registration-ui.md, contracts/registration-ui-contracts.md)
+
+### Data Model Design
+
+**TypeScript Interfaces** (See [data-model-registration-ui.md](./data-model-registration-ui.md)):
+- RegistrationFormModel (6 fields: email, password, confirmPassword, actorType, fullName, organizationName)
+- ActorType (enum: 5 values)
+- RegistrationResponse (API response)
+- ActivationRequest/ActivationResponse
+- PendingActivationState (router state)
+- PasswordStrength (type: 'weak' | 'medium' | 'strong')
+- PasswordStrengthIndicator (display properties)
+
+**Validation Rules**:
+- Email: Validators.required, Validators.email
+- Password: Validators.required, passwordStrengthValidator() (8+ chars, uppercase, lowercase, digit, special)
+- Confirm Password: Validators.required, passwordMatchValidator() (cross-field)
+- Actor Type: Validators.required
+- Full Name: Validators.required, minLength(2), maxLength(100)
+- Organization Name: **Dynamic validators** (required for all except Idea Generator)
+
+**Password Strength Calculation**:
+- Weak: 8-11 characters (meets requirements)
+- Medium: 12-15 characters
+- Strong: 16+ characters
+
+**API Error Models**:
+- ValidationErrorResponse (HTTP 400)
+- DuplicateEmailErrorResponse (HTTP 409)
+- ActivationErrorResponse (HTTP 400/404)
+
+**Component State Models**:
+- RegisterComponent: registrationForm, isSubmitting, globalError, passwordStrength, hidePassword flags
+- PendingActivationComponent: email (from router state)
+- ActivateComponent: token, isActivating, activationSuccess, activationError, networkError
+
+### Component Contracts
+
+**RegisterComponent** (See [contracts/registration-ui-contracts.md](./contracts/registration-ui-contracts.md)):
+- Public Interface: registrationForm, isSubmitting, globalError, passwordStrength, onSubmit(), togglePasswordVisibility()
+- Dependencies: FormBuilder, Router, RegistrationService, PasswordStrengthService
+- Template: 6 form fields, submit button, password strength indicator, error banner
+
+**PendingActivationComponent**:
+- Public Interface: email, navigateToLogin()
+- Dependencies: Router
+- Template: Success message, email display, "Continue to Login" button
+
+**ActivateComponent**:
+- Public Interface: token, isActivating, activationSuccess, activationError, retry(), navigateToLogin()
+- Dependencies: ActivatedRoute, Router, ActivationService
+- Template: Loading spinner, success message, error message, retry button
+
+### Service Contracts
+
+**RegistrationService**:
+- Method: register(data: RegistrationFormModel): Observable<RegistrationResponse>
+- HTTP: POST /api/auth/register
+- Errors: 400 (validation), 409 (duplicate email), 500 (server error)
+
+**ActivationService**:
+- Method: activate(request: ActivationRequest): Observable<ActivationResponse>
+- HTTP: POST /api/auth/activate
+- Errors: 400 (invalid token), 404 (token not found)
+
+**PasswordStrengthService**:
+- Methods: calculateStrength(), getStrengthIndicator(), getStrengthColor(), getStrengthPercentage(), getStrengthLabel()
+- Pure functions (testable, reusable)
+
+### Validator Contracts
+
+**passwordStrengthValidator()**:
+- Type: ValidatorFn
+- Error Object: `{ passwordStrength: { hasMinLength, hasUppercase, hasLowercase, hasDigit, hasSpecial } }`
+
+**passwordMatchValidator()**:
+- Type: ValidatorFn (form-level)
+- Parameters: passwordKey, confirmPasswordKey
+- Error Object: `{ passwordMismatch: true }`
+
+### Routing Contracts
+
+**Routes**:
+- `/register` → RegisterComponent (no guard)
+- `/register/pending-activation` → PendingActivationComponent (registrationGuard)
+- `/activate?token={token}` → ActivateComponent (no guard, allows email link access)
+
+**registrationGuard**:
+- Purpose: Prevent direct access to pending-activation without registration flow
+- Logic: Check router.getCurrentNavigation() for email in state
+- Redirect: Navigate to /register if no email
+
+### Developer Quickstart
+
+**Setup** (See [quickstart-registration-ui.md](./quickstart-registration-ui.md)):
+1. Install dependencies: `npm install`
+2. Start dev server: `npm start` (localhost:4200)
+3. Verify backend: `curl http://localhost:5000/api/health`
+
+**Testing**:
+- Unit tests: `npm run test` (Jest, 80%+ coverage target)
+- E2E tests: `npm run e2e` (Playwright, 10 scenarios)
+- Accessibility: `npx playwright test e2e/registration/registration-accessibility.spec.ts` (axe-core)
+
+**Manual Testing Checklist**:
+- Register component: 6 fields visible, actor type change toggles organization name "(Optional)" label
+- Password strength indicator: Updates as user types (weak/medium/strong)
+- Validation errors: Inline below fields, list missing password requirements
+- Successful registration: Navigate to pending-activation with email displayed
+- Activation: Token from email link activates account, success message + "Continue to Login" button
+
+**Debugging**:
+- Backend not reachable: Check CORS, proxy.conf.json
+- Material components failing in tests: Import NoopAnimationsModule
+- E2E tests flaky: Add waitForSelector(), increase timeout
+
+---
+
+## Phase 2: Architectural Decision Summary
+
+### Decision 1: Component Structure
+
+**Question**: How many components are needed, and what are their responsibilities?
+
+**Decision**: 3 standalone components (separation by user flow stage)
+
+**Components**:
+1. **RegisterComponent**: Registration form (6 fields, validation, submission)
+2. **PendingActivationComponent**: Success message (displays email, "Continue to Login" button)
+3. **ActivateComponent**: Token validation and activation (query parameter, API call, success/error states)
+
+**Rationale**:
+- Each component has single responsibility (Principle 3: Simplicity)
+- User flow stages are distinct (register → pending → activate)
+- No unnecessary abstraction (no "FormWrapperComponent" or similar)
+- Testable in isolation (each component has clear inputs/outputs)
+
+**Alternatives Rejected**:
+- Single component with wizard steps: Rejected - complex state management, harder to test
+- Shared FormComponent: Rejected - over-abstraction, forms are different enough
+- Smart/dumb component split: Rejected - over-engineering for simple forms
+
+---
+
+### Decision 2: Form Implementation Strategy
+
+**Question**: How should the registration form be implemented?
+
+**Decision**: Reactive Forms with FormBuilder, strong typing
+
+**Implementation**:
+```typescript
+registrationForm = this.fb.group<RegistrationFormModel>({
+  email: ['', [Validators.required, Validators.email]],
+  password: ['', [Validators.required, passwordStrengthValidator()]],
+  confirmPassword: ['', [Validators.required]],
+  actorType: ['', [Validators.required]],
+  fullName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
+  organizationName: ['', []] // Dynamic validators
+}, { validators: passwordMatchValidator('password', 'confirmPassword') });
+```
+
+**Rationale**:
+- Reactive Forms are Angular industry standard
+- FormBuilder reduces boilerplate
+- Strong typing with `FormGroup<RegistrationFormModel>` provides IDE support and type safety
+- Custom validators straightforward (ValidatorFn interface)
+- Cross-field validation (password match) built-in
+- Observable valueChanges perfect for password strength indicator
+
+**Alternatives Rejected**:
+- Template-driven forms: Weak typing, async validation harder to test
+- Signal-based forms: Experimental, limited documentation, not production-ready
+
+---
+
+### Decision 3: Material Component Mapping
+
+**Question**: Which Material components should be used for each form field?
+
+**Decision**: Material Design components with "outline" appearance
+
+**Mapping**:
+| Form Field | Material Component | Why |
+|------------|-------------------|-----|
+| **Email** | `<mat-form-field appearance="outline">` + `<input matInput type="email">` | Standard text input, autocomplete support |
+| **Password** | `<mat-form-field>` + `<input matInput [type]="hidePassword ? 'password' : 'text'">` + visibility toggle | Password masking, show/hide button |
+| **Confirm Password** | Same as Password | Consistency |
+| **Actor Type** | `<mat-select>` with `<mat-option>` (5 values) | Dropdown, keyboard accessible, Material styled |
+| **Full Name** | `<mat-form-field>` + `<input matInput type="text">` | Standard text input |
+| **Organization Name** | Same as Full Name | Consistency |
+| **Password Strength** | `<mat-progress-bar mode="determinate">` | Visual indicator, color-coded (warn/accent/primary) |
+| **Submit Button** | `<button mat-raised-button color="primary">` | Primary action, elevated style |
+
+**appearance="outline"**: Modern style, clear field boundaries, good for data-heavy forms
+
+**Accessibility Built-in**:
+- Material components automatically add ARIA attributes
+- Keyboard navigation (Tab order, Enter to submit)
+- Touch targets 44x44px (WCAG compliant)
+- Color contrast meets WCAG 2.1 AA
+
+**Rationale**:
+- Material Design handles responsive design automatically
+- Consistent with existing app (LoginComponent uses Material)
+- Reduces custom CSS (Material theming provides consistent colors)
+
+---
+
+### Decision 4: Routing & Navigation Flow
+
+**Question**: How should users navigate between registration stages?
+
+**Decision**: Simple routes with one guard
+
+**Routes**:
+```typescript
+{
+  path: 'register',
+  component: RegisterComponent
+},
+{
+  path: 'register/pending-activation',
+  component: PendingActivationComponent,
+  canActivate: [registrationGuard] // Prevent direct access
+},
+{
+  path: 'activate',
+  component: ActivateComponent
+  // No guard - must allow email link access
+}
+```
+
+**Navigation Flows**:
+1. **Register → Pending Activation**: `router.navigate(['/register/pending-activation'], { state: { email } })`
+2. **Pending Activation → Login**: `router.navigate(['/login'])`
+3. **Activate → Login**: `router.navigate(['/login'])` (after success)
+4. **Login ↔ Register**: `routerLink="/register"` (existing login page has link)
+
+**registrationGuard Logic**:
+```typescript
+export const registrationGuard: CanActivateFn = (route, state) => {
+  const router = inject(Router);
+  const navigation = router.getCurrentNavigation();
+
+  if (navigation?.extras.state?.['email']) {
+    return true; // Allow navigation (came from registration flow)
+  }
+
+  router.navigate(['/register']); // Redirect if no email in state
+  return false;
+};
+```
+
+**Rationale**:
+- Guard prevents users from bookmarking pending-activation page
+- Activation route has NO guard (email links must work)
+- Router state used for transient data (email) - simpler than service or localStorage
+- Query parameter format `/activate?token={token}` (Clarification Q4)
+
+**Alternatives Rejected**:
+- Service-based state management: Over-engineering for transient email string
+- localStorage for email: Security risk (email persisted in browser)
+- Path parameter for token `/activate/:token`: Rejected - query parameter preferred per clarification
+
+---
+
+### Decision 5: Service Layer Design
+
+**Question**: What services are needed, and what are their responsibilities?
+
+**Decision**: 3 services (separation of concerns)
+
+**Services**:
+1. **RegistrationService**: HTTP calls to backend API
+   - `register(data: RegistrationFormModel): Observable<RegistrationResponse>`
+   - POST /api/auth/register
+2. **ActivationService**: Activation API call (could be merged with RegistrationService, but kept separate for clarity)
+   - `activate(request: ActivationRequest): Observable<ActivationResponse>`
+   - POST /api/auth/activate
+3. **PasswordStrengthService**: Password strength calculation (UI logic, not API call)
+   - `calculateStrength(password: string): PasswordStrength`
+   - `getStrengthIndicator(strength: PasswordStrength): PasswordStrengthIndicator`
+
+**Why Separate PasswordStrengthService?**:
+- Testable (pure functions, no HTTP dependencies)
+- Reusable (future ChangePasswordForm can use same service)
+- Separation of concerns (UI logic vs API calls)
+
+**Rationale**:
+- Services injected with `{ providedIn: 'root' }` (singleton, available app-wide)
+- HTTP calls return Observables(async, chainable, cancellable)
+- Error handling done in component (map HTTP errors to form field errors)
+
+**Alternatives Rejected**:
+- Single RegistrationService for all: Rejected - password strength is UI logic, not API related
+- Password strength in component: Rejected - harder to test, not reusable
+
+---
+
+### Decision 6: Validation Strategy
+
+**Question**: How should custom validation be implemented?
+
+**Decision**: Custom validators in shared/validators/, dynamic validator updating
+
+**Validators**:
+1. **passwordStrengthValidator()**: ValidatorFn (synchronous)
+   - Checks: 8+ chars, uppercase, lowercase, digit, special char
+   - Error Object: `{ passwordStrength: { hasMinLength, hasUppercase, ... } }`
+2. **passwordMatchValidator()**: ValidatorFn (form-level, cross-field)
+   - Compares password and confirmPassword
+   - Error Object: `{ passwordMismatch: true }`
+3. **Dynamic Organization Name Validators**:
+   - actorType === 'IdeaGenerator' → optional (no Validators.required)
+   - actorType !== 'IdeaGenerator' → required (add Validators.required)
+   - Implementation: Subscribe to actorType valueChanges, call setValidators()
+
+**Error Display Strategy**:
+```html
+<mat-error *ngIf="password.hasError('passwordStrength')">
+  Password must include:
+  <ul>
+    <li *ngIf="!password.getError('passwordStrength').hasMinLength">At least 8 characters</li>
+    <li *ngIf="!password.getError('passwordStrength').hasUppercase">One uppercase letter</li>
+    <!-- ... -->
+  </ul>
+</mat-error>
+```
+
+**Rationale**:
+- Validators are pure functions (testable independently)
+- Detailed error objects provide specific feedback
+- Dynamic validators handle conditional logic (organization name required/optional based on actor type)
+- Built-in Validators.email sufficient (no custom email validator needed)
+
+**Clarification Applied**: Organization Name field ALWAYS VISIBLE, marked "(Optional)" for Idea Generator (not hidden dynamically)
+
+---
+
+### Decision 7: Error Handling Strategy
+
+**Question**: How should API errors be displayed to users?
+
+**Decision**: Inline errors (Material mat-error) + global banner for server errors
+
+**Error Categories**:
+1. **Client-side validation**: Inline below form fields (mat-error)
+2. **HTTP 400 (Validation)**: Map API errors to form field errors (setErrors())
+3. **HTTP 409 (Duplicate Email)**: Set error on email field with custom message
+4. **HTTP 500 (Server Error)**: Global error banner (not inline)
+5. **Network Error (status 0)**: Retry mechanism + error message
+
+**HTTP Error Mapping**:
+```typescript
+error: (httpError: HttpErrorResponse) => {
+  if (httpError.status === 400) {
+    this.mapApiErrorsToForm(httpError.error); // Field-specific errors
+  } else if (httpError.status === 409) {
+    this.email.setErrors({ emailExists: 'Email already registered. Try logging in.' });
+  } else if (httpError.status === 0) {
+    this.globalError = 'Network error. Check your connection and try again.';
+  } else {
+    this.globalError = 'Registration failed. Please try again later.';
+  }
+}
+```
+
+**Rationale**:
+- Clear separation: Form validation errors inline, server errors in banner
+- User-friendly messages (no HTTP status codes exposed)
+- Retry mechanism for network issues (UX improvement)
+- Form state retained on error (user doesn't lose entered data)
+
+**Alternatives Rejected**:
+- All errors in global banner: Rejected - users can't see which field has error
+- Modal dialogs for errors: Rejected - disrupts workflow, less accessible
+
+---
+
+### Decision 8: Testing Implementation Strategy
+
+**Question**: How should unit tests and E2E tests be structured?
+
+**Decision**: TDD approach, Material component harnesses, Playwright with axe-core
+
+**Unit Testing (Jest)**:
+- Test file pattern: `*.spec.ts` (same directory as source)
+- Component tests: Form validation logic, dynamic validator updates, error handling
+- Service tests: HTTP calls with HttpTestingController, password strength calculations
+- Validator tests: Pure function testing (valid/invalid inputs)
+- Material component harnesses: Future-proof testing (use harnesses, not DOM queries)
+
+**Test Example**:
+```typescript
+it('should update organization name validators when actor type changes', () => {
+  component.registrationForm.get('actorType')!.setValue('IdeaGenerator');
+  const orgNameControl = component.registrationForm.get('organizationName')!;
+  orgNameControl.setValue('');
+  expect(orgNameControl.hasError('required')).toBeFalsy(); // Optional for Idea Generator
+
+  component.registrationForm.get('actorType')!.setValue('RDOrganization');
+  orgNameControl.updateValueAndValidity();
+  expect(orgNameControl.hasError('required')).toBeTruthy(); // Required for R&D Org
+});
+```
+
+**E2E Testing (Playwright)**:
+- Test scenarios: 10 from spec.md Section 8 (happy path, validation, errors, activation, accessibility)
+- Page objects: Not needed (simple forms, direct selectors sufficient)
+- Accessibility: axe-core integration for WCAG 2.1 AA validation
+- Test data: Factories for valid/invalid registration data
+
+**E2E Example**:
+```typescript
+test('complete registration workflow', async ({ page }) => {
+  await page.goto('/register');
+  await page.fill('[formControlName="email"]', 'test@example.com');
+  // ... fill all fields
+  await page.click('button[type="submit"]');
+  await expect(page).toHaveURL('/register/pending-activation');
+  await expect(page.locator('.email-display')).toContainText('test@example.com');
+});
+```
+
+**Coverage Target**: 80%+ (lines, branches)
+
+**Rationale**:
+- TDD ensures tests written before implementation (Principle 5: Tests Prove They Work)
+- Material harnesses decouple tests from implementation details
+- Playwright more reliable than Protractor (modern, cross-browser)
+- axe-core automates accessibility testing (WCAG 2.1 AA compliance)
+
+---
+
+### Decision 9: Implementation Phases
+
+**Question**: In what order should components be implemented?
+
+**Decision**: 6 phases (sequential + parallel opportunities)
+
+**Phases**:
+
+**Phase 1: Foundation** (Parallel work possible):
+- Task 1.1: Create models and interfaces (registration.model.ts, ActorType enum)
+- Task 1.2: Create services (RegistrationService, ActivationService, PasswordStrengthService)
+- Task 1.3: Create validators (passwordStrengthValidator, passwordMatchValidator)
+- Task 1.4: Configure routes (app.routes.ts, registrationGuard)
+- **Duration**: 2-3 hours
+- **Dependencies**: None (all can start immediately)
+
+**Phase 2: RegisterComponent** (Sequential):
+- Task 2.1: Generate component, create FormGroup structure
+- Task 2.2: Implement password strength indicator (subscribe to valueChanges)
+- Task 2.3: Implement dynamic organization name validators (actorType valueChanges)
+- Task 2.4: Implement form submission and error handling
+- Task 2.5: Create template (6 fields, Material components, error messages)
+- Task 2.6: Write unit tests (15+ tests)
+- **Duration**: 4-6 hours
+- **Dependencies**: Phase 1 complete
+
+**Phase 3: PendingActivationComponent** (Can start after Phase 1):
+- Task 3.1: Generate component, extract email from router state
+- Task 3.2: Create template (success message, email display, button)
+- Task 3.3: Implement guard logic (registrationGuard)
+- Task 3.4: Write unit tests (3+ tests)
+- **Duration**: 1-2 hours
+- **Dependencies**: Phase 1 complete (router state, guard)
+
+**Phase 4: ActivateComponent** (Can start after Phase 1):
+- Task 4.1: Generate component, extract token from query parameter
+- Task 4.2: Implement activation API call and state management
+- Task 4.3: Implement retry mechanism
+- Task 4.4: Create template (loading, success, error, retry button)
+- Task 4.5: Write unit tests (5+ tests)
+- **Duration**: 2-3 hours
+- **Dependencies**: Phase 1 complete (ActivationService)
+
+**Phase 5: E2E Testing** (After Phases 2-4):
+- Task 5.1: Write happy path test (register → pending → activate → login)
+- Task 5.2: Write validation tests (invalid email, weak password, password mismatch)
+- Task 5.3: Write error tests (duplicate email, invalid token, network error)
+- Task 5.4: Write activation tests (valid/expired token)
+- Task 5.5: Write accessibility tests (axe-core, keyboard navigation)
+- **Duration**: 3-4 hours
+- **Dependencies**: Phases 2, 3, 4 complete
+
+**Phase 6: Documentation** (Final phase):
+- Task 6.1: Update README.md (setup instructions, testing commands)
+- Task 6.2: Add inline code comments (complex logic only)
+- Task 6.3: Verify all acceptance criteria met (24 from spec.md)
+- **Duration**: 1 hour
+- **Dependencies**: Phase 5 complete
+
+**Total Estimated Duration**: 14-20 hours (solo developer)
+
+**Parallelization Opportunities**:
+- Phase 3 and Phase 4 can be done in parallel (independent components)
+- Phase 1 tasks can be done in parallel (no interdependencies)
+
+**Critical Path**: Phase 1 → Phase 2 → Phase 5 → Phase 6
+
+**Rationale**:
+- Phase 1 establishes foundation (all components depend on models/services)
+- RegisterComponent is most complex (should be done before moving to simpler components)
+- PendingActivationComponent and ActivateComponent are simple (can be parallelized)
+- E2E tests verify end-to-end workflow (must wait for all components)
+- Documentation is final step (ensures all work complete before documenting)
+
+---
+
+## Dependencies & Integration Points
+
+### NPM Dependencies (Already Installed)
+
+**Frontend (Angular)**:
+- @angular/core: ^19.0.0 (already in package.json)
+- @angular/material: ^19.0.0 (already in package.json)
+- @angular/forms: ^19.0.0 (ReactiveFormsModule)
+- @angular/router: ^19.0.0 (Router, ActivatedRoute)
+- @angular/common: ^19.0.0 (CommonModule for *ngIf, *ngFor)
+- rxjs: ^7.x (Observable, debounceTime, finalize)
+
+**Testing**:
+- jest: ^29.x (unit testing)
+- @playwright/test: ^1.x (E2E testing)
+- @axe-core/playwright: Latest (accessibility testing)
+
+**NO NEW DEPENDENCIES REQUIRED** - All packages already installed in existing Angular app.
+
+### Backend API Dependencies
+
+**Existing Phase 0 APIs** (No modifications required):
+- POST /api/auth/register
+  - Request: `{ email, password, actorType, fullName, organizationName }`
+  - Response (201): `{ message }`
+  - Errors: 400 (validation), 409 (duplicate email), 500 (server error)
+- POST /api/auth/activate
+  - Request: `{ token }`
+  - Response (200): `{ message }`
+  - Errors: 400 (invalid token), 404 (not found)
+
+**Backend Running Requirement**: Backend API must be running on http://localhost:5000 (or configured API URL) for development and E2E testing.
+
+### Integration with Existing Components
+
+**LoginComponent Integration**:
+- Add "Register here" link in login template:
+  ```html
+  <p>Don't have an account? <a routerLink="/register">Register here</a></p>
+  ```
+- After successful activation, user is directed to login page with registered credentials
+
+**DashboardComponent Integration**:
+- After successful login (post-activation), user navigates to dashboard
+- No changes needed to DashboardComponent (existing auth guard handles authenticated users)
+
+**AuthService Integration**:
+- RegistrationService does NOT use AuthService (registration happens before authentication)
+- After activation + login, AuthService.login() is called (existing flow)
+
+### Environment Configuration
+
+**Development (`environment.ts`)**:
+```typescript
+export const environment = {
+  production: false,
+  apiUrl: 'http://localhost:5000/api' // Local backend
+};
+```
+
+**Production (`environment.prod.ts`)**:
+```typescript
+export const environment = {
+  production: true,
+  apiUrl: 'https://innoventity-api.azurewebsites.net/api' // Azure backend
+};
+```
+
+**Proxy Configuration** (`proxy.conf.json`):
+```json
+{
+  "/api": {
+    "target": "http://localhost:5000",
+    "secure": false
+  }
+}
+```
+
+---
+
+## Open Questions & Assumptions
+
+### Assumptions
+
+1. **Backend APIs Functional**: Assumes POST /auth/register and POST /auth/activate APIs already implemented and tested in Phase 0.
+2. **Email Sending Working**: Assumes backend sends activation email with token link (e.g., `https://app.innoventity.com/activate?token=abc123`).
+3. **Token Format**: Assumes activation token is URL-safe string (base64, GUID, or JWT).
+4. **No CAPTCHA Required**: Assumes no bot protection needed for v1.0 (defer to v2.0 if spam becomes issue).
+5. **Existing LoginComponent**: Assumes LoginComponent already exists and can accept newly activated users.
+
+### Resolved Questions
+
+All questions from REGISTER_UI_PLANNING_PROMPT.md resolved:
+1. ✅ Component structure: 3 standalone components
+2. ✅ Form strategy: Reactive Forms with FormBuilder
+3. ✅ Material component mapping: Documented in Decision 3
+4. ✅ Routing: Simple routes with registrationGuard
+5. ✅ Service layer: 3 services (Registration, Activation, PasswordStrength)
+6. ✅ Validation: Custom validators in shared/validators/
+7. ✅ Error handling: Inline + global banner
+8. ✅ Testing: Jest + Playwright + axe-core
+9. ✅ Implementation phases: 6 phases documented
+
+### No Open Questions
+
+**Status**: All architectural decisions documented. Ready for task generation (`/speckit.tasks`).
+
+---
+
+## Risk Assessment
+
+### Technical Risks
+
+**Risk 1: Password Strength Validator Complexity**
+- **Impact**: Medium (weak passwords allowed if validator has bugs)
+- **Likelihood**: Low (TDD approach reduces risk)
+- **Mitigation**: Write comprehensive unit tests (test all requirement combinations), use existing regex patterns from backend for consistency
+
+**Risk 2: Conditional Organization Name Validation**
+- **Impact**: Medium (required field not enforced or vice versa)
+- **Likelihood**: Low (straightforward logic)
+- **Mitigation**: Test all 5 actor types, test actorType changes after user input, E2E test covers scenario
+
+**Risk 3: E2E Test Flakiness**
+- **Impact**: Low (test reliability, not production code)
+- **Likelihood**: Medium (Playwright tests can be flaky)
+- **Mitigation**: Use Playwright waitForSelector(), increase timeout, mock email in test environment
+
+**Risk 4: Material Design Version Compatibility**
+- **Impact**: Low (syntax changes)
+- **Likelihood**: Low (Material 19 stable)
+- **Mitigation**: Follow official upgrade guide, use Material component harnesses for future-proof tests
+
+**Risk 5: Browser Compatibility (Safari)**
+- **Impact**: Low (layout issues on Safari)
+- **Likelihood**: Low (Material Design handles compatibility)
+- **Mitigation**: E2E tests run on WebKit (Safari engine), use autoprefixer
+
+### UX Risks
+
+**Risk 6: Password Strength Indicator Confusing**
+- **Impact**: Medium (users don't understand weak/medium/strong)
+- **Likelihood**: Low (industry standard pattern)
+- **Mitigation**: Provide hint text ("Use 16+ characters for strong password"), color-coded progress bar (red/yellow/green)
+
+**Risk 7: Organization Name "(Optional)" Label Not Clear**
+- **Impact**: Low (users confused about when field is required)
+- **Likelihood**: Low (label is explicit)
+- **Mitigation**: E2E test verifies field behavior, user testing during beta (Phase 7 - Launch Criteria)
+
+### Security Risks
+
+**Risk 8: Password Visible in Network Tab**
+- **Impact**: Medium (password exposed in browser DevTools)
+- **Likelihood**: N/A (inherent to web apps)
+- **Mitigation**: HTTPS enforced (Azure Static Web App), educate users to not use public computers
+
+**Risk 9: Email Stored in Router State**
+- **Impact**: Low (email persisted in browser history)
+- **Likelihood**: Low (router state is transient)
+- **Mitigation**: Router state cleared on page refresh (security benefit), email is not sensitive PII
+
+### Overall Risk Level
+
+**Assessment**: ✅ **LOW RISK**
+
+**Justification**:
+- All high/medium impact risks have mitigations
+- TDD approach reduces implementation bugs
+- Existing backend APIs reduce integration risks
+- Material Design reduces UI/UX risks
+- No new dependencies or complex state management
+
+---
+
+## Success Criteria & Acceptance
+
+### Functional Requirements (from spec.md Section 8)
+
+**FR8.1 Registration Form** (24 acceptance criteria):
+- ✅ All 24 criteria testable via E2E tests
+- ✅ Password strength validation enforced (8+ chars, uppercase, lowercase, digit, special)
+- ✅ Organization Name field always visible, marked "(Optional)" for Idea Generator
+
+**FR8.2 Form Submission**:
+- ✅ POST /api/auth/register called with form data (without confirmPassword)
+- ✅ Success → Navigate to pending-activation with email displayed
+- ✅ Duplicate email → Email field error "Email already registered"
+
+**FR8.3 Activation Flow**:
+- ✅ Route format: `/activate?token={token}` (query parameter, per Clarification Q4)
+- ✅ Valid token → Success message + "Continue to Login" button (no auto-redirect, per Clarification Q5)
+- ✅ Invalid token → Error message + "Retry" button
+
+**FR8.4 Post-Activation**:
+- ✅ User clicks "Continue to Login" → Navigate to /login
+- ✅ User can log in with registered credentials
+
+### Non-Functional Requirements (from spec.md Section 8)
+
+**NFR8.1 Performance**:
+- ✅ Form rendering: <100ms (Material Design optimized)
+- ✅ Form submission: <2 seconds (backend API dependent)
+- ✅ Activation validation: <1 second (backend API dependent)
+
+**NFR8.2 Accessibility**:
+- ✅ WCAG 2.1 Level AA compliant (Material Design handles, axe-core validates)
+- ✅ Keyboard navigation (Tab through fields, Enter to submit)
+- ✅ Screen reader support (ARIA labels, error announcements)
+
+**NFR8.3 Responsive Design**:
+- ✅ Mobile (320px - 767px): Full-width fields, vertical stacking
+- ✅ Tablet (768px - 1024px): Centered form, max-width 480px
+- ✅ Desktop (1024px+): Centered form, max-width 480px
+- ✅ Touch targets: 44x44px (Material Design default)
+
+**NFR8.4 Security**:
+- ✅ Passwords never logged (no console.log in production)
+- ✅ Passwords never stored in localStorage/sessionStorage
+- ✅ HTTPS enforced (Azure Static Web App)
+- ✅ Client + server validation (defense in depth)
+
+**NFR8.5 Browser Compatibility**:
+- ✅ Chrome 120+ (E2E tested on Chromium)
+- ✅ Firefox 121+ (E2E tested on Firefox)
+- ✅ Safari 17+ (E2E tested on WebKit)
+- ✅ Edge 120+ (Chromium-based, same as Chrome)
+- ✅ Mobile browsers: iOS Safari 17+, Android Chrome 120+
+
+### Test Coverage
+
+**Unit Tests**:
+- ✅ 15+ unit tests (RegisterComponent: 7, PendingActivationComponent: 2, ActivateComponent: 4, validators: 2)
+- ✅ 80%+ code coverage (lines, branches)
+
+**E2E Tests**:
+- ✅ 10 scenarios from spec.md Section 8
+  1. Happy path (register → pending → activate → login)
+  2. Email validation (invalid format)
+  3. Password strength validation (missing requirements)
+  4. Password mismatch
+  5. Organization name required validation (R&D Org without org name)
+  6. Organization name optional (Idea Generator without org name)
+  7. Duplicate email (HTTP 409)
+  8. Activation with valid token
+  9. Activation with invalid token
+  10. Keyboard navigation + accessibility (axe-core)
+
+### Definition of Done
+
+**Component Implementation**:
+- ✅ All 3 components generated and implemented
+- ✅ All services implemented (Registration, Activation, PasswordStrength)
+- ✅ All validators implemented (passwordStrength, passwordMatch)
+- ✅ All routes configured (register, pending-activation, activate)
+- ✅ All templates created with Material Design components
+
+**Testing**:
+- ✅ All unit tests passing (0 failures)
+- ✅ All E2E tests passing (0 failures)
+- ✅ Code coverage ≥80%
+- ✅ Accessibility tests passing (0 violations)
+
+**Documentation**:
+- ✅ README.md updated (setup instructions, testing commands)
+- ✅ Inline comments for complex logic
+- ✅ All 24 acceptance criteria verified
+
+**Code Quality**:
+- ✅ No linting errors (ng lint)
+- ✅ No build warnings (ng build)
+- ✅ No console.error or console.warn in production code
+
+**Integration**:
+- ✅ Backend APIs tested (POST /auth/register, POST /auth/activate)
+- ✅ LoginComponent link added ("Register here")
+- ✅ Environment configuration verified (dev + prod)
+
+---
+
+## Next Steps
+
+**Phase 1 Complete** - All design artifacts generated:
+- ✅ research.md (technology choices, best practices)
+- ✅ data-model-registration-ui.md (TypeScript interfaces, validation rules, state models)
+- ✅ quickstart-registration-ui.md (developer setup, testing, debugging)
+- ✅ contracts/registration-ui-contracts.md (component contracts, service interfaces)
+- ✅ Agent context updated (GitHub Copilot context file)
+
+**Ready for Phase 2: Task Generation**
+
+**Command**: Execute `/speckit.tasks` to generate tasks.md with 20-25 implementation tasks.
+
+**Expected Output**: tasks.md with:
+- Task ID, Title, Description
+- Acceptance Criteria (specific, testable)
+- Dependencies (which tasks must complete first)
+- Estimated Effort (hours)
+- Implementation order (Phase 1 → Phase 6)
+
+**After Task Generation**: Proceed to `/speckit.implement` for automated task execution, or implement manually following task sequence.
+
+---
+
+**END OF PLANNING PHASE**
