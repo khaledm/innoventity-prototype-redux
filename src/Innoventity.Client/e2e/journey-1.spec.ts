@@ -163,19 +163,19 @@ async function loginAccount(request: APIRequestContext, email: string, password:
 
 /**
  * Login via UI (fills login form and submits)
- * 
+ *
  * KNOWN LIMITATION: While this function successfully completes the login flow and stores
  * tokens in localStorage, subsequent page navigations may still receive 401 errors.
- * 
+ *
  * Root Cause: Angular's AuthService initializes its signal once at app startup by reading
  * localStorage. When tests navigate to a different page after login, there appears to be
  * a timing/initialization issue where the HTTP interceptor doesn't consistently pick up
  * the token from the AuthService signal.
- * 
+ *
  * Token Storage: ✅ Works correctly (verified: token, refreshToken, user all stored)
  * Login Flow: ✅ Works correctly (redirects to innovation page after login)
  * HTTP Interceptor: ❌ Inconsistent (sometimes doesn't add Authorization header)
- * 
+ *
  * This affects tests that need to navigate to different pages after UI login.
  * For now, use API-based login for tests that require authenticated HTTP requests.
  */
@@ -266,7 +266,7 @@ test.describe('Journey 1: User Registration and Innovation View', () => {
 
   /**
    * KNOWN ISSUE: This test has a known limitation with browser-based authentication.
-   * 
+   *
    * Status: PARTIAL PASS
    * - ✅ Registration via API works
    * - ✅ Activation via API works
@@ -274,11 +274,11 @@ test.describe('Journey 1: User Registration and Innovation View', () => {
    * - ✅ Innovation creation via API works (data persisted)
    * - ✅ UI login works (form fills, submits, redirects, stores token)
    * - ❌ Innovation viewing fails with 401 Unauthorized
-   * 
+   *
    * The test successfully demonstrates that all API endpoints work correctly and that
    * the UI login flow functions properly. However, subsequent navigation after UI login
    * results in 401 errors despite valid tokens being stored in localStorage.
-   * 
+   *
    * This appears to be a test infrastructure issue with Angular signal initialization
    * timing, not a functional issue with the application (manual testing confirms the
    * full flow works correctly).

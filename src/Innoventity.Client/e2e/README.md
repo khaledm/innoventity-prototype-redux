@@ -13,6 +13,7 @@ Purpose: End-to-end validation of user journey flows
 ## Prerequisites
 
 1. **Backend API running**: The E2E tests require the Innoventity.API backend to be running on `http://localhost:5073`
+
    ```bash
    # In the repository root
    cd src/Innoventity.API
@@ -20,6 +21,7 @@ Purpose: End-to-end validation of user journey flows
    ```
 
 2. **Angular dev server running**: Tests navigate to `http://localhost:4200`
+
    ```bash
    # In src/Innoventity.Client/
    npm start
@@ -28,6 +30,7 @@ Purpose: End-to-end validation of user journey flows
 3. **Database available**: SQL Server LocalDB with InnoventityDev database
 
 4. **Playwright browsers installed**: Chromium browser should be installed
+
    ```bash
    npx playwright install chromium
    ```
@@ -35,31 +38,37 @@ Purpose: End-to-end validation of user journey flows
 ## Running Tests
 
 ### Run all E2E tests
+
 ```bash
 npm run e2e
 ```
 
 ### Run E2E tests in UI mode (interactive)
+
 ```bash
 npx playwright test --ui
 ```
 
 ### Run specific test file
+
 ```bash
 npx playwright test e2e/journey-1.spec.ts
 ```
 
 ### Run tests in headed mode (see browser)
+
 ```bash
 npx playwright test --headed
 ```
 
 ### Debug tests
+
 ```bash
 npx playwright test --debug
 ```
 
 ### Run specific test
+
 ```bash
 npx playwright test e2e/journey-1.spec.ts -g "incorrect credentials"
 ```
@@ -69,6 +78,7 @@ npx playwright test e2e/journey-1.spec.ts -g "incorrect credentials"
 ### ✅ Passing Tests
 
 #### Test 2: "should handle login with incorrect credentials via API"
+
 - **Status**: ✅ PASSING
 - **Approach**: API-only (no browser interaction beyond registration)
 - **Coverage**: Validates authentication error handling
@@ -77,6 +87,7 @@ npx playwright test e2e/journey-1.spec.ts -g "incorrect credentials"
 ### ⚠️ Tests with Known Limitations
 
 #### Test 1: "should complete full journey"
+
 - **Status**: ⚠️ PARTIAL PASS
 - **What Works**:
   - ✅ Account registration via API
@@ -87,17 +98,20 @@ npx playwright test e2e/journey-1.spec.ts -g "incorrect credentials"
 - **Known Issue**: 401 Unauthorized when navigating to innovation detail page after UI login
 
 #### Test 3: "should show loading state"
+
 - **Status**: ⚠️ PARTIAL PASS
 - **Known Issue**: Same 401 error as Test 1
 
 ## Known Limitation: Browser Authentication After UI Login
 
 ### Symptoms
+
 - UI login successfully completes (form fills, submits, redirects)
 - Tokens are correctly stored in localStorage (verified: accessToken, refreshToken, currentUser)
 - Subsequent navigation to authenticated pages results in 401 Unauthorized errors
 
 ### Root Cause
+
 Angular's `AuthService` uses signals that initialize once at application startup:
 
 ```typescript
@@ -108,6 +122,7 @@ private accessTokenSignal = signal<string | null>(
 ```
 
 **Timeline**:
+
 1. Test starts → Angular loads → Signal initialized (reads empty localStorage)
 2. Test completes UI login → Tokens stored in localStorage
 3. Test navigates to new page → HTTP interceptor reads signal (still null)
@@ -145,6 +160,7 @@ await loginViaUI(page, email, password, 'IdeaGenerator');
 ## Test Structure
 
 ### Journey 1: Registration → Activation → Login → View Innovation
+
 - **File**: `e2e/journey-1.spec.ts`
 - **Scenario**: Full user journey from account creation to viewing innovation details
 - **Steps**:
@@ -165,16 +181,20 @@ await loginViaUI(page, email, password, 'IdeaGenerator');
 ## Troubleshooting
 
 ### "Connection refused" or "ECONNREFUSED"
+
 - **Cause**: Backend API is not running
 - **Solution**: Start the backend API on port 5001
 
 ### "Navigation timeout" or page doesn't load
+
 - **Cause**: Angular dev server is not running
 - **Solution**: The Playwright config auto-starts the dev server with `npm start`, but ensure no other process is using port 4200
 
 ### "Innovation not found" or missing seed data
+
 - **Cause**: Database is not seeded with test data
-- **Solution**: 
+- **Solution**:
+
   ```bash
   # Delete database and restart backend to trigger seeding
   cd src/Innoventity.API
@@ -183,6 +203,7 @@ await loginViaUI(page, email, password, 'IdeaGenerator');
   ```
 
 ### Tests are flaky (sometimes pass, sometimes fail)
+
 - **Cause**: Race conditions or timing issues
 - **Solution**: Playwright auto-retries assertions, but if tests are still flaky:
   - Check for explicit timeouts that might be too short
@@ -192,6 +213,7 @@ await loginViaUI(page, email, password, 'IdeaGenerator');
 ## CI/CD Integration
 
 In CI pipelines, the tests:
+
 - Run with `retries: 2` (auto-retry failed tests)
 - Use GitHub reporter for better CI output
 - Capture screenshots and videos on failure
