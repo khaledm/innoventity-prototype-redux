@@ -584,33 +584,36 @@ curl https://$(terraform output -raw app_service_hostname)/health
 
 ### Destruction Workflow
 
+> **📋 Full Runbook**: For the complete DEV teardown guide (pre-flight checks, all three teardown options, validation steps, post-teardown cleanup, and lessons learned), see **[teardown.md](teardown.md)**.
+
 **Prerequisites**:
 1. Confirm no active users (production environments)
+2. Confirm Terraform state backend (`innoventity-tfstate-rg` / `innoventitytfstate`) is intact before proceeding
 
 **Destroy stateless resources (core) — routine teardown:**
 ```bash
 # Tears down App Service, App Insights. Database is untouched (separate state).
 cd infrastructure/environments/dev/core
 terraform plan -destroy -out=tfplan-destroy
+
+# 3. Review resources to be destroyed
+# Confirm innoventity-tfstate-rg and innoventitytfstate do NOT appear in the plan.
+# If they do, ABORT immediately.
+
+# 4. Destroy all resources
 terraform apply tfplan-destroy
+
+# 6. (Optional) Clean up local Terraform cache
+# rm -rf .terraform tfplan-destroy
+# ❌ DO NOT delete the remote state blob in Azure Storage during routine teardown:
+# az storage blob delete --account-name innoventitytfstate --container-name tfstate-dev --name platform-core.tfstate
 ```
 
-**Destroy data layer — intentional only, under change-control:**
-```bash
-# Only run this when you explicitly intend to drop the database.
-# Requires removing prevent_destroy from the SQL module or it will hard-fail.
-cd infrastructure/environments/dev/data
-terraform plan -destroy -out=tfplan-destroy
-terraform apply tfplan-destroy
-```
+**Duration**: ~3-5 minutes
 
-> ⚠️ **Do not use `terraform destroy -target`** for either layer. The split-state design means you never need it. Targeted destroy leaves state inconsistencies and is not recommended by Terraform for routine workflow.
+**Blast Radius**: All environment resources destroyed (App Service, SQL Database, Application Insights). Data loss unless backed up. Terraform state backend is preserved.
 
-**Duration**: Core ~2-3 minutes. Data ~1-2 minutes.
-
-**Blast Radius**: Core destroy removes App Service and App Insights only; no data loss. Data destroy is irreversible for production data.
-
-**Validation**: Verify core resources deleted in Azure Portal; SQL Server and Database should remain until data layer is explicitly destroyed.
+**Validation**: Verify resources deleted in Azure Portal (resource group should be empty or deleted). Confirm `az storage account show --name innoventitytfstate` still returns 200.
 
 ---
 
