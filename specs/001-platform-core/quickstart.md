@@ -548,6 +548,13 @@ az webapp deploy --resource-group innoventity-rg-dev --name innoventity-api-dev 
    - Navigate to `https://innoventity-api-dev.azurewebsites.net/scalar`
    - Test registration and login flows
 
+### Tearing Down the DEV Environment
+
+When you are done with active development and want to stop Azure costs (~$20/month), use the teardown runbook:
+
+- **[teardown.md](teardown.md)** — Complete DEV teardown guide covering all three options (Terraform, Azure Developer CLI, manual Azure CLI), pre-teardown checklist, post-teardown validation, and lessons learned.
+- **Key rule**: Never delete the `innoventity-tfstate-rg` resource group or the `innoventitytfstate` storage account — these are foundational infrastructure that must survive environment teardowns.
+
 ---
 
 ## Common Issues

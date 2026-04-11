@@ -549,8 +549,11 @@ curl https://$(terraform output -raw app_service_hostname)/health
 
 ### Destruction Workflow
 
+> **📋 Full Runbook**: For the complete DEV teardown guide (pre-flight checks, all three teardown options, validation steps, post-teardown cleanup, and lessons learned), see **[teardown.md](teardown.md)**.
+
 **Prerequisites**:
 1. Confirm no active users (production environments)
+2. Confirm Terraform state backend (`innoventity-tfstate-rg` / `innoventitytfstate`) is intact before proceeding
 
 **Steps**:
 ```bash
@@ -560,20 +563,24 @@ cd infrastructure/environments/dev
 # 2. Plan destruction (dry-run)
 terraform plan -destroy -out=tfplan-destroy
 
-# 4. Review resources to be destroyed
-# 5. Destroy all resources
+# 3. Review resources to be destroyed
+# Confirm innoventity-tfstate-rg and innoventitytfstate do NOT appear in the plan.
+# If they do, ABORT immediately.
+
+# 4. Destroy all resources
 terraform apply tfplan-destroy
 
-# 6. (Optional) Delete Terraform state
-# rm -rf .terraform terraform.tfstate*
+# 6. (Optional) Clean up local Terraform cache
+# rm -rf .terraform tfplan-destroy
+# ❌ DO NOT delete the remote state blob in Azure Storage during routine teardown:
 # az storage blob delete --account-name innoventitytfstate --container-name tfstate-dev --name platform-core.tfstate
 ```
 
 **Duration**: ~3-5 minutes
 
-**Blast Radius**: All environment resources destroyed (App Service, SQL Database, Application Insights). Data loss unless backed up.
+**Blast Radius**: All environment resources destroyed (App Service, SQL Database, Application Insights). Data loss unless backed up. Terraform state backend is preserved.
 
-**Validation**: Verify resources deleted in Azure Portal (resource group should be empty or deleted)
+**Validation**: Verify resources deleted in Azure Portal (resource group should be empty or deleted). Confirm `az storage account show --name innoventitytfstate` still returns 200.
 
 ---
 
