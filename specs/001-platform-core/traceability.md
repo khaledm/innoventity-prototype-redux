@@ -1,8 +1,10 @@
 # Phase 0 Implementation Traceability Matrix
 
-**Branch**: `001-platform-core`
-**Last Updated**: April 6, 2026
-**Phase 0 Status**: ✅ **MVP COMPLETE** (with documented frontend CI/CD limitation)
+**Branch**: `001-platform-core` → `Main`
+**Last Updated**: April 12, 2026
+**Phase 0 Status**: ✅ **MERGED TO MAIN**
+**Merge Date**: April 12, 2026
+**Merge Commit**: 5b200d5
 **Purpose**: Map requirements → tasks → implementation artifacts → test evidence
 
 ---

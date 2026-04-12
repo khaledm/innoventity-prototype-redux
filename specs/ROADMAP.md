@@ -2,9 +2,10 @@
 
 ## Vision to Implementation Tracking
 
-**Last Updated**: April 7, 2026
+**Last Updated**: April 12, 2026
 **Constitutional Alignment**: See [constitution.md](../.specify/memory/constitution.md)
 **Gap Analysis Reference**: [innovation-bid-domain-gap-analysis.md](../.specify/analysis/innovation-bid-domain-gap-analysis.md)
+**Phase 001 Status**: ✅ **MERGED TO MAIN** (Merge commit: 5b200d5, Date: April 12, 2026)
 
 ---
 
@@ -29,10 +30,10 @@ This roadmap ensures **all recommendations from legacy domain analysis are captu
 
 | Phase | Status | Branch | Spec | Tests | Gap Analysis Coverage |
 |-------|--------|--------|------|-------|----------------------|
-| **Phase 0 Backend (MVP core)** | ✅ COMPLETE | `001-platform-core` | [spec.md](001-platform-core/spec.md) | 112/115 ✅ | Registration/auth + view innovation backend slice complete |
-| **Phase 0 Full Scope (Backend + Infra + Frontend + CI/CD)** | ✅ COMPLETE | `001-platform-core` | [spec.md](001-platform-core/spec.md) | MVP accepted with documented frontend limitations | Full MVP includes Angular client + infra automation + CI/CD validation + browser E2E |
-| **Phase 0.5 (Foundation)** | ✅ COMPLETE | `002-domain-enhancements` (merged to `001-platform-core`) | [spec.md](002-domain-enhancements/spec.md) | 31/31 ✅ | EntityBase, Actor name/address, and contract alignment complete |
-| **Phase 0.6 (API Completion)** | ✅ COMPLETE | `003-api-completion` (merged to `001-platform-core`) | [spec.md](003-api-completion/spec.md) | 17/17 tasks ✅ | Innovation CRUD + bid management + journey testing + traceability complete |
+| **Phase 0 Backend (MVP core)** | ✅ **MERGED** | `001-platform-core` → `Main` | [spec.md](001-platform-core/spec.md) | 112/115 ✅ | Registration/auth + view innovation backend slice complete |
+| **Phase 0 Full Scope (Backend + Infra + Frontend + CI/CD)** | ✅ **MERGED** | `001-platform-core` → `Main` | [spec.md](001-platform-core/spec.md) | MVP accepted with documented frontend limitations | Full MVP includes Angular client + infra automation + CI/CD validation + browser E2E |
+| **Phase 0.5 (Foundation)** | ✅ **MERGED** | `002-domain-enhancements` → `001-platform-core` → `Main` | [spec.md](002-domain-enhancements/spec.md) | 31/31 ✅ | EntityBase, Actor name/address, and contract alignment complete |
+| **Phase 0.6 (API Completion)** | ✅ **MERGED** | `003-api-completion` → `001-platform-core` → `Main` | [spec.md](003-api-completion/spec.md) | 17/17 tasks ✅ | Innovation CRUD + bid management + journey testing + traceability complete |
 | **Phase 1 (Domain Richness)** | 📋 PLANNED | TBD | [See below](#phase-1-domain-richness--rich-behavior) | TBD | ProductIdea composition, FormalResponse polymorphism, Selection workflow |
 | **Phase 2 (Engagement)** | 📋 PLANNED | TBD | [See below](#phase-2-engagement--communication) | TBD | Messaging, interest tracking, industry hierarchy |
 | **Phase 3 (Virtual Incubator)** | 💡 VISION | TBD | Not yet specified | TBD | BusinessPlan aggregate, collaboration workspace |
