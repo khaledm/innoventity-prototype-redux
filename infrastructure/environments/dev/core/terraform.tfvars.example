@@ -1,0 +1,17 @@
+# environments/dev/core/terraform.tfvars.example
+#
+# Copy this file to terraform.tfvars and fill in real values before applying.
+# terraform.tfvars is .gitignored — NEVER commit the real file with secrets.
+#
+# Generate a secure JWT key:
+#   PowerShell:  [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+#   bash:        openssl rand -base64 32
+
+environment     = "dev"
+location        = "East US"
+app_service_sku = "B1"
+
+# ── Secrets (replace with real values) ──────────────────────────────────────
+# Get connection_string from: cd ../data && terraform output -raw connection_string
+connection_string = "REPLACE_WITH_OUTPUT_FROM_DATA_LAYER"
+jwt_secret_key    = "REPLACE_WITH_BASE64_32_BYTE_RANDOM_SECRET"

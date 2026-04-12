@@ -163,6 +163,9 @@ public class LoginTests : IClassFixture<WebApplicationFactory<Program>>
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Please activate your account using the link sent to your email", body);
+        Assert.Contains("Account Not Activated", body);
     }
 
     [Fact]
@@ -213,6 +216,275 @@ public class LoginTests : IClassFixture<WebApplicationFactory<Program>>
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Invalid email, actor type, or password", body);
+        Assert.Contains("Authentication Failed", body);
+    }
+
+    // T082: Login lockout integration tests (R8.4)
+
+    [Fact]
+    public async Task Login_AfterFiveFailedAttempts_Returns423Locked_WithLockoutMessage_R8_4()
+    {
+        // Arrange
+        var factory = CreateFactory();
+        var client = factory.CreateClient();
+
+        using var seedScope = factory.Services.CreateScope();
+        var seedContext = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var passwordHasher = seedScope.ServiceProvider.GetRequiredService<PasswordHasher>();
+
+        var actor = new Actor(Guid.NewGuid())
+        {
+            Email = "lockout423@example.com",
+            FirstName = "Lockout",
+            LastName = "Test",
+            ContactAddress = new Address
+            {
+                Address1 = "123 Lock St",
+                City = "Lockout City",
+                PostCode = "00000",
+                CountryCode = "US"
+            },
+            ActorType = ActorType.IdeaGenerator,
+            AccountStatus = AccountStatus.Active,
+            PasswordHash = passwordHasher.HashPassword("CorrectPass123!"),
+            PasswordSalt = "somesalt"
+        };
+
+        seedContext.Actors.Add(actor);
+        await seedContext.SaveChangesAsync();
+
+        var failRequest = new
+        {
+            email = "lockout423@example.com",
+            actorType = "IdeaGenerator",
+            password = "WRONG_PASSWORD!"
+        };
+
+        // Act: 5 consecutive wrong-password attempts
+        for (int i = 0; i < 5; i++)
+            await client.PostAsJsonAsync("/auth/login", failRequest);
+
+        // 6th attempt while locked
+        var lockedResponse = await client.PostAsJsonAsync("/auth/login", failRequest);
+
+        // Assert: HTTP 423 Locked
+        Assert.Equal(System.Net.HttpStatusCode.Locked, lockedResponse.StatusCode);
+
+        // Assert: RFC 7807 response body contains the exact lockout message and title
+        var responseBody = await lockedResponse.Content.ReadAsStringAsync();
+        Assert.Contains(
+            "Too many failed login attempts. Account temporarily locked for 15 minutes.",
+            responseBody);
+        Assert.Contains("Locked", responseBody);
+    }
+
+    [Fact]
+    public async Task Login_AfterFiveFailedAttempts_PersistsLockoutUntilAnd5FailedCount_R8_4()
+    {
+        // Arrange
+        var factory = CreateFactory();
+        var client = factory.CreateClient();
+
+        var actorId = Guid.NewGuid();
+
+        using var seedScope = factory.Services.CreateScope();
+        var seedContext = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var passwordHasher = seedScope.ServiceProvider.GetRequiredService<PasswordHasher>();
+
+        var actor = new Actor(actorId)
+        {
+            Email = "lockoutdb@example.com",
+            FirstName = "Lockout",
+            LastName = "Db",
+            ContactAddress = new Address
+            {
+                Address1 = "123 Lock St",
+                City = "Lockout City",
+                PostCode = "00000",
+                CountryCode = "US"
+            },
+            ActorType = ActorType.IdeaGenerator,
+            AccountStatus = AccountStatus.Active,
+            PasswordHash = passwordHasher.HashPassword("CorrectPass123!"),
+            PasswordSalt = "somesalt"
+        };
+
+        seedContext.Actors.Add(actor);
+        await seedContext.SaveChangesAsync();
+
+        var failRequest = new
+        {
+            email = "lockoutdb@example.com",
+            actorType = "IdeaGenerator",
+            password = "WRONG_PASSWORD!"
+        };
+
+        var before = DateTimeOffset.UtcNow;
+
+        // Act: 5 consecutive wrong-password attempts
+        for (int i = 0; i < 5; i++)
+            await client.PostAsJsonAsync("/auth/login", failRequest);
+
+        var after = DateTimeOffset.UtcNow;
+
+        // Read back from DB via a fresh scope (reads from shared in-memory store)
+        using var readScope = factory.Services.CreateScope();
+        var readContext = readScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var updatedActor = await readContext.Actors.FindAsync(actorId);
+
+        // Assert: FailedLoginAttempts = 5 and LockoutUntil is ~15 min in future
+        Assert.NotNull(updatedActor);
+        Assert.Equal(5, updatedActor.FailedLoginAttempts);
+        Assert.NotNull(updatedActor.LockoutUntil);
+        Assert.InRange(
+            updatedActor.LockoutUntil!.Value,
+            before.AddMinutes(14).AddSeconds(55),
+            after.AddMinutes(15).AddSeconds(5));
+    }
+
+    [Fact]
+    public async Task Login_WithCorrectPassword_AfterPriorFailures_ResetsFailedCount_R8_4()
+    {
+        // Arrange
+        var factory = CreateFactory();
+        var client = factory.CreateClient();
+
+        var actorId = Guid.NewGuid();
+
+        using var seedScope = factory.Services.CreateScope();
+        var seedContext = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var passwordHasher = seedScope.ServiceProvider.GetRequiredService<PasswordHasher>();
+
+        var actor = new Actor(actorId)
+        {
+            Email = "lockoutreset@example.com",
+            FirstName = "Lockout",
+            LastName = "Reset",
+            ContactAddress = new Address
+            {
+                Address1 = "123 Lock St",
+                City = "Lockout City",
+                PostCode = "00000",
+                CountryCode = "US"
+            },
+            ActorType = ActorType.IdeaGenerator,
+            AccountStatus = AccountStatus.Active,
+            PasswordHash = passwordHasher.HashPassword("CorrectPass123!"),
+            PasswordSalt = "somesalt"
+        };
+
+        seedContext.Actors.Add(actor);
+        await seedContext.SaveChangesAsync();
+
+        // Act: 3 wrong-password attempts then 1 correct
+        var failRequest = new { email = "lockoutreset@example.com", actorType = "IdeaGenerator", password = "WRONG!" };
+        var successRequest = new { email = "lockoutreset@example.com", actorType = "IdeaGenerator", password = "CorrectPass123!" };
+
+        for (int i = 0; i < 3; i++)
+            await client.PostAsJsonAsync("/auth/login", failRequest);
+
+        var successResponse = await client.PostAsJsonAsync("/auth/login", successRequest);
+        Assert.Equal(System.Net.HttpStatusCode.OK, successResponse.StatusCode);
+
+        // Read back from DB
+        using var readScope = factory.Services.CreateScope();
+        var readContext = readScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var updatedActor = await readContext.Actors.FindAsync(actorId);
+
+        // Assert: counter reset to 0 after successful login
+        Assert.NotNull(updatedActor);
+        Assert.Equal(0, updatedActor.FailedLoginAttempts);
+        Assert.Null(updatedActor.LockoutUntil);
+    }
+
+    [Fact]
+    public async Task Login_WithInvalidActorTypeString_ShouldReturn400_WithInvalidActorTypeMessage()
+    {
+        // Covers the path where Enum.TryParse fails (NoCoverage: Login.cs detail "Invalid actor type")
+        var factory = CreateFactory();
+        var client = factory.CreateClient();
+
+        var request = new
+        {
+            email = "any@example.com",
+            actorType = "NotARealActorType",
+            password = "AnyPassword!"
+        };
+
+        var response = await client.PostAsJsonAsync("/auth/login", request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Invalid actor type", body);
+    }
+
+    [Fact]
+    public async Task Login_WithNonExistentEmail_ShouldReturn401_WithErrorMessage()
+    {
+        // Covers the actor-not-found path (NoCoverage: Login.cs detail/title on null actor)
+        var factory = CreateFactory();
+        var client = factory.CreateClient();
+
+        var request = new
+        {
+            email = "nobody@example.com",
+            actorType = "IdeaGenerator",
+            password = "AnyPassword!"
+        };
+
+        var response = await client.PostAsJsonAsync("/auth/login", request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Invalid email, actor type, or password", body);
+        Assert.Contains("Authentication Failed", body);
+    }
+
+    [Fact]
+    public async Task Login_WithLowercaseActorType_ShouldSucceed()
+    {
+        // Kills the ignoreCase:true → false Boolean mutation (Login.cs line 44)
+        var factory = CreateFactory();
+        var client = factory.CreateClient();
+
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var passwordHasher = scope.ServiceProvider.GetRequiredService<PasswordHasher>();
+
+        var actor = new Actor(Guid.NewGuid())
+        {
+            Email = "lowercase.type@example.com",
+            FirstName = "Lower",
+            LastName = "Case",
+            ContactAddress = new Address
+            {
+                Address1 = "1 Test St",
+                City = "Testville",
+                PostCode = "00001",
+                CountryCode = "US"
+            },
+            ActorType = ActorType.IdeaGenerator,
+            AccountStatus = AccountStatus.Active,
+            PasswordHash = passwordHasher.HashPassword("LowerPass123!"),
+            PasswordSalt = "somesalt"
+        };
+
+        dbContext.Actors.Add(actor);
+        await dbContext.SaveChangesAsync();
+
+        // Send actor type in all-lowercase — must still succeed with ignoreCase: true
+        var request = new
+        {
+            email = "lowercase.type@example.com",
+            actorType = "ideagenerator",
+            password = "LowerPass123!"
+        };
+
+        var response = await client.PostAsJsonAsync("/auth/login", request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     // Response DTOs for deserialization

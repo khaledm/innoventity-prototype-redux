@@ -1,0 +1,280 @@
+# .github/workflows/infra.yml
+#
+# Infrastructure pipeline — provisions Azure resources via Terraform.
+# Job chain: plan-data → approve-data (prod only) → apply-data → plan-core → apply-core → pester-infra
+#
+# Trigger:
+#   workflow_dispatch  — manual run with environment selector
+#   push               — auto-run when infrastructure/ changes land on 001-platform-core or Main
+#
+# Required secrets (Settings → Secrets → Actions):
+#   ARM_CLIENT_ID, ARM_CLIENT_SECRET, ARM_SUBSCRIPTION_ID, ARM_TENANT_ID  — Azure service principal
+#   SQL_ADMIN_PASSWORD  — SQL Server administrator password
+#   JWT_SECRET_KEY      — Base64 JWT signing key (≥44 chars)
+#
+# Required GitHub environment (Settings → Environments):
+#   production  — configure required reviewers for the prod approval gate
+
+name: Infrastructure
+
+permissions:
+  checks: write      # required by dorny/test-reporter to publish test results
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: dev
+        type: choice
+        options: [dev, test, prod]
+  push:
+    branches: [001-platform-core, Main]
+    paths: [infrastructure/**]
+
+env:
+  ARM_CLIENT_ID:       ${{ secrets.ARM_CLIENT_ID }}
+  ARM_CLIENT_SECRET:   ${{ secrets.ARM_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID:       ${{ secrets.ARM_TENANT_ID }}
+  TF_ENV:              ${{ inputs.environment || 'dev' }}
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────
+  # 1. Plan data layer (Resource Group + SQL Server + SQL Database)
+  # ─────────────────────────────────────────────────────────────────
+  terraform-plan-data:
+    name: Plan / data
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure/environments/${{ inputs.environment || 'dev' }}/data
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.6"
+          terraform_wrapper: false
+
+      - name: terraform init
+        run: terraform init -input=false
+
+      - name: terraform plan
+        run: terraform plan -out=tfplan-data -input=false
+        env:
+          TF_VAR_sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-data-${{ github.run_id }}
+          path: infrastructure/environments/${{ inputs.environment || 'dev' }}/data/tfplan-data
+          if-no-files-found: error
+
+  # ─────────────────────────────────────────────────────────────────
+  # 2. Manual approval gate (prod only)
+  #    Uses GitHub Environment protection rules (required reviewers).
+  #    Skipped automatically for non-prod — apply-data handles the condition.
+  # ─────────────────────────────────────────────────────────────────
+  approve-data:
+    name: Approve data layer (prod only)
+    needs: terraform-plan-data
+    runs-on: ubuntu-latest
+    if: ${{ inputs.environment == 'prod' }}
+    environment: production   # configure required reviewers in GitHub Settings → Environments
+    steps:
+      - run: echo "Production data layer approved by ${{ github.actor }}"
+
+  # ─────────────────────────────────────────────────────────────────
+  # 3. Apply data layer
+  #    always() + condition allows this job to run when approve-data is skipped (non-prod).
+  # ─────────────────────────────────────────────────────────────────
+  terraform-apply-data:
+    name: Apply / data
+    needs: [terraform-plan-data, approve-data]
+    runs-on: ubuntu-latest
+    if: ${{ always() && needs.terraform-plan-data.result == 'success' && (needs.approve-data.result == 'success' || needs.approve-data.result == 'skipped') }}
+    outputs:
+      resource_group_name: ${{ steps.tf-outputs.outputs.resource_group_name }}
+    defaults:
+      run:
+        working-directory: infrastructure/environments/${{ inputs.environment || 'dev' }}/data
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.6"
+          terraform_wrapper: false   # required — wrapper prevents capturing terraform output
+
+      - name: terraform init
+        run: terraform init -input=false
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: tfplan-data-${{ github.run_id }}
+          path: infrastructure/environments/${{ inputs.environment || 'dev' }}/data
+
+      - name: terraform apply
+        run: terraform apply -auto-approve tfplan-data
+        env:
+          TF_VAR_sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}
+
+      - name: Capture outputs
+        id: tf-outputs
+        run: |
+          set -euo pipefail
+          RG=$(terraform output -json 2>/dev/null | jq -re '.resource_group_name.value')
+          echo "resource_group_name=$RG" >> $GITHUB_OUTPUT
+
+  # ─────────────────────────────────────────────────────────────────
+  # 4. Plan core layer (App Service + App Insights + diagnostic settings)
+  #    sql_server_id injected here so that azurerm_monitor_diagnostic_setting.sql_server
+  #    is included in the plan (C5 / FR7.6).
+  # ─────────────────────────────────────────────────────────────────
+  terraform-plan-core:
+    name: Plan / core
+    needs: terraform-apply-data
+    runs-on: ubuntu-latest
+    if: ${{ always() && needs.terraform-apply-data.result == 'success' }}
+    defaults:
+      run:
+        working-directory: infrastructure/environments/${{ inputs.environment || 'dev' }}/core
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.6"
+          terraform_wrapper: false
+
+      - name: terraform init (data)
+        working-directory: infrastructure/environments/${{ inputs.environment || 'dev' }}/data
+        run: terraform init -input=false
+
+      - name: terraform init
+        run: terraform init -input=false
+
+      - name: terraform plan
+        run: |
+          DATA_JSON=$(terraform -chdir=../data output -json 2>/dev/null)
+          CONN=$(echo "$DATA_JSON" | jq -re '.connection_string.value')
+          SQL_ID=$(echo "$DATA_JSON" | jq -re '.sql_server_id.value')
+          terraform plan -out=tfplan-core -input=false \
+            -var "connection_string=$CONN" \
+            -var "jwt_secret_key=${{ secrets.JWT_SECRET_KEY }}" \
+            -var "sql_server_id=$SQL_ID"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-core-${{ github.run_id }}
+          path: infrastructure/environments/${{ inputs.environment || 'dev' }}/core/tfplan-core
+          if-no-files-found: error
+
+  # ─────────────────────────────────────────────────────────────────
+  # 5. Apply core layer
+  #    Plan file is self-contained (vars baked in at plan time).
+  #    sql_server_id is embedded in the plan file — the SQL diagnostic setting
+  #    resource (azurerm_monitor_diagnostic_setting.sql_server) is created here.
+  # ─────────────────────────────────────────────────────────────────
+  terraform-apply-core:
+    name: Apply / core
+    needs: [terraform-plan-core, terraform-apply-data]
+    runs-on: ubuntu-latest
+    if: ${{ always() && needs.terraform-plan-core.result == 'success' && needs.terraform-apply-data.result == 'success' }}
+    outputs:
+      app_service_name:     ${{ steps.tf-outputs.outputs.app_service_name }}
+      app_service_hostname: ${{ steps.tf-outputs.outputs.app_service_hostname }}
+    defaults:
+      run:
+        working-directory: infrastructure/environments/${{ inputs.environment || 'dev' }}/core
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.6"
+          terraform_wrapper: false
+
+      - name: terraform init
+        run: terraform init -input=false
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: tfplan-core-${{ github.run_id }}
+          path: infrastructure/environments/${{ inputs.environment || 'dev' }}/core
+
+      - name: terraform apply
+        run: terraform apply -auto-approve tfplan-core
+
+      - name: Capture outputs
+        id: tf-outputs
+        run: |
+          set -euo pipefail
+          TF_JSON=$(terraform output -json 2>/dev/null)
+          echo "app_service_name=$(echo "$TF_JSON" | jq -re '.app_service_name.value')" >> $GITHUB_OUTPUT
+          echo "app_service_hostname=$(echo "$TF_JSON" | jq -re '.app_service_hostname.value')" >> $GITHUB_OUTPUT
+
+  # ─────────────────────────────────────────────────────────────────
+  # 6. Pester infrastructure test suite
+  #    Validates live resource configuration via Azure CLI assertions.
+  #    Fails the pipeline if any of the 4 test files fail (Invoke-Pester -CI).
+  # ─────────────────────────────────────────────────────────────────
+  pester-infra:
+    name: Pester / infra
+    needs: [terraform-apply-core, terraform-apply-data]
+    runs-on: ubuntu-latest
+    if: ${{ always() && needs.terraform-apply-core.result == 'success' && needs.terraform-apply-data.result == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure CLI login
+        run: |
+          az login --service-principal \
+            --username "$ARM_CLIENT_ID" \
+            --password "$ARM_CLIENT_SECRET" \
+            --tenant "$ARM_TENANT_ID"
+          az account set --subscription "$ARM_SUBSCRIPTION_ID"
+
+      - name: Run Pester infrastructure suite
+        shell: pwsh
+        env:
+          APP_SERVICE_NAME:    ${{ needs.terraform-apply-core.outputs.app_service_name }}
+          RESOURCE_GROUP_NAME: ${{ needs.terraform-apply-data.outputs.resource_group_name }}
+          SQL_SERVER_NAME:     innoventity-${{ inputs.environment || 'dev' }}-sql
+          ENVIRONMENT:         ${{ inputs.environment || 'dev' }}
+        run: |
+          Install-Module Pester -Force -SkipPublisherCheck -RequiredVersion 5.6.1
+          $config = New-PesterConfiguration
+          # HealthCheck.Tests.ps1 is excluded here — it requires a deployed application
+          # and runs in deploy.yml (pester-health job) after code deployment.
+          $config.Run.Path          = @(
+              './infrastructure/tests/pester/AppService.Tests.ps1',
+              './infrastructure/tests/pester/Secrets.Tests.ps1',
+              './infrastructure/tests/pester/SqlDatabase.Tests.ps1'
+          )
+          $config.Output.CIFormat         = 'GithubActions'  # annotates failures inline in Actions log
+          $config.TestResult.Enabled      = $true
+          $config.TestResult.OutputPath   = 'pester-infra-results.xml'
+          $config.TestResult.OutputFormat = 'NUnit3'  # NUnit 3.x — required by dorny/test-reporter dotnet-nunit parser
+          $config.Run.Exit                = $true
+          Invoke-Pester -Configuration $config
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pester-infra-results
+          path: pester-infra-results.xml
+
+      - name: Publish test results to Summary
+        uses: dorny/test-reporter@v2
+        if: always()
+        with:
+          name: Pester Infrastructure Tests
+          path: pester-infra-results.xml
+          reporter: dotnet-nunit
+          fail-on-error: false
+          fail-on-empty: true
+          list-tests: all

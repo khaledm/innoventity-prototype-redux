@@ -6,6 +6,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Innoventity.API", "src\Innoventity.API\Innoventity.API.csproj", "{ACBCE311-2DD0-E552-9555-22957C210349}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{C877DFEC-6B9B-4EE8-8A58-5950252B4C3B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Innoventity.API.Tests", "tests\Innoventity.API.Tests\Innoventity.API.Tests.csproj", "{CCABBC7E-8CF8-44AB-A17E-0955C0FB951A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -16,12 +20,17 @@ Global
 		{ACBCE311-2DD0-E552-9555-22957C210349}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ACBCE311-2DD0-E552-9555-22957C210349}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ACBCE311-2DD0-E552-9555-22957C210349}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CCABBC7E-8CF8-44AB-A17E-0955C0FB951A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CCABBC7E-8CF8-44AB-A17E-0955C0FB951A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CCABBC7E-8CF8-44AB-A17E-0955C0FB951A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CCABBC7E-8CF8-44AB-A17E-0955C0FB951A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{ACBCE311-2DD0-E552-9555-22957C210349} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{CCABBC7E-8CF8-44AB-A17E-0955C0FB951A} = {C877DFEC-6B9B-4EE8-8A58-5950252B4C3B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {FF2E4ED5-9884-41AA-B65C-510D5823AF64}

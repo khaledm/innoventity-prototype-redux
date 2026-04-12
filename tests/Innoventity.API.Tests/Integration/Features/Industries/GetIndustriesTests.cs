@@ -49,10 +49,10 @@ public class GetIndustriesTests : IClassFixture<WebApplicationFactory<Program>>
                     services.Remove(descriptor);
                 }
 
-                // Add test-specific in-memory database
+                // Use EF InMemory provider to keep this integration test portable on Linux CI runners.
                 services.AddDbContext<AppDbContext>(options =>
                 {
-                    options.UseSqlServer($"Server=(localdb)\\mssqllocaldb;Database={testDbName};Trusted_Connection=True;MultipleActiveResultSets=true");
+                    options.UseInMemoryDatabase(testDbName);
                 });
             });
         });

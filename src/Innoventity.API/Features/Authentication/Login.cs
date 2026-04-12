@@ -62,9 +62,26 @@ public static class Login
                 );
             }
 
+            // Capture consistent timestamp for all lockout operations in this request (R8.4)
+            var now = DateTimeOffset.UtcNow;
+
+            // Check lockout before processing password (R8.4): prevents BCrypt work on locked accounts
+            if (actor.IsAccountLocked(now))
+            {
+                return Results.Problem(
+                    detail: "Too many failed login attempts. Account temporarily locked for 15 minutes.",
+                    statusCode: StatusCodes.Status423Locked,
+                    title: "Locked"
+                );
+            }
+
             // Verify password (T039)
             if (!passwordHasher.VerifyPassword(request.Password, actor.PasswordHash))
             {
+                actor.IncrementFailedLoginAttemptCount(now);
+                actor.UpdatedAt = now;
+                await dbContext.SaveChangesAsync();
+
                 return Results.Problem(
                     detail: "Invalid email, actor type, or password",
                     statusCode: StatusCodes.Status401Unauthorized,
@@ -81,6 +98,11 @@ public static class Login
                     title: "Account Not Activated"
                 );
             }
+
+            // Successful login: reset lockout counter (R8.4)
+            actor.RegisterSuccessfulLogin(now);
+            actor.UpdatedAt = now;
+            await dbContext.SaveChangesAsync();
 
             // Generate tokens (T042 - JWT claims already implemented in JwtTokenService)
             var accessToken = jwtTokenService.GenerateAccessToken(actor.Id, actor.ActorType.ToString(), actor.Email);

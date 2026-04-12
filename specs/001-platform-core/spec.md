@@ -246,6 +246,8 @@ The platform creates a **multi-sided marketplace** for research-based innovation
    - Confirms account via activation token
    - Status changes from `PendingActivation` to `Active`
 
+   > **Phase 0 Implementation Note**: Email delivery (SendGrid) is deferred to Phase 1+. In Phase 0, `POST /auth/register` returns `activationToken` directly in the response body. The test client reads this value and calls `POST /auth/activate` programmatically. This is an intentional shortcut, not a bug. See `plan.md §CHK071`.
+
 2. **Innovation Draft Creation**
    - User initiates new innovation submission
    - System generates unique `IdeaToken` for tracking
@@ -361,9 +363,9 @@ The platform creates a **multi-sided marketplace** for research-based innovation
      - Innovation is accepting bids
    - Bid recorded with submission timestamp
    - Bid status initially marked as pending (awaiting selection)
-   - System notifications:
-     - Innovation owner notified of new bid
-     - Real-time bid count update (if applicable)
+   - System notifications (in-app only, v1.0 — email delivery deferred to Phase 1+):
+     - Innovation owner receives an in-app notification of new bid (DB-persisted, surfaced via API poll)
+     - Bid count on owner's dashboard updates on next poll
    - **Error conditions**:
      - "You must be logged in to submit a bid"
      - "You have already submitted a bid for this innovation"
@@ -408,18 +410,17 @@ The platform creates a **multi-sided marketplace** for research-based innovation
 **Steps**:
 
 1. **Bid Monitoring**
-   - Innovation owner receives notifications as bids arrive
+   - Innovation owner sees in-app notifications (DB-persisted feed, polled via API) as bids arrive
    - Owner views bid dashboard showing:
      - Count of bids per actor type (R&D, Manufacturing, Sales/Marketing, Investor)
      - Bid details: who submitted, when, proposal summary
 
 2. **Sufficient Bids Threshold**
-   - System checks if innovation has received:
-     - ≥1 Manufacturing bid
-     - ≥1 Sales & Marketing bid
-     - ≥1 R&D bid
-   - When threshold met, innovation status indicates sufficient bids received
-   - Owner notified that partner selection can begin
+   - System derives threshold status at query time: `COUNT(Pending bids) GROUP BY ActorType WHERE ActorType IN (required types)`
+   - No separate status flag or enum value stored on the Innovation entity — bid counts are always current (a withdrawn bid is immediately reflected)
+   - Threshold met when: ≥1 bid per **each actor type declared as required** in the innovation's `CollaborationRequirements` (Investor always optional). Example: an innovation requiring only R&D + Manufacturing reaches threshold with ≥1 R&D bid AND ≥1 Manufacturing bid — Sales/Marketing is not required if not declared.
+   - In-app notification fired once inside the bid-submission handler when the bid that crosses the threshold is saved
+   - Owner receives in-app notification that partner selection can begin
 
 3. **Bid Evaluation**
    - Owner reviews each bid:
@@ -442,12 +443,13 @@ The platform creates a **multi-sided marketplace** for research-based innovation
      - Selected bids have not already been committed to another selection
    - **This operation is IRREVERSIBLE**
    - System applies changes:
-     - Selected bids marked as accepted with acceptance timestamp
-     - Rejected bids remain unaccepted
-     - Innovation status indicates partners have been selected
-   - System sends notifications:
-     - Selected partners notified of acceptance
-     - Rejected bidders notified (optional/implicit)
+     - Selected bids marked as `Accepted` with acceptance timestamp
+     - All other bids for this innovation atomically transitioned to `Rejected`
+     - `Rejected` bids become read-only (same immutability rule as `Accepted` — cannot be edited or withdrawn)
+     - Innovation status transitions to `PartnersSelected`
+   - System sends in-app notifications (v1.0; email delivery deferred to Phase 1+):
+     - Selected partners receive in-app notification of acceptance
+     - Rejected bidders receive in-app notification of rejection
    - **Error conditions**:
      - "You must own this innovation to select partners"
      - "Innovation has not received sufficient bids yet"
@@ -587,7 +589,7 @@ The platform creates a **multi-sided marketplace** for research-based innovation
    - System tracks completion status of all sections
    - Innovation owner reviews all sections marked "ready"
    - Owner marks business plan as "Complete" when satisfied
-   - Innovation status updated to indicate business plan finished
+   - Innovation status transitions to `BusinessPlanComplete` (Phase 1+ enum value = 4; deferred from Phase 0 which uses `PartnersSelected` as the terminal state)
    - System generates exportable business plan document (PDF)
    - Team can share document with external stakeholders (investors, advisors)
 
@@ -781,7 +783,7 @@ Scenario: Owner can edit their own innovation
 
 **R3.1 Visibility by Status**:
 - Draft innovations: Visible only to owner
-- Published innovations (≥Submitted): Visible to all actors matching industry affiliation
+- Published innovations (`Published` or `PartnersSelected`): Visible to all actors matching industry affiliation
 - Innovations with selected partners: Full details visible only to owner and accepted partners
 - Rejected bids: Bidders retain limited view (visible but cannot access collaboration workspace)
 
@@ -843,9 +845,13 @@ Scenario: Actor submits duplicate bid
 - **Error message**: "Bid incomplete: Location, participation type, and proposal (minimum 200 characters) are all required."
 
 **R4.3 Bid Immutability Post-Selection**:
-- Once a bid is accepted in partner selection, it cannot be withdrawn or edited
-- Unaccepted bids can be edited or withdrawn by poster
-- **Error message**: "This bid has been accepted and cannot be modified or withdrawn."
+- Once a bid is `Accepted` in partner selection, it cannot be withdrawn or edited
+- Once a bid is `Rejected` (transition applied atomically when owner finalizes partner selection), it is also read-only — it cannot be edited or withdrawn
+- Only `Pending` bids can be edited or withdrawn by the poster (before selection occurs)
+- `Pending` means "awaiting owner decision" and is never the terminal state for a bid on an innovation that has completed partner selection
+- **Error messages**:
+  - "This bid has been accepted and cannot be modified or withdrawn."
+  - "This bid has been rejected and cannot be modified or withdrawn."
 
 **Acceptance Tests**:
 ```gherkin
@@ -943,11 +949,10 @@ Scenario: System confirms irreversibility before final selection
   - "Selected bids do not match required actor types"
 
 **R5.5 Sufficient Bids Threshold**:
-- System determines innovation has "sufficient bids" when:
-  - ≥1 Manufacturing bid
-  - ≥1 Sales/Marketing bid
-  - ≥1 R&D bid
-- Investor bid is optional (not required for threshold)
+- System determines innovation has "sufficient bids" when **each actor type declared as required** in the innovation's `CollaborationRequirements` has ≥1 bid in `Pending` or `Accepted` state. Investor bids are always optional regardless of `CollaborationRequirements`.
+- **Example**: An innovation requiring only R&D and Manufacturing reaches threshold at ≥1 R&D bid AND ≥1 Manufacturing bid — a Sales/Marketing bid is not required if that category is not declared.
+- **Implementation**: Derived at query time via `COUNT(bids) GROUP BY actor_type WHERE actor_type IN (innovation.required_actor_types)` — no persisted flag or additional `InnovationStatus` enum value. Bid counts are always current; withdrawal is immediately reflected without requiring a compensating status update.
+- Notification trigger: fired once inside the bid-submission handler when counts cross the threshold for the first time (check: did this bid complete the final missing **required** category?)
 
 **Acceptance Tests**:
 ```gherkin
@@ -1090,6 +1095,7 @@ Scenario: Business plan financials restricted to selected partners
 - **Password Hashing**: BCrypt with work factor 12 (Plan §Security Requirements)
 - Account activation required before performing any actions
 - Failed login attempts tracked; temporary lockout after 5 failures for 15 minutes
+- **Rate limiting (Phase 0)**: No additional API-layer throttling beyond login lockout. Structural rules provide sufficient abuse prevention at the ~100 concurrent user scale declared in FR7.5 — email uniqueness (R1.3) prevents registration bursts, one-bid-per-actor (R4.1) prevents bid flooding. API-layer rate limiting (HTTP 429, `Retry-After`) deferred to Phase 1+.
 - **Error messages**:
   - "Password must be at least 8 characters and include uppercase, lowercase, digit, and special character."
   - "Too many failed login attempts. Account temporarily locked for 15 minutes."
@@ -1165,7 +1171,7 @@ Scenario: Business plan financials restricted to selected partners
 **Performance**:
 - API response time (p95) <200ms for all operations
 - Page load time (p95) <2s for all views
-- Real-time notification delivery latency <1s
+- Real-time notification delivery latency <1s (Phase 1+ SignalR or push; Phase 0 v1.0 uses API poll — notification visible within one poll interval)
 - Database query performance (p95) <100ms
 
 **Reliability**:
@@ -1372,7 +1378,7 @@ These journeys are important for full platform value but can be tested with inte
 **Scope**:
 1. **User Registration & Authentication (Backend)**: User can register as Idea Generator, activate account, and log in via API endpoints
 2. **View Single Innovation (Backend)**: Authenticated user can retrieve and view one innovation by its unique identifier via API endpoint
-3. **Minimal Angular Client (Frontend)**: Angular 18 application exercising Phase 0 API endpoints for end-to-end validation of the complete user journey
+3. **Minimal Angular Client (Frontend)**: Angular 19 application exercising Phase 0 API endpoints for end-to-end validation of the complete user journey
 
 **What's OUT of Phase 0 Scope** (Deferred to Phase 1+):
 - ❌ **Innovation Submission**: Creating and publishing new innovations (multi-step form workflow)
@@ -1451,9 +1457,9 @@ These journeys are important for full platform value but can be tested with inte
 - **IdeaToken**: Fixed GUID `33333333-3333-3333-3333-333333333333` for tracking
 - **Status**: Published (accepting proposals)
 - **ResearchCategory**: Engineering
-- **Target Industries**: Electronics, Energy (2 industries from master list)
-  - Industry 1: "Electronics" (IndustryId: `ELEC-001`)
-  - Industry 2: "Renewable Energy" (IndustryId: `ENRG-001`)
+- **Target Industries**: Technology, Oil & Gas (2 industries from ICB master list)
+  - Industry 1: "Technology" (IndustryId: `TECH-001`)
+  - Industry 2: "Oil & Gas" (IndustryId: `ENRG-001`) *(covers Renewable Energy subsector — full hierarchy in Phase 1+)*
 - **IPR Status**: Patent Pending
 - **Research Background**: "Lithium-air battery leveraging quantum tunneling for 10x energy density improvement over conventional Li-ion batteries. Based on 3 years of R&D at Advanced Energy Lab."
 - **Product Type**: "Energy Storage Device"
@@ -1470,11 +1476,19 @@ These journeys are important for full platform value but can be tested with inte
 - **Submission Timestamp**: Fixed date `2026-01-15T14:30:00Z` for deterministic assertions
 - **Collaboration Requirements**: Requires R&D Organization, Manufacturing Company, Sales & Marketing Company (no Investor for Phase 0)
 
-**Industry Master List** (Partial for Phase 0):
-- Electronics (IndustryId: `ELEC-001`)
-- Renewable Energy (IndustryId: `ENRG-001`)
-- Automotive (IndustryId: `AUTO-001`)
-- Healthcare (IndustryId: `HLTH-001`)
+**Industry Master List** (Full Phase 0 — ICB Top-Level Taxonomy, aligned with legacy MVC system):
+- Technology (IndustryId: `TECH-001`)
+- Health Care (IndustryId: `HLTH-001`)
+- Oil & Gas (IndustryId: `ENRG-001`) *(includes Renewable Energy subsector — Phase 1+ hierarchical expansion)*
+- Consumer Goods (IndustryId: `AUTO-001`) *(includes Automobiles subsector)*
+- Industrials (IndustryId: `INDU-001`)
+- Financials (IndustryId: `FIN-001`)
+- Telecommunications (IndustryId: `TCOM-001`)
+- Consumer Services (IndustryId: `CSVC-001`)
+- Utilities (IndustryId: `UTIL-001`)
+- Basic Materials (IndustryId: `MTRL-001`)
+
+> **⚠️ CRITICAL**: Industry IDs and names MUST match this ICB taxonomy (sourced from legacy MVC `SchemaBuilder/Program.cs::GetCommonLookupSql()`). Generic placeholder IDs such as `ELEC-001` **do not exist** in the production dataset and will cause constraint violations. See `specs/003-api-completion/implementation-lessons.md §L3`.
 
 **Validation**:
 - Integration test T048 retrieves innovation by ID `22222222-2222-2222-2222-222222222222` and asserts all fields match specification
@@ -1926,7 +1940,545 @@ Scenario: Environment costs are tracked
 
 ---
 
-## 8. Out of Scope (Deferred to v2.0)
+## 8. Registration User Interface (Phase 1+)
+
+**Context**: Phase 0 implemented backend registration APIs (POST /auth/register, POST /auth/activate) tested via Postman/curl. Phase 1+ adds browser-based user interface components for user registration workflow.
+
+**Traceability**: Extends Journey 1 (Innovation Submission & Publication - spec.md:L236) Account Creation & Activation step with graphical user interface layer.
+
+**Phase Constraint**: This section describes Phase 1+ enhancements. Registration UI components are explicitly OUT OF SCOPE for Phase 0.
+
+---
+
+### Clarifications
+
+#### Session 2026-04-06
+
+- Q: During form submission, where should the loading spinner appear? → A: Submit button replaced with inline spinner and "Submitting..." text (industry standard pattern, prevents duplicate submissions)
+- Q: What are the specific password strength criteria thresholds? → A: Length-based tiers - Weak: 8-11 characters, Medium: 12-15 characters, Strong: 16+ characters (encourages longer passwords per NIST guidelines)
+- Q: Should the Organization Name field be hidden or visible for Idea Generator actor type? → A: Always visible, marked "(Optional)" for Idea Generator (standard UX, no data loss, accommodates Idea Generators with organizations)
+- Q: What URL format should the email activation link use? → A: Query parameter format `/activate?token={token}` (industry standard for tokens, more resilient to email client URL parsing, aligns with OAuth/SAML conventions)
+- Q: Should successful activation auto-redirect or require manual navigation to login? → A: Manual navigation with "Continue to Login" button (gives users time to read confirmation, more accessible for screen readers, less rushed)
+
+---
+
+### FR8.1: Registration Form Component
+
+**WHO**: All prospective platform users (across all 5 actor types)
+
+**WHAT**: A web-based registration form accessible via browser that collects required registration information and submits to the existing POST /auth/register endpoint.
+
+**WHY**: Enable non-technical users to register without API tools (Postman/curl). Improve user acquisition by removing technical barriers. Support marketing campaigns with shareable registration URLs.
+
+**Required Form Fields**:
+
+1. **Email** (text input, required)
+   - Validation: RFC 5322 email format
+   - Real-time validation feedback (invalid format error)
+   - Unique per ActorType (server-side validation via API - see R1.3)
+
+2. **Password** (password input, required)
+   - Validation: Minimum 8 characters, at least one uppercase, one lowercase, one digit, one special character
+   - Real-time strength indicator (weak/medium/strong visual feedback):
+     - Weak: 8-11 characters (meets minimum requirements)
+     - Medium: 12-15 characters
+     - Strong: 16+ characters
+   - Toggle visibility button (show/hide password)
+
+3. **Confirm Password** (password input, required)
+   - Validation: Must exactly match Password field
+   - Real-time mismatch error feedback
+   - Toggle visibility button (show/hide password)
+
+4. **Actor Type** (dropdown/select, required)
+   - Options: Idea Generator, R&D Organization, Manufacturing Company, Sales & Marketing Company, Investor
+   - Default: No pre-selection (user must choose)
+   - Help text explaining each actor type (tooltip or info icon)
+
+5. **Full Name** (text input, required)
+   - Validation: 2-100 characters, allows letters, spaces, hyphens, apostrophes
+   - Used for display purposes across platform
+
+6. **Organization Name** (text input, conditionally required)
+   - Required for: R&D Organization, Manufacturing Company, Sales & Marketing Company, Investor
+   - Optional for: Idea Generator
+   - Validation: 2-200 characters when provided
+   - Conditional display: Always visible; marked "(Optional)" for Idea Generator
+
+**Form Behavior**:
+- All validation errors displayed inline below respective fields
+- Submit button disabled until all required fields valid
+- Loading spinner during API call: Submit button replaced with inline spinner and "Submitting..." text (prevents duplicate submissions)
+- Success: Redirect to activation pending page with instructions
+- Error: Display API error messages inline (e.g., "Email already registered for this actor type")
+
+**Acceptance Criteria**:
+
+```gherkin
+Scenario: User accesses registration form
+  Given user navigates to platform
+  When user clicks registration link or navigates to /register route
+  Then registration form displays with all 6 fields
+  And submit button is disabled (form initially invalid)
+
+Scenario: Client-side validation provides real-time feedback
+  Given user on registration form
+  When user enters invalid email "notanemail"
+  Then error message "Invalid email format" appears below email field
+  And submit button remains disabled
+
+Scenario: Password strength indicator updates in real-time
+  Given user on registration form
+  When user enters password "weak"
+  Then password strength indicator shows "Weak"
+  When user enters password "StrongPass123!"
+  Then password strength indicator shows "Strong"
+
+Scenario: Confirm Password validates match
+  Given user has entered password "SecurePass123!"
+  When user enters confirm password "Mismatch456!"
+  Then error message "Passwords do not match" appears
+  And submit button remains disabled
+  When user fixes confirm password to "SecurePass123!"
+  Then error disappears
+  And submit button becomes enabled (if all other fields valid)
+
+Scenario: Organization Name field shows/hides based on Actor Type
+  Given user on registration form
+  When user selects Actor Type "Idea Generator"
+  Then Organization Name field is hidden or marked optional
+  When user selects Actor Type "R&D Organization"
+  Then Organization Name field appears with "Required" indicator
+
+Scenario: Successful registration redirects to activation pending page
+  Given user has filled all required fields correctly
+  When user clicks "Register" button
+  Then form submits to POST /auth/register
+  And user redirects to /register/pending-activation
+  And user sees their email in confirmation message
+
+Scenario: Duplicate email error handled gracefully
+  Given existing user with email "existing@example.com" and ActorType "IdeaGenerator"
+  When new user fills form with same email and ActorType
+  And user clicks "Register"
+  Then error message displays: "Email already registered for this actor type"
+  And user remains on /register page
+  And form fields retain entered values
+
+Scenario: Form is keyboard-accessible
+  Given user on registration form
+  When user navigates using Tab key
+  Then all fields are reachable in logical order
+  And submit button activatable via Enter key
+
+Scenario: Form works on mobile viewports
+  Given user on mobile device (viewport 320px width)
+  When user navigates to /register
+  Then all form fields are visible without horizontal scrolling
+  And touch targets are minimum 44x44px
+  And form is usable with on-screen keyboard
+```
+
+---
+
+### FR8.2: Activation Pending Page
+
+**WHO**: Users who just completed registration
+
+**WHAT**: Informational page displayed after successful registration explaining next steps (email activation).
+
+**WHY**: Set user expectations, reduce support requests about "why can't I log in yet?"
+
+**Required Content**:
+
+1. Success icon/graphic
+2. Heading: "Registration Successful!"
+3. Body text:
+   - "We've sent an activation link to **{user's email}**"
+   - "Please check your inbox and click the link to activate your account"
+   - "The activation link is valid for 24 hours"
+4. Help text:
+   - "Didn't receive the email? Check your spam folder"
+   - Link to resend activation email (Phase 2+ feature, show "Coming Soon" for Phase 1)
+5. Back to login link
+
+**Acceptance Criteria**:
+
+```gherkin
+Scenario: Activation pending page displays after registration
+  Given user has successfully registered
+  When registration completes
+  Then user sees "Registration Successful!" heading
+  And user sees their email in confirmation message
+  And page URL is /register/pending-activation
+
+Scenario: Page guards against direct access
+  Given user has not gone through registration flow
+  When user navigates directly to /register/pending-activation
+  Then user redirects to /register
+  Or user sees error "No registration data found"
+
+Scenario: Back to Login link is functional
+  Given user on activation pending page
+  When user clicks "Back to Login" link
+  Then user navigates to /login page
+```
+
+---
+
+### FR8.3: Email Activation Link Handling
+
+**WHO**: Users with pending activation who click email link
+
+**WHAT**: Web page that consumes activation token from email link, calls POST /auth/activate, and handles success/error states.
+
+**WHY**: Complete browser-based registration workflow without requiring users to manually call API endpoints.
+
+**Required Functionality**:
+
+1. Route: `/activate?token={activationToken}` (query parameter format)
+2. Automatically extract token from URL query string on page load
+3. Call POST /auth/activate with extracted token
+4. Success state:
+   - Display success message: "Account activated successfully!"
+   - Display "Continue to Login" button
+   - Button navigates to /login when clicked
+5. Error states:
+   - Invalid token: "Activation link is invalid"
+   - Expired token: "Activation link has expired. Please register again."
+   - Already activated: "Account already activated. You can log in now."
+   - Network error: Retry button + error message
+
+**Acceptance Criteria**:
+
+```gherkin
+Scenario: Successful activation from email link
+  Given user has registered and received activation email
+  When user clicks activation link in email
+  Then browser opens /activate?token={validToken}
+  And page displays loading spinner
+  And page calls POST /auth/activate with token
+  Then success message "Account activated successfully!" displays
+  And "Continue to Login" button appears
+  When user clicks "Continue to Login" button
+  Then user navigates to /login
+
+Scenario: Invalid token shows error
+  Given user navigates to /activate?token=INVALID_TOKEN
+  When page loads and calls API
+  Then error message "Activation link is invalid" displays
+  And no countdown timer appears
+  And page shows "Back to Registration" link
+
+Scenario: Expired token shows helpful error
+  Given user navigates to /activate?token={expiredToken}
+  When page loads and calls API
+  Then error message "Activation link has expired" displays
+  And page shows "Please register again" link to /register
+
+Scenario: Already activated account handled gracefully
+  Given user clicks activation link for already-activated account
+  When page calls POST /auth/activate
+  Then message displays "Account already activated. You can log in now."
+  And page shows "Continue to Login" button
+
+Scenario: Network error allows retry
+  Given user on activation page
+  And network connection fails during API call
+  When error occurs
+  Then error message displays with "Retry" button
+  When user clicks "Retry"
+  Then page attempts activation again without navigating away
+```
+
+---
+
+### FR8.4: Integration with Existing Login Flow
+
+**WHO**: New users and returning users
+
+**WHAT**: Login page includes link to registration page; registration flow redirects to login after activation.
+
+**WHY**: Provide clear navigation between authentication workflows.
+
+**Required Changes to Login Page**:
+
+1. Add "Don't have an account? Register here" link below login form
+2. Link navigates to `/register`
+3. Link styled consistently with existing UI
+
+**Navigation Flow**:
+```
+/register → (submit) → /register/pending-activation → (email) → /activate?token=... → /login
+```
+
+**Acceptance Criteria**:
+
+```gherkin
+Scenario: Login page displays registration link
+  Given user on /login page
+  Then page displays "Don't have an account? Register here" link
+  And link is visible and accessible on mobile viewports
+
+Scenario: Registration link navigates correctly
+  Given user on /login page
+  When user clicks "Register here" link
+  Then user navigates to /register page
+
+Scenario: Error messages preserved during navigation
+  Given user on /login page with error message "Invalid credentials"
+  When user clicks registration link
+  Then user navigates to /register
+  And login page error message does not interfere with registration page state
+
+Scenario: Complete workflow accessible via browser
+  Given user has not registered
+  When user follows: /login → /register → fill form → /register/pending-activation → email link → /activate → /login
+  Then entire workflow completes using browser only (no API tools required)
+```
+
+---
+
+### User Story 8: Browser-Based Registration (Phase 1+)
+
+**WHO**: Prospective platform user (any actor type)
+
+**WHAT**: Complete registration workflow using web browser without API tools
+
+**WHY**: Remove technical barriers to user acquisition; enable marketing campaigns with direct registration links
+
+**Workflow**:
+
+1. User navigates to `/register` (via link from login page or direct URL)
+2. User fills registration form:
+   - Email: jane.doe@example.com
+   - Password: SecurePass123!
+   - Confirm Password: SecurePass123!
+   - Actor Type: R&D Organization
+   - Full Name: Jane Doe
+   - Organization Name: Innovatech Labs
+3. User clicks "Register" button
+4. Form validates all fields client-side
+5. Form submits POST /auth/register to backend API
+6. Success: User sees activation pending page with confirmation
+7. User receives activation email (via SendGrid—Phase 1+ feature)
+8. User clicks activation link in email
+9. Browser opens `/activate?token={activationToken}`
+10. Page automatically calls POST /auth/activate
+11. Success: User sees "Account activated!" message
+12. User clicks "Continue to Login" button and navigates to `/login`
+13. User logs in with email + password
+
+**Acceptance Criteria**:
+
+1. User can complete registration without Postman/curl
+2. All form validation errors visible before submission
+3. Duplicate email error handled gracefully (user-facing message)
+4. Activation link works from email client
+5. Expired token shows helpful error with re-registration path
+6. Entire workflow accessible via keyboard navigation
+7. Workflow functions on mobile browsers (iOS Safari, Android Chrome)
+8. All pages styled consistently with existing login page
+
+**Edge Cases**:
+
+- User registers, never activates, tries to login → Error: "Account pending activation"
+- User clicks activation link twice → Second click succeeds silently (idempotent per R1.1)
+- User registers with existing email + same ActorType → Error: "Email already registered for this actor type. Try logging in or use different email." (per R1.3)
+- User registers with existing email + different ActorType → Success (same email, different actor types allowed per R1.3)
+
+---
+
+### Non-Functional Requirements (Phase 1+ Registration UI)
+
+**NFR8.1: Performance**
+- Registration form submission completes in <2 seconds (p95)
+- Activation page token validation completes in <1 second (p95)
+- Form validation feedback displays in <100ms (real-time feedback)
+
+**NFR8.2: Accessibility**
+- All form fields have visible labels and ARIA attributes
+- Error messages announced to screen readers
+- Keyboard navigation functional (tab order logical)
+- Color contrast meets WCAG 2.1 AA standards
+- Form usable with screen magnification (200% zoom)
+
+**NFR8.3: Security**
+- Password never logged or sent to analytics
+- Activation token not persisted in browser storage
+- HTTPS required for all registration pages (redirect HTTP → HTTPS)
+- Password field uses autocomplete="new-password" attribute
+- Email field uses autocomplete="email" attribute
+
+**NFR8.4: Browser Compatibility**
+- Chrome 120+ (latest 2 versions)
+- Firefox 121+ (latest 2 versions)
+- Safari 17+ (latest 2 versions)
+- Edge 120+ (latest 2 versions)
+- Mobile: iOS Safari 17+, Android Chrome 120+
+
+**NFR8.5: Responsive Design**
+- Form usable on viewport widths 320px - 2560px
+- Touch targets minimum 44x44px on mobile
+- Form fields stack vertically on mobile (<768px)
+- No horizontal scrolling required
+
+---
+
+### E2E Testing Requirements (Phase 1+ Registration UI)
+
+**Test Suite: Browser-Based Registration Workflow**
+
+The following End-to-End tests must pass before Phase 1+ registration UI is considered complete:
+
+**Test 1: Happy Path - Complete Registration Flow**
+```gherkin
+Given user navigates to /register
+When user fills form:
+  | Field              | Value                          |
+  | Email              | e2e-test-user@example.com     |
+  | Password           | TestPass123!                   |
+  | Confirm Password   | TestPass123!                   |
+  | Actor Type         | R&D Organization               |
+  | Full Name          | E2E Test User                  |
+  | Organization Name  | Test Labs Inc                  |
+And user clicks "Register" button
+Then user sees "Registration Successful!" heading
+And user sees their email in confirmation message
+And page URL is /register/pending-activation
+When activation email arrives (mock token extraction from DB)
+And user navigates to /activate?token={extractedToken}
+Then user sees "Account activated successfully!" message
+And user clicks "Continue to Login" button
+When user enters email + password on login page
+Then user successfully logs in and sees innovation detail page
+```
+
+**Test 2: Validation Errors - Client-Side**
+```gherkin
+Given user on /register page
+When user enters invalid email "notanemail"
+Then error message "Invalid email format" appears below email field
+When user enters password "weak"
+Then password strength indicator shows "Weak"
+And submit button remains disabled
+When user enters password "StrongPass123!"
+And user enters confirm password "Mismatch456!"
+Then error message "Passwords do not match" appears
+And submit button remains disabled
+When user fixes confirm password to "StrongPass123!"
+Then passwords match error disappears
+And submit button becomes enabled
+```
+
+**Test 3: Duplicate Email Error - Server-Side**
+```gherkin
+Given existing user with email "existing@example.com" and ActorType "IdeaGenerator"
+When new user navigates to /register
+And user fills form with email "existing@example.com" and ActorType "IdeaGenerator"
+And user clicks "Register"
+Then error message appears: "Email already registered for this actor type"
+And user remains on /register page
+And form fields retain entered values
+```
+
+**Test 4: Organization Name Conditional Display**
+```gherkin
+Given user on /register page
+When user selects Actor Type "Idea Generator"
+Then Organization Name field is hidden (or marked optional with clear indication)
+When user selects Actor Type "R&D Organization"
+Then Organization Name field appears with "Required" indicator
+```
+
+**Test 5: Activation Token - Invalid**
+```gherkin
+Given user navigates to /activate?token=INVALID_TOKEN
+When page loads
+Then error message "Activation link is invalid" displays
+And user sees "Back to Registration" link
+```
+
+**Test 6: Activation Token - Expired**
+```gherkin
+Given expired activation token in URL
+When user navigates to /activate?token={expiredToken}
+Then error message "Activation link has expired" displays
+And user sees "Please register again" link to /register
+```
+
+**Test 7: Mobile Responsive Design**
+```gherkin
+Given user on mobile device (viewport 375px width)
+When user navigates to /register
+Then all form fields are visible without horizontal scrolling
+And touch targets are minimum 44x44px
+And form is usable with on-screen keyboard
+```
+
+**Test 8: Keyboard Accessibility**
+```gherkin
+Given user on /register page
+When user navigates using only keyboard (Tab, Shift+Tab, Enter)
+Then tab order is logical (top to bottom, left to right)
+And all form fields are reachable
+And submit button activatable via Enter or Space
+And password visibility toggle activatable via keyboard
+```
+
+**Test 9: Password Visibility Toggle**
+```gherkin
+Given user on /register page
+When user enters password "SecretPass123!"
+Then password field displays bullets/dots (type="password")
+When user clicks "Show" icon/button
+Then password field displays plain text "SecretPass123!"
+And icon changes to "Hide"
+When user clicks "Hide"
+Then password field returns to bullets/dots
+```
+
+**Test 10: Navigation Between Auth Pages**
+```gherkin
+Given user on /login page
+When user clicks "Don't have an account? Register here" link
+Then user navigates to /register page
+When user successfully registers
+And clicks "Back to Login" on pending activation page
+Then user navigates to /login page
+```
+
+---
+
+### Dependencies and Prerequisites (Phase 1+)
+
+**Backend Prerequisites (Already Complete in Phase 0)**:
+- ✅ POST /auth/register endpoint (returns 201 + activationToken in Phase 0; deferred email delivery to Phase 1+)
+- ✅ POST /auth/activate endpoint (200 OK for valid token, error codes for invalid/expired)
+- ✅ Actor entity with email uniqueness per ActorType validation (R1.3)
+- ✅ Password complexity validation (8 chars, upper/lower/digit/special per R8.4)
+
+**Frontend Prerequisites (Phase 1+ New Work)**:
+- Angular 19 application initialized (completed in Phase 0 T071)
+- Angular Material components available
+- Angular Router configured
+- HTTP Client configured with API base URL
+- AuthService skeleton exists (from Phase 7 T072 LoginComponent work)
+
+**Phase 1+ Email Integration** (not required for UI, but mentioned for completeness):
+- SendGrid API integration for sending activation emails
+- Email template design (activation email with link)
+- Environment variable for SendGrid API key
+
+**Design Consistency Requirements**:
+- Match Material Design styling from existing LoginComponent (Phase 7 T072)
+- Reuse color scheme, typography, spacing from login page
+- Consistent error message styling (red text, error icons)
+- Consistent button styling (primary action button, disabled state)
+
+---
+
+## 9. Out of Scope (Deferred to v2.0)
 
 **Explicitly NOT included in v1.0** (architectural support may exist, but features disabled):
 
@@ -1981,7 +2533,19 @@ Scenario: Environment costs are tracked
 - ❌ **CRM Integration**: Salesforce, HubSpot connectors
 - ❌ **Calendar Integration**: Outlook, Google Calendar
 - ❌ **Patent Database Integration**: Automated IPR verification
-- ✅ **No external integrations** in v1.0 (except Azure Service Bus for internal messaging)
+- ✅ **No external integrations** in v1.0 (Azure Service Bus deferred — in-app notifications use DB-backed poll model, no message bus required for v1.0)
+
+---
+
+## Clarifications
+
+### Session 2026-02-21
+
+- Q: What is the canonical `InnovationStatus` state machine for v1.0, and should business plan completion be a distinct enum state? → A: Keep 3 current states (`Draft=1`, `Published=2`, `PartnersSelected=3`); add only `BusinessPlanComplete=4` as a Phase 1+ terminal state when Journey 4 (virtual incubator) is implemented. No intermediate `BusinessPlanInProgress` state required — workspace access opens automatically at `PartnersSelected`, and business plan progress is tracked at the section level, not the innovation level.
+- Q: When partner selection is finalized, what happens to non-selected bids — do they stay `Pending` or transition to `Rejected`? → A: All non-selected bids transition atomically to `Rejected` when the owner finalizes selection. `Rejected` bids are read-only (same immutability as `Accepted`). `Pending` is never a terminal state on a closed innovation.
+- Q: What is the notification delivery mechanism for v1.0 (in-app, email, or both)? → A: In-app notifications only (DB-persisted, surfaced via API polling). Email delivery deferred to Phase 1+ alongside activation-email SendGrid work. Azure Service Bus removed from v1.0 scope — no message bus required for polling-based in-app model.
+- Q: Is API rate limiting (beyond login lockout) required for Phase 0? → A: No. Structural rules are sufficient at ~100 concurrent user scale: email uniqueness (R1.3) prevents registration bursts, one-bid-per-actor (R4.1) prevents bid flooding, login lockout (R8.4) covers credential stuffing. API-layer throttling (HTTP 429 / `Retry-After`) deferred to Phase 1+.
+- Q: Is the "sufficient bids" threshold a persisted flag/status or derived at query time? → A: Derived at query time via `COUNT(bids) GROUP BY actor_type`. No persisted flag or new `InnovationStatus` value. Notification triggered inside bid-submission handler when the submitted bid completes the final missing required category.
 
 ---
 

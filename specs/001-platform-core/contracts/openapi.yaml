@@ -2,11 +2,15 @@ openapi: 3.0.3
 info:
   title: Innoventity Platform API
   description: |
-    Open innovation platform API enabling research-based innovation originators  
+    Open innovation platform API enabling research-based innovation originators
     to discover and collaborate with commercialization partners.
-    
+
     **Phase 0 Scope**: Registration, Authentication, View Single Innovation
-  version: 1.0.0-phase0
+
+    **Phase 0.6 Scope** (added 2026-02-19): Innovation CRUD (create/update/submit),
+    Innovation list, Bid management (submit/update/view), Industries reference data,
+    Health check — 14 endpoints total.
+  version: 1.0.0-phase0.6
   contact:
     name: Platform Support
     email: support@innoventity.example.com
@@ -26,7 +30,13 @@ tags:
   - name: Authentication
     description: User registration, activation, and JWT-based authentication
   - name: Innovations
-    description: Innovation discovery and management
+    description: Innovation creation, management, and discovery
+  - name: Bids
+    description: Partnership proposal (bid) submission and management (Spec §R4.1-§R4.4)
+  - name: Industries
+    description: Industry taxonomy reference data (ICB classification, Spec §6)
+  - name: Health
+    description: API and dependency health check
 
 security:
   - BearerAuth: []
@@ -38,9 +48,9 @@ paths:
         - Authentication
       summary: Register new actor account
       description: |
-        Creates a new actor account with PendingActivation status. 
+        Creates a new actor account with PendingActivation status.
         Sends activation email with token (R1.1).
-        
+
         **Business Rule**: Email must be unique per ActorType (R1.3)
       operationId: registerActor
       security: []
@@ -177,7 +187,7 @@ paths:
       description: |
         Authenticates actor using email, actor type, and password (R1.2).
         Returns access token (1 hour) and refresh token (7 days).
-        
+
         **Note**: Email uniqueness is per ActorType, so actorType is required.
       operationId: login
       security: []
@@ -208,6 +218,23 @@ paths:
                   email: "maria.silva@university.edu"
                   fullName: "Dr. Maria Silva"
                   actorType: "IdeaGenerator"
+        '400':
+          description: Validation error (malformed request, missing required fields — CHK004)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+              example:
+                type: "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+                title: "Validation Error"
+                status: 400
+                detail: "The request contains invalid data"
+                instance: "/api/auth/login"
+                errors:
+                  Email:
+                    - "The Email field is required."
+                  ActorType:
+                    - "The ActorType field is required."
         '401':
           description: Authentication failed
           content:
@@ -263,6 +290,21 @@ paths:
                 accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                 expiresIn: 3600
                 tokenType: "Bearer"
+        '400':
+          description: Validation error (malformed request, missing refreshToken field — CHK004)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+              example:
+                type: "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+                title: "Validation Error"
+                status: 400
+                detail: "The request contains invalid data"
+                instance: "/api/auth/refresh-token"
+                errors:
+                  RefreshToken:
+                    - "The RefreshToken field is required."
         '401':
           description: Invalid or expired refresh token
           content:
@@ -286,8 +328,8 @@ paths:
       description: |
         Retrieves innovation details for Phase 0 view.
         Requires authentication but no ownership check (public discovery).
-        
-        **Phase 0 Scope**: Displays idea summary only (title, product type, research background,  
+
+        **Phase 0 Scope**: Displays idea summary only (title, product type, research background,
         research category, IPR status, author info). Full details in Phase 1.
       operationId: getInnovationById
       parameters:
@@ -337,6 +379,486 @@ paths:
                 status: 404
                 detail: "Innovation with ID '7c9e6679-7425-40de-944b-e07fc1f90ae7' was not found"
                 instance: "/api/innovations/7c9e6679-7425-40de-944b-e07fc1f90ae7"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags:
+        - Innovations
+      summary: Update innovation draft
+      description: |
+        Updates fields of an existing innovation draft. All fields are optional —
+        only provided (non-null) fields are updated (Spec §US2, §R2.1).
+        Only the owning IdeaGenerator actor can update. Innovation must be in Draft status.
+      operationId: updateInnovation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateInnovationRequest'
+      responses:
+        '200':
+          description: Innovation updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateInnovationResponse'
+        '400':
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Actor is not the owner, or innovation is not in Draft status
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Innovation not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: |
+        Returns health status of API, database connectivity, and configuration
+        dependencies. No authentication required.
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: All dependencies healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+              example:
+                status: "Healthy"
+                database: "Connected"
+                configuration: "Valid"
+        '503':
+          description: One or more dependencies unhealthy
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /industries:
+    get:
+      tags:
+        - Industries
+      summary: List industries
+      description: |
+        Returns all seeded ICB taxonomy industries in alphabetical order.
+        Public reference data — no authentication required.
+      operationId: getIndustries
+      security: []
+      responses:
+        '200':
+          description: Industry list (empty array if none seeded)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IndustryResponse'
+              example:
+                - industryId: "TECH-001"
+                  name: "Technology"
+                - industryId: "HLTH-001"
+                  name: "Health Care"
+
+  /innovations:
+    get:
+      tags:
+        - Innovations
+      summary: List all innovations
+      description: |
+        Returns all innovations visible to the authenticated actor.
+        Phase 0.6: Open discovery — all innovations returned regardless of status.
+        Returns empty array when no innovations exist (zero-state, Spec §CHK074).
+      operationId: listInnovations
+      responses:
+        '200':
+          description: Innovation list (empty array if none exist)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InnovationListItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+        - Innovations
+      summary: Create innovation draft
+      description: |
+        Creates a new innovation in Draft status.
+        Restricted to IdeaGenerator actors only (Spec §US2, §R2.2).
+      operationId: createInnovation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInnovationRequest'
+            example:
+              title: "Biodegradable Packaging from Rice Husks"
+              productType: "Sustainable packaging material"
+              researchBackground: "Three years of materials science research at University lab focused on converting agricultural waste into high-performance packaging solutions."
+              researchCategory: "Engineering"
+              hasIPR: true
+      responses:
+        '201':
+          description: Innovation draft created
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URL of the created innovation (/innovations/{id})
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateInnovationResponse'
+        '400':
+          description: Validation error (invalid ResearchCategory, missing required fields)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+              example:
+                type: "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+                title: "One or more validation errors occurred."
+                status: 400
+                errors:
+                  researchCategory:
+                    - "Must be one of: Management, Engineering, NaturalScience"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Actor is not IdeaGenerator type (Spec §US2)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: "https://tools.ietf.org/html/rfc7231#section-6.5.3"
+                title: "Forbidden"
+                status: 403
+                detail: "Only Idea Generator actors can create innovations."
+                instance: "/api/innovations"
+
+  /innovations/{id}/submit:
+    patch:
+      tags:
+        - Innovations
+      summary: Submit innovation for bidding
+      description: |
+        Transitions innovation from Draft → AwaitingBids status by validating
+        13 completeness rules (Spec §R2.1). Irreversible (Spec §R2.2, §J1 Step 7).
+        Only the owning IdeaGenerator actor can submit.
+      operationId: submitInnovation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+      responses:
+        '200':
+          description: Innovation submitted, now accepting bids
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitInnovationResponse'
+              example:
+                innovationId: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                status: "AwaitingBids"
+                submittedAt: "2026-02-19T12:00:00Z"
+        '400':
+          description: Innovation is incomplete (R2.1 fields missing) or not in submittable state
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+              example:
+                type: "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+                title: "Validation Failed"
+                status: 400
+                detail: "Innovation is incomplete. Please address all validation errors before submitting."
+                errors:
+                  ProductDescription:
+                    - "Product description is required"
+                  TargetIndustries:
+                    - "At least one target industry is required"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Actor is not the owner of this innovation
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: "https://tools.ietf.org/html/rfc7231#section-6.5.3"
+                title: "Forbidden"
+                status: 403
+                detail: "Only the innovation owner can submit this innovation for publication."
+        '404':
+          description: Innovation not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Innovation is already submitted
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: "https://tools.ietf.org/html/rfc7231#section-6.5.8"
+                title: "Conflict"
+                status: 409
+                detail: "Innovation is already published. Published innovations cannot be submitted again."
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /innovations/{innovationId}/bids:
+    get:
+      tags:
+        - Bids
+      summary: List bids for an innovation
+      description: |
+        Returns all bids submitted for the specified innovation (Spec §R6.1, §R8.2).
+        Only the innovation owner can view bids.
+      operationId: getBids
+      parameters:
+        - name: innovationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+      responses:
+        '200':
+          description: Bid list (empty array if no bids submitted yet)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetBidsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Actor is not the owner of this innovation (Spec §R8.2)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: "https://tools.ietf.org/html/rfc7231#section-6.5.3"
+                title: "Forbidden"
+                status: 403
+                detail: "Only the innovation owner can view submitted bids."
+        '404':
+          description: Innovation not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    post:
+      tags:
+        - Bids
+      summary: Submit a bid (partnership proposal)
+      description: |
+        Places a partnership bid on an open innovation (Spec §R4.1-§R4.4).
+        IdeaGenerator actors cannot bid (Spec §R4.3). Actor cannot bid on their
+        own innovation. Proposal must be at least 200 characters (Spec §R4.2).
+      operationId: submitBid
+      parameters:
+        - name: innovationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitBidRequest'
+            example:
+              location: "Munich, Germany"
+              participationType: "Manufacturing Partner"
+              participationProposal: "AutoFlex GmbH is a precision manufacturing company with 15 years experience in sustainable materials production. ISO 9001 and ISO 14001 certified, capacity 500,000 units/year. Our Munich facility has state-of-the-art extrusion lines for biodegradable packaging. We propose 20% equity partnership with full ramp-up within 6 months of agreement signing."
+      responses:
+        '201':
+          description: Bid submitted successfully
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URL of the created bid (/bids/{bidId})
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitBidResponse'
+        '400':
+          description: Validation error (proposal < 200 chars, missing required fields — Spec §R4.2)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+              example:
+                type: "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+                title: "One or more validation errors occurred."
+                status: 400
+                errors:
+                  participationProposal:
+                    - "Participation proposal must be at least 200 characters."
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: IdeaGenerator actors cannot submit bids (Spec §R4.3)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: "https://tools.ietf.org/html/rfc7231#section-6.5.3"
+                title: "Forbidden"
+                status: 403
+                detail: "Idea Generators cannot submit bids. Only R&D, Manufacturing, Sales & Marketing, and Investor actors can submit partnership proposals."
+        '404':
+          description: Innovation not found or not accepting bids
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Duplicate bid or actor is the innovation owner (Spec §R4.1)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                duplicate:
+                  summary: Already submitted a bid
+                  value:
+                    type: "https://tools.ietf.org/html/rfc7231#section-6.5.8"
+                    title: "Duplicate Bid"
+                    status: 409
+                    detail: "You have already submitted a bid for this innovation. You can edit your existing bid instead."
+                ownInnovation:
+                  summary: Cannot bid on own innovation
+                  value:
+                    type: "https://tools.ietf.org/html/rfc7231#section-6.5.8"
+                    title: "Conflict"
+                    status: 409
+                    detail: "You cannot submit a bid for your own innovation."
+
+  /bids/{bidId}:
+    put:
+      tags:
+        - Bids
+      summary: Update a bid
+      description: |
+        Updates an existing pending bid. Only the bid author can update (Spec §R8.2).
+        Accepted or rejected bids are immutable (Spec §R4.4).
+        Proposal must be at least 200 characters (Spec §R4.2).
+      operationId: updateBid
+      parameters:
+        - name: bidId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "c3d4e5f6-a7b8-9012-cdef-345678901234"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBidRequest'
+      responses:
+        '200':
+          description: Bid updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateBidResponse'
+        '400':
+          description: Validation error (proposal < 200 chars — Spec §R4.2)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Actor did not submit this bid (Spec §R8.2)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: "https://tools.ietf.org/html/rfc7231#section-6.5.3"
+                title: "Forbidden"
+                status: 403
+                detail: "You can only update your own bids."
+        '404':
+          description: Bid not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Bid has been accepted or rejected and is immutable (Spec §R4.4)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                accepted:
+                  summary: Bid already accepted
+                  value:
+                    type: "https://tools.ietf.org/html/rfc7231#section-6.5.8"
+                    title: "Bid Immutable"
+                    status: 409
+                    detail: "This bid has been accepted and cannot be modified. Accepted bids are immutable to preserve partnership agreement integrity."
+                rejected:
+                  summary: Bid already rejected
+                  value:
+                    type: "https://tools.ietf.org/html/rfc7231#section-6.5.8"
+                    title: "Bid Immutable"
+                    status: 409
+                    detail: "This bid has been rejected and cannot be modified."
         '500':
           $ref: '#/components/responses/InternalServerError'
 
@@ -613,6 +1135,470 @@ components:
           example: "Dr. Maria Silva"
         actorType:
           $ref: '#/components/schemas/ActorType'
+
+    # ===== Phase 0.6 Schemas =====
+
+    HealthCheckResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [Healthy, Degraded, Unhealthy]
+          example: "Healthy"
+        database:
+          type: string
+          example: "Connected"
+        configuration:
+          type: string
+          example: "Valid"
+
+    IndustryResponse:
+      type: object
+      required:
+        - industryId
+        - name
+      properties:
+        industryId:
+          type: string
+          description: ICB industry code (Spec §6 master list)
+          example: "TECH-001"
+        name:
+          type: string
+          description: Human-readable industry name
+          example: "Technology"
+
+    InnovationListItem:
+      type: object
+      required:
+        - innovationId
+        - title
+        - status
+        - createdAt
+        - ownerId
+      properties:
+        innovationId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          example: "Biodegradable Packaging from Rice Husks"
+        status:
+          $ref: '#/components/schemas/InnovationStatus'
+        createdAt:
+          type: string
+          format: date-time
+        submittedAt:
+          type: string
+          format: date-time
+          nullable: true
+        ownerId:
+          type: string
+          format: uuid
+
+    CreateInnovationRequest:
+      type: object
+      required:
+        - title
+        - productType
+        - researchBackground
+        - researchCategory
+        - hasIPR
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          description: Innovation title (Spec §R2.1)
+          example: "Biodegradable Packaging from Rice Husks"
+        productType:
+          type: string
+          maxLength: 100
+          description: Product or service type
+          example: "Sustainable packaging material"
+        researchBackground:
+          type: string
+          description: Research basis (min 50 chars required at submission — §R2.1)
+          example: "Three years of materials science research on converting agricultural waste into packaging."
+        researchCategory:
+          $ref: '#/components/schemas/ResearchCategory'
+        hasIPR:
+          type: boolean
+          description: Whether intellectual property rights exist
+          example: true
+        productDescription:
+          type: string
+          nullable: true
+          description: Detailed product description (required at submission — §R2.1)
+        technologyDescription:
+          type: string
+          nullable: true
+          description: Technology description (required at submission — §R2.1)
+        productAdvantages:
+          type: string
+          nullable: true
+        developmentPhase:
+          type: string
+          nullable: true
+        developmentProcess:
+          type: string
+          nullable: true
+        targetMarket:
+          type: string
+          nullable: true
+        targetCustomerBase:
+          type: string
+          nullable: true
+        targetBeneficiaries:
+          type: string
+          nullable: true
+          description: Required at submission — §R2.1
+        targetCustomerType:
+          type: string
+          enum: [B2B, B2C, B2G]
+          nullable: true
+          default: "B2B"
+        productKeywords:
+          type: string
+          nullable: true
+        advantageKeywords:
+          type: string
+          nullable: true
+        relevantMarketSize:
+          type: number
+          format: double
+          nullable: true
+          description: Market size in USD (must be > 0 at submission — §R2.1)
+        potentialMarketSize:
+          type: number
+          format: double
+          nullable: true
+          description: Potential market size in USD (must be > 0 at submission — §R2.1)
+        targetIndustryIds:
+          type: array
+          items:
+            type: string
+          nullable: true
+          description: ICB industry IDs; at least 1 required at submission (§R2.1)
+          example: ["TECH-001", "ENRG-001"]
+        partnersNeeded:
+          type: array
+          items:
+            type: string
+            enum: [RD, Manufacturing, SalesMarketing, Investor]
+          nullable: true
+          description: At least 1 required at submission — §R2.1
+
+    CreateInnovationResponse:
+      type: object
+      required:
+        - innovationId
+        - ideaToken
+        - status
+        - createdAt
+        - ownerId
+      properties:
+        innovationId:
+          type: string
+          format: uuid
+        ideaToken:
+          type: string
+          format: uuid
+          description: Unique tracking token for this innovation (Spec §R2.3)
+        status:
+          type: string
+          enum: [Draft]
+          example: "Draft"
+        createdAt:
+          type: string
+          format: date-time
+        ownerId:
+          type: string
+          format: uuid
+
+    UpdateInnovationRequest:
+      type: object
+      description: All fields optional — only provided (non-null) fields are updated
+      properties:
+        title:
+          type: string
+          nullable: true
+          maxLength: 200
+        productType:
+          type: string
+          nullable: true
+          maxLength: 100
+        researchBackground:
+          type: string
+          nullable: true
+        researchCategory:
+          $ref: '#/components/schemas/ResearchCategory'
+        productDescription:
+          type: string
+          nullable: true
+        technologyDescription:
+          type: string
+          nullable: true
+        productAdvantages:
+          type: string
+          nullable: true
+        developmentPhase:
+          type: string
+          nullable: true
+        developmentProcess:
+          type: string
+          nullable: true
+        targetMarket:
+          type: string
+          nullable: true
+        targetCustomerBase:
+          type: string
+          nullable: true
+        targetBeneficiaries:
+          type: string
+          nullable: true
+        targetCustomerType:
+          type: string
+          enum: [B2B, B2C, B2G]
+          nullable: true
+        productKeywords:
+          type: string
+          nullable: true
+        advantageKeywords:
+          type: string
+          nullable: true
+        relevantMarketSize:
+          type: number
+          format: double
+          nullable: true
+        potentialMarketSize:
+          type: number
+          format: double
+          nullable: true
+        targetIndustryIds:
+          type: array
+          items:
+            type: string
+          nullable: true
+          description: null = no change; empty array = clear all industries
+        partnersNeeded:
+          type: array
+          items:
+            type: string
+          nullable: true
+
+    UpdateInnovationResponse:
+      type: object
+      required:
+        - innovationId
+        - title
+        - productType
+        - researchCategory
+        - status
+        - modifiedAt
+        - ownerId
+      properties:
+        innovationId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        productType:
+          type: string
+        researchCategory:
+          $ref: '#/components/schemas/ResearchCategory'
+        status:
+          $ref: '#/components/schemas/InnovationStatus'
+        modifiedAt:
+          type: string
+          format: date-time
+        ownerId:
+          type: string
+          format: uuid
+
+    SubmitInnovationResponse:
+      type: object
+      required:
+        - innovationId
+        - status
+        - submittedAt
+      properties:
+        innovationId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          example: "AwaitingBids"
+        submittedAt:
+          type: string
+          format: date-time
+
+    GetBidsResponse:
+      type: object
+      required:
+        - bids
+        - totalCount
+      properties:
+        bids:
+          type: array
+          items:
+            $ref: '#/components/schemas/BidDetail'
+        totalCount:
+          type: integer
+          description: Total number of bids for this innovation
+
+    BidDetail:
+      type: object
+      required:
+        - bidId
+        - actor
+        - location
+        - participationType
+        - participationProposal
+        - submittedAt
+        - status
+      properties:
+        bidId:
+          type: string
+          format: uuid
+        actor:
+          $ref: '#/components/schemas/BidActorSummary'
+        location:
+          type: string
+          example: "Munich, Germany"
+        participationType:
+          type: string
+          example: "Manufacturing Partner"
+        participationProposal:
+          type: string
+          minLength: 200
+          description: Full partnership proposal (Spec §R4.2 — minimum 200 characters)
+        submittedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [Pending, Accepted, Rejected]
+          example: "Pending"
+
+    BidActorSummary:
+      type: object
+      required:
+        - actorId
+        - actorType
+      properties:
+        actorId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        displayName:
+          type: string
+          example: "Dr. Maria Silva"
+        actorType:
+          type: string
+          example: "Manufacturing"
+
+    SubmitBidRequest:
+      type: object
+      required:
+        - location
+        - participationType
+        - participationProposal
+      properties:
+        location:
+          type: string
+          description: Geographic location of the bidding organization (Spec §R4.2)
+          example: "Munich, Germany"
+        participationType:
+          type: string
+          description: Type of partnership being proposed (Spec §R4.2)
+          example: "Manufacturing Partner"
+        participationProposal:
+          type: string
+          minLength: 200
+          description: Detailed partnership proposal — minimum 200 characters (Spec §R4.2)
+
+    SubmitBidResponse:
+      type: object
+      required:
+        - bidId
+        - innovationId
+        - actorId
+        - location
+        - participationType
+        - submittedAt
+        - status
+      properties:
+        bidId:
+          type: string
+          format: uuid
+        innovationId:
+          type: string
+          format: uuid
+        actorId:
+          type: string
+          format: uuid
+        location:
+          type: string
+        participationType:
+          type: string
+        submittedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [Pending]
+          example: "Pending"
+
+    UpdateBidRequest:
+      type: object
+      required:
+        - location
+        - participationType
+        - participationProposal
+      properties:
+        location:
+          type: string
+          description: Geographic location of the bidding organization
+          example: "Munich, Germany"
+        participationType:
+          type: string
+          description: Type of partnership being proposed
+          example: "Manufacturing Partner"
+        participationProposal:
+          type: string
+          minLength: 200
+          description: Updated partnership proposal — minimum 200 characters (Spec §R4.2)
+
+    UpdateBidResponse:
+      type: object
+      required:
+        - bidId
+        - location
+        - participationType
+        - participationProposal
+        - updatedAt
+        - status
+      properties:
+        bidId:
+          type: string
+          format: uuid
+        location:
+          type: string
+        participationType:
+          type: string
+        participationProposal:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [Pending, Accepted, Rejected]
+          example: "Pending"
 
     # ===== Enum Schemas =====
     ActorType:

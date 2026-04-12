@@ -1,0 +1,69 @@
+name: Nightly Quality Gates
+
+on:
+  schedule:
+    - cron: "30 1 * * *"   # daily 01:30 UTC
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: "8.0.x"
+
+jobs:
+  mutation-tests:
+    name: Mutation (Stryker)
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/Main' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Install Stryker
+        run: dotnet tool install --global dotnet-stryker
+
+      - name: Run Stryker
+        working-directory: src/Innoventity.API
+        run: dotnet stryker --config-file stryker-config.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-results
+          path: src/Innoventity.API/StrykerOutput/**
+
+  e2e-tests:
+    name: E2E Journeys
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/Main' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Run E2E journeys
+        run: |
+          dotnet test tests/Innoventity.API.Tests/Innoventity.API.Tests.csproj \
+            --no-build -c Release \
+            --filter "FullyQualifiedName~Innoventity.API.Tests.E2E" \
+            --logger "trx;LogFileName=e2e.trx" \
+            --results-directory TestResults-E2E
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-results
+          path: TestResults-E2E/**/*.trx
+          if-no-files-found: error

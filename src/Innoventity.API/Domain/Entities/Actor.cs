@@ -98,6 +98,54 @@ public class Actor : EntityOfGuid
     [MaxLength(44)]
     public string PasswordSalt { get; set; } = string.Empty;
 
+    // Lockout policy constants (R8.4)
+    private const int MaxFailedAttempts = 5;
+    private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(15);
+
+    /// <summary>
+    /// Number of consecutive failed login attempts (R8.4).
+    /// Incremented on each wrong password; reset to 0 on successful login.
+    /// </summary>
+    public int FailedLoginAttempts { get; private set; } = 0;
+
+    /// <summary>
+    /// Account lockout expiry timestamp (R8.4).
+    /// Null when not locked. Set to UtcNow + 15 minutes when FailedLoginAttempts reaches 5.
+    /// Login is blocked while LockoutUntil > UtcNow.
+    /// </summary>
+    public DateTimeOffset? LockoutUntil { get; private set; }
+
+    /// <summary>Returns the current number of consecutive failed login attempts.</summary>
+    public int GetFailedLoginAttempts() => FailedLoginAttempts;
+
+    /// <summary>Returns the maximum number of failed attempts before lockout (R8.4: 5).</summary>
+    public int GetMaxAllowedFailedCount() => MaxFailedAttempts;
+
+    /// <summary>
+    /// Returns true when the account is actively locked out at the given point in time (R8.4).
+    /// </summary>
+    public bool IsAccountLocked(DateTimeOffset now) =>
+        LockoutUntil.HasValue && LockoutUntil.Value > now;
+
+    /// <summary>
+    /// Records one failed login attempt. Sets LockoutUntil when the threshold is reached (R8.4).
+    /// </summary>
+    public void IncrementFailedLoginAttemptCount(DateTimeOffset now)
+    {
+        FailedLoginAttempts++;
+        if (FailedLoginAttempts >= MaxFailedAttempts)
+            LockoutUntil = now.Add(LockoutDuration);
+    }
+
+    /// <summary>
+    /// Resets lockout state after a successful login (R8.4).
+    /// </summary>
+    public void RegisterSuccessfulLogin(DateTimeOffset now)
+    {
+        FailedLoginAttempts = 0;
+        LockoutUntil = null;
+    }
+
     /// <summary>
     /// Timestamp when actor account was created
     /// </summary>

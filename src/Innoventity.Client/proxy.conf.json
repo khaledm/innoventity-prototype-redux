@@ -1,0 +1,22 @@
+{
+  "/auth": {
+    "target": "http://localhost:5073",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/innovations": {
+    "target": "http://localhost:5073",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/industries": {
+    "target": "http://localhost:5073",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/bids": {
+    "target": "http://localhost:5073",
+    "secure": false,
+    "changeOrigin": true
+  }
+}

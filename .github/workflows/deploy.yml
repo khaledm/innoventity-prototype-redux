@@ -1,0 +1,282 @@
+# .github/workflows/deploy.yml
+#
+# Application deployment pipeline — builds, tests, migrates, deploys, and validates.
+# Job chain: preflight → build-test → migrate → deploy → pester-health → slot-swap
+#
+# Trigger:
+#   push to src/**         — auto-deploy on API code changes
+#   workflow_dispatch      — manual deploy
+#
+# Required secrets:
+#   ARM_CLIENT_ID, ARM_CLIENT_SECRET, ARM_SUBSCRIPTION_ID, ARM_TENANT_ID
+#
+# Required GitHub environment:
+#   production  — required reviewers for slot-swap (Main branch only)
+
+name: Deploy
+
+permissions:
+  checks: write
+  contents: read
+
+on:
+  push:
+    branches: [001-platform-core, Main]
+    paths: [src/**]
+  workflow_dispatch:
+
+env:
+  ARM_CLIENT_ID:       ${{ secrets.ARM_CLIENT_ID }}
+  ARM_CLIENT_SECRET:   ${{ secrets.ARM_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID:       ${{ secrets.ARM_TENANT_ID }}
+  DOTNET_VERSION:      "8.0.x"
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────
+  # 1. Preflight — verify Azure auth and read terraform outputs
+  # ─────────────────────────────────────────────────────────────────
+  preflight:
+    name: Preflight checks
+    runs-on: ubuntu-latest
+    outputs:
+      app_service_name:    ${{ steps.tf-outputs.outputs.app_service_name }}
+      resource_group_name: ${{ steps.tf-outputs.outputs.resource_group_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.6"
+          terraform_wrapper: false
+
+      - name: Azure CLI login
+        run: |
+          az login --service-principal \
+            --username "$ARM_CLIENT_ID" \
+            --password "$ARM_CLIENT_SECRET" \
+            --tenant "$ARM_TENANT_ID"
+          az account set --subscription "$ARM_SUBSCRIPTION_ID"
+
+      - name: Read core outputs from terraform state
+        id: tf-outputs
+        working-directory: infrastructure/environments/dev/core
+        run: |
+          set -euo pipefail
+          terraform init -input=false
+
+          # terraform output -raw emits diagnostic box-drawing chars to stdout in TF 1.6+
+          # when state is empty; use -json instead which returns parseable {} on empty state.
+          TF_JSON=$(terraform output -json 2>/dev/null || echo "{}")
+
+          APP_SERVICE_NAME=$(echo "$TF_JSON" | jq -r '.app_service_name.value // empty')
+          RESOURCE_GROUP_NAME=$(echo "$TF_JSON" | jq -r '.resource_group_name.value // empty')
+
+          if [ -z "$APP_SERVICE_NAME" ] || [ -z "$RESOURCE_GROUP_NAME" ]; then
+            echo "::error::Terraform outputs not found in infrastructure/environments/dev/core state."
+            echo "::error::Run Infrastructure workflow (environment=dev) to completion first, then rerun Deploy."
+            echo "::error::Expected outputs: app_service_name, resource_group_name"
+            exit 1
+          fi
+
+          echo "app_service_name=$APP_SERVICE_NAME" >> "$GITHUB_OUTPUT"
+          echo "resource_group_name=$RESOURCE_GROUP_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Verify App Service exists
+        run: |
+          az webapp show \
+            --name "${{ steps.tf-outputs.outputs.app_service_name }}" \
+            --resource-group "${{ steps.tf-outputs.outputs.resource_group_name }}" \
+            --query "state" --output tsv
+
+  # ─────────────────────────────────────────────────────────────────
+  # 2. Build and test — restore, build, run all tests, publish package
+  # ─────────────────────────────────────────────────────────────────
+  build-test:
+    name: Build and test
+    needs: preflight
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build (Release)
+        run: dotnet build --no-restore -c Release
+
+      - name: Run unit + integration tests (hard gate)
+        run: |
+          dotnet test tests/Innoventity.API.Tests/Innoventity.API.Tests.csproj \
+            --no-build -c Release \
+            --filter "FullyQualifiedName~Innoventity.API.Tests.Unit|FullyQualifiedName~Innoventity.API.Tests.Integration" \
+            --logger "trx;LogFileName=unit-integration.trx" \
+            --results-directory TestResults
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-unit-integration
+          path: TestResults/**/*.trx
+          if-no-files-found: error
+
+      - name: Publish test results to Summary
+        uses: dorny/test-reporter@v2
+        if: always()
+        with:
+          name: Unit + Integration Tests
+          path: TestResults/**/*.trx
+          reporter: dotnet-trx
+          fail-on-error: false
+          fail-on-empty: true
+          list-tests: all
+
+      - name: Publish API
+        run: dotnet publish src/Innoventity.API/Innoventity.API.csproj -c Release -o publish/
+
+      - name: Create deployment zip
+        run: cd publish && zip -r ../api.zip .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: api-package-${{ github.run_id }}
+          path: api.zip
+          if-no-files-found: error
+
+  # ─────────────────────────────────────────────────────────────────
+  # 3. Migrate — apply EF Core database migrations
+  # ─────────────────────────────────────────────────────────────────
+  migrate:
+    name: Apply EF Core migrations
+    needs: [preflight, build-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install dotnet-ef tool
+        run: dotnet tool install --global dotnet-ef
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.6"
+          terraform_wrapper: false
+
+      - name: Restore API project for EF tooling
+        run: dotnet restore src/Innoventity.API/Innoventity.API.csproj
+
+      - name: Build API project for EF tooling
+        run: dotnet build src/Innoventity.API/Innoventity.API.csproj --no-restore -c Release
+
+      - name: Apply migrations
+        working-directory: infrastructure/environments/dev/data
+        run: |
+          set -euo pipefail
+          terraform init -input=false
+          # Read connection_string directly from state and pass it to dotnet-ef in the same
+          # shell process. Never write it to $GITHUB_OUTPUT — GitHub secret scanning blocks
+          # any output value that contains SQL_ADMIN_PASSWORD.
+          CONN=$(terraform output -json | jq -re '.connection_string.value')
+          echo "::add-mask::$CONN"
+          cd "$GITHUB_WORKSPACE"
+          dotnet ef database update \
+            --project src/Innoventity.API/Innoventity.API.csproj \
+            --startup-project src/Innoventity.API/Innoventity.API.csproj \
+            --configuration Release \
+            --no-build \
+            --connection "$CONN"
+
+  # ─────────────────────────────────────────────────────────────────
+  # 4. Deploy — zip-deploy API package to App Service
+  # ─────────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to App Service
+    needs: [preflight, build-test, migrate]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: api-package-${{ github.run_id }}
+          path: .
+
+      - name: Azure CLI login
+        run: |
+          az login --service-principal \
+            --username "$ARM_CLIENT_ID" \
+            --password "$ARM_CLIENT_SECRET" \
+            --tenant "$ARM_TENANT_ID"
+          az account set --subscription "$ARM_SUBSCRIPTION_ID"
+
+      - name: Deploy to App Service (zip deploy)
+        run: |
+          az webapp deploy \
+            --name "${{ needs.preflight.outputs.app_service_name }}" \
+            --resource-group "${{ needs.preflight.outputs.resource_group_name }}" \
+            --src-path api.zip \
+            --type zip \
+            --async false
+
+  # ─────────────────────────────────────────────────────────────────
+  # 5. Pester health check — validates GET /health returns 200 + Healthy
+  #    Fails the pipeline if the app is not healthy after deployment.
+  # ─────────────────────────────────────────────────────────────────
+  pester-health:
+    name: Pester / health
+    needs: [preflight, deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run HealthCheck.Tests.ps1
+        shell: pwsh
+        env:
+          APP_SERVICE_NAME: ${{ needs.preflight.outputs.app_service_name }}
+        run: |
+          Install-Module Pester -Force -SkipPublisherCheck -RequiredVersion 5.6.1
+          $config = New-PesterConfiguration
+          $config.Run.Path  = './infrastructure/tests/pester/HealthCheck.Tests.ps1'
+          $config.Run.Exit  = $true
+          $config.TestResult.Enabled      = $true
+          $config.TestResult.OutputPath   = 'pester-health-results.xml'
+          $config.TestResult.OutputFormat = 'NUnitXml'
+          Invoke-Pester -Configuration $config
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pester-health-results
+          path: pester-health-results.xml
+
+  # ─────────────────────────────────────────────────────────────────
+  # 6. Slot swap — promote staging → production (Main branch only)
+  #    Requires 'production' GitHub environment with required reviewers configured.
+  # ─────────────────────────────────────────────────────────────────
+  slot-swap:
+    name: Swap staging → production slot
+    needs: [preflight, pester-health]
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/Main' }}
+    environment: production
+    steps:
+      - name: Azure CLI login
+        run: |
+          az login --service-principal \
+            --username "$ARM_CLIENT_ID" \
+            --password "$ARM_CLIENT_SECRET" \
+            --tenant "$ARM_TENANT_ID"
+          az account set --subscription "$ARM_SUBSCRIPTION_ID"
+
+      - name: Swap slots
+        run: |
+          az webapp deployment slot swap \
+            --name "${{ needs.preflight.outputs.app_service_name }}" \
+            --resource-group "${{ needs.preflight.outputs.resource_group_name }}" \
+            --slot staging \
+            --target-slot production
