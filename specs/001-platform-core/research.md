@@ -244,7 +244,7 @@ src/Innoventity.API/Features/
 
 ## Decision 9: Observability & Monitoring
 
-**Decision**: Azure Application Insights OTEL) + Structured Logging
+**Decision**: Azure Application Insights + OpenTelemetry (OTEL) + Structured Logging
 
 **Rationale**:
 
@@ -359,7 +359,7 @@ Registration UI builds upon Phase 0 backend infrastructure (POST /auth/register,
 - Angular 19 recommendation (standalone is the future of Angular)
 - Simpler dependency management (each component declares own imports)
 - Better tree-shaking (smaller bundle sizes)
--Easier to test (no NgModule configuration boilerplate)
+- Easier to test (no NgModule configuration boilerplate)
 - Aligns with Principle 3 (Simplicity Over Cleverness)
 
 **Components**:

@@ -26,7 +26,7 @@ export class RegisterComponent implements OnInit, OnDestroy {
   globalError: string | null;
   passwordStrength: PasswordStrength | null;
   passwordStrengthIndicator: PasswordStrengthIndicator | null;
-  hide Password: boolean;
+  hidePassword: boolean;
   hideConfirmPassword: boolean;
   actorTypeOptions: ActorTypeOption[];
 
@@ -420,6 +420,7 @@ export function passwordMatchValidator(
 ### Exported Function
 
 **registrationGuard**:
+
 ```typescript
 export const registrationGuard: CanActivateFn = (route, state) => {
   const router = inject(Router);
@@ -430,9 +431,9 @@ export const registrationGuard: CanActivateFn = (route, state) => {
     return true; // Allow navigation
   }
 
-  // Redirect to register if no email in state
-  router.navigate(['/register']);
-  return false; // Block navigation
+  // Return UrlTree — recommended pattern; avoids imperative side-effects,
+  // works consistently with router scheduling, and is easier to test.
+  return router.parseUrl('/register');
 };
 ```
 
@@ -440,7 +441,7 @@ export const registrationGuard: CanActivateFn = (route, state) => {
 
 **Return**: `boolean | UrlTree`
 - `true`: Allow navigation
-- `false`: Block navigation (redirect handled in guard)
+- `UrlTree` (`router.parseUrl('/register')`): Redirect to register (router handles navigation)
 
 ---
 

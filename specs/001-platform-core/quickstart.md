@@ -234,7 +234,7 @@ info: Microsoft.Hosting.Lifetime[0]
 Open your browser and navigate to:
 
 - **Scalar API Documentation**: [https://localhost:5073/scalar/v1](https://localhost:5073/scalar/v1)
-- **OpenAPI/Swagger JSON**: `{API_URL}/swagger/v1/swagger.json`- **OpenAPI/Swagger JSON**: `{API_URL}/swagger/v1/swagger.json`
+- **OpenAPI/Swagger JSON**: `{API_URL}/swagger/v1/swagger.json`
 
 You should see interactive API documentation with all Phase 0 endpoints:
 

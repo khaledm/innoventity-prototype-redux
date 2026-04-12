@@ -120,10 +120,9 @@ func TestDevEnvironmentAppServiceInfra(t *testing.T) {
 	terraform.InitAndApply(t, coreOptions)
 
 	appServiceName := terraform.Output(t, coreOptions, "app_service_name")
-	_ = resourceGroup // used in data destroy
 
 	// Non-tautological: query Azure SDK — asserts correct infra config, not tautological output comparison
-	appService := azure.GetAppService(t, appServiceName, fmt.Sprintf("innoventity-%s-rg", testEnv), "")
+	appService := azure.GetAppService(t, appServiceName, resourceGroup, "")
 	require.NotNil(t, appService,
 		"App Service must be provisioned and retrievable via the Azure SDK")
 	assert.True(t, *appService.HTTPSOnly,

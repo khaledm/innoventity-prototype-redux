@@ -8,11 +8,11 @@
 
 ## Prerequisites
 
-- **Node.js**: v20.x or higher
+- **Node.js**: v18.x or v20.x LTS
 - **npm**: v10.x or higher
 - **Angular CLI**: v19.x (`npm install -g @angular/cli@19`)
 - **Git**: Clone repository (`git clone <repo-url>`)
-- **Backend API**: Phase 0 backend must be running (`POST /api/auth/register`, `POST /api/auth/activate` endpoints available)
+- **Backend API**: Phase 0 backend must be running and reachable at `{API_URL}` (`POST {API_URL}/auth/register`, `POST {API_URL}/auth/activate` endpoints available)
 
 ---
 
@@ -46,7 +46,7 @@ Angular Live Development Server is listening on localhost:4200
 
 ### 3. Verify Backend Connection
 
-Ensure Phase 0 backend API is running on `http://localhost:5000` (or configured API URL):
+Ensure Phase 0 backend API is running on `http://localhost:5073` (or configured API URL):
 
 ```bash
 # In separate terminal (backend project)
@@ -56,7 +56,7 @@ dotnet run
 
 **Test Backend**:
 ```bash
-curl -X GET http://localhost:5000/api/health
+curl -X GET http://localhost:5073/health
 # Expected: {"status":"Healthy"}
 ```
 
@@ -416,18 +416,16 @@ describe('RegistrationService', () => {
 ```typescript
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:5000/api', // Local backend
-  logLevel: 'debug'
+  apiBaseUrl: ''  // Empty — Angular dev proxy (proxy.conf.json) routes /auth, /innovations, etc. to localhost:5073
 };
 ```
 
-### Production (`src/environments/environment.prod.ts`)
+### Production (`src/environments/environment.production.ts`)
 
 ```typescript
 export const environment = {
   production: true,
-  apiUrl: 'https://innoventity-api.azurewebsites.net/api', // Azure backend
-  logLevel: 'error'
+  apiBaseUrl: 'https://innoventity-dev-api.azurewebsites.net'
 };
 ```
 
@@ -437,10 +435,10 @@ import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class RegistrationService {
-  private apiUrl = environment.apiUrl;
+  private apiBaseUrl = environment.apiBaseUrl;
 
   register(data: RegistrationFormModel) {
-    return this.http.post(`${this.apiUrl}/auth/register`, data);
+    return this.http.post(`${this.apiBaseUrl}/auth/register`, data);
   }
 }
 ```
@@ -511,7 +509,7 @@ console.log('Validator result:', result); // null = valid, object = error
 **Symptoms**: HTTP errors (CORS, 502, connection refused)
 
 **Solutions**:
-1. Verify backend running: `curl http://localhost:5000/api/health`
+1. Verify backend running: `curl http://localhost:5073/health`
 2. Check CORS configuration in backend (`Program.cs`):
    ```csharp
    app.UseCors(policy => policy
