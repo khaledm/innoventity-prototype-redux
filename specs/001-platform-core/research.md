@@ -235,6 +235,7 @@ src/Innoventity.API/Features/
 - Manual promotion to production (Constitution Section 7 - Launch Criteria)
 
 **Alternatives Considered**:
+
 1. **Azure Kubernetes Service (AKS)**: Rejected - over-engineered for v1.0 traffic, high complexity
 2. **Azure Container Apps**: Rejected - App Service simpler, sufficient for v1.0
 3. **VM-based hosting**: Rejected - requires infrastructure management, violates Constraint 1
@@ -246,24 +247,28 @@ src/Innoventity.API/Features/
 **Decision**: Azure Application Insights OTEL) + Structured Logging
 
 **Rationale**:
+
 - **Application Insights**: Automatic telemetry collection, dashboards, alerting
 - **OpenTelemetry**: Industry-standard instrumentation (future vendor flexibility)
 - **Structured Logging**: Serilog with JSON output (queryable, filterable)
 - **Log Levels**: Debug (dev), Information (important events), Warning (recoverable), Error (failures)
 
 **Instrumentation**:
+
 - HTTP request/response logging (duration, status code, user ID)
 - Database query performance (EF Core logging)
 - Business event tracking (innovation submitted, bid submitted, partners selected)
 - Exception tracking with stack traces
 
 **Alerting** (per Constitution Section 7):
+
 - API error rate >1% → alert
 - API p95 latency >200ms → warning
 - Database connection failures → immediate alert
 - Authentication failures spike → security alert
 
 **Alternatives Considered**:
+
 1. **ELK Stack (Elasticsearch, Logstash, Kibana)**: Rejected - complexity, cost, Azure AI simpler
 2. **Prometheus + Grafana**: Rejected - requires infrastructure setup, Azure AI managed
 
@@ -274,18 +279,21 @@ src/Innoventity.API/Features/
 **Decision**: Registration + Authentication + View Single Innovation
 
 **Scope** (per Specification Section 6):
+
 1. User can register as Idea Generator
 2. User receives activation email and activates account
 3. User logs in with JWT authentication
 4. Authenticated user can retrieve innovation by ID
 
 **Rationale**:
+
 - **End-to-End Proof**: Validates entire stack (frontend → API → auth → database → response)
 - **Foundation**: All features build on auth + database + API patterns
 - **1-2 Week Target**: Realistic for solo developer, fits Principle 3 (Simplicity)
 - **Testable**: Unit, integration, E2E tests prove TDD workflow
 
 **What Phase 0 Proves**:
+
 - ✅ ASP.NET Core API responding to HTTP requests
 - ✅ EF Core database connectivity and queries
 - ✅ JWT authentication working end-to-end
@@ -299,7 +307,7 @@ src/Innoventity.API/Features/
 ## Technology Matrix Summary
 
 | Category | Technology | Version | Rationale |
-|----------|------------|---------|-----------|
+| -------- | ---------- | ------- | --------- |
 | **Backend Language** | C# | 12 | Modern .NET features, learning objective |
 | **Backend Framework** | ASPNET Core | 8 (LTS) | Minimal APIs, performance, ecosystem |
 | **ORM** | EF Core | 8 | Code-first migrations, Azure SQL integration |
@@ -347,6 +355,7 @@ Registration UI builds upon Phase 0 backend infrastructure (POST /auth/register,
 **Decision**: Standalone Components (no NgModules)
 
 **Rationale**:
+
 - Angular 19 recommendation (standalone is the future of Angular)
 - Simpler dependency management (each component declares own imports)
 - Better tree-shaking (smaller bundle sizes)
@@ -354,11 +363,13 @@ Registration UI builds upon Phase 0 backend infrastructure (POST /auth/register,
 - Aligns with Principle 3 (Simplicity Over Cleverness)
 
 **Components**:
+
 1. **RegisterComponent**: Main registration form (6 fields, Material Design, Reactive Forms)
 2. **PendingActivationComponent**: Success message after registration (router state for email display)
 3. **ActivateComponent**: Token validation and activation (query parameter from email link)
 
 **Implementation Pattern**:
+
 ```typescript
 @Component({
   selector: 'app-register',
@@ -371,13 +382,16 @@ export class RegisterComponent { }
 
 ---
 
-### Reactive Forms Strategy
+### Registration Form Strategy
 
-**Decision**: Reactive Forms with FormBuilder
+> **Scope**: This decision applies only to the Registration form (6 fields, cross-field validators). The overall architectural form strategy is Signal-Based Forms — see `frontend-architecture.md §A2`. Reactive Forms is chosen here because the Registration form exceeds the Signal-Based Forms threshold: it has complex cross-field validators (password match, dynamic required on actorType) that the frontend architecture rules assign to Reactive Forms.
+
+**Decision**: Reactive Forms with FormBuilder (Registration form only)
 
 **Rationale**:
+
 - Industry standard (proven pattern, extensive documentation)
-- Strong typing (FormGroup<RegistrationForm> for type safety)
+- Strong typing (`FormGroup<RegistrationForm>` for type safety)
 - Custom validators straightforward (ValidatorFn interface)
 - Cross-field validation (password match validator)
 - Observable valueChanges (password strength indicator)
@@ -385,6 +399,7 @@ export class RegisterComponent { }
 - Existing codebase uses Reactive Forms (LoginComponent consistency)
 
 **Form Structure**:
+
 ```typescript
 registrationForm = this.fb.group({
   email: ['', [Validators.required, Validators.email]],
@@ -397,7 +412,8 @@ registrationForm = this.fb.group({
 ```
 
 **Alternative Considered**:
-- Signal-based Forms (Angular 19 experimental): Rejected - not production-ready, limited documentation
+
+- Signal-based Forms: Used for simpler Phase 0 forms (Login, Activation — ≤3 fields, no cross-field validation). Rejected here for the Registration form specifically due to cross-field validation complexity (password match, dynamic validators), per the rule in `frontend-architecture.md §A2`.
 
 ---
 
@@ -460,6 +476,7 @@ registrationForm = this.fb.group({
 **Decision**: Service-based calculation
 
 **Implementation**:
+
 ```typescript
 @Injectable({ providedIn: 'root' })
 export class PasswordStrengthService {
@@ -475,11 +492,13 @@ export class PasswordStrengthService {
 ```
 
 **Component Integration**:
+
 - Subscribe to `password` formControl valueChanges
 - Debounce 200ms (avoid flickering indicator)
 - Update `<mat-progress-bar>` value and color based on service output
 
 **Rationale**:
+
 - Separation of concerns (service = calculation, component = display)
 - Easily testable (pure functions, no DOM dependencies)
 - Reusable (future ChangePasswordForm can use same service)
@@ -510,14 +529,17 @@ export class PasswordStrengthService {
 ```
 
 **registrationGuard**:
+
 - **Purpose**: Prevent users from bookmarking /register/pending-activation
 - **Logic**: Check if router navigation state contains email address
 - **Redirect**: Navigate to /register if no email in state
 
 **State Management**: Router state for transient data (email passed to pending-activation page)
+
 - **Alternative Rejected**: Service or localStorage - over-engineering for single transient string, security concern (email persisted)
 
 **Navigation Flows**:
+
 1. Register → Pending Activation (router.navigate with state: { email })
 2. Pending Activation → Login (router.navigate)
 3. Activate → Login (router.navigate after success)
@@ -530,6 +552,7 @@ export class PasswordStrengthService {
 ### Error Handling Strategy
 
 **Error Categories**:
+
 1. **Client-side validation**: Inline below form fields (`<mat-error>`)
 2. **HTTP 400 (Validation)**: Map API errors to form field errors (setErrors())
 3. **HTTP 409 (Duplicate Email)**: Set error on email field with custom message
@@ -537,6 +560,7 @@ export class PasswordStrengthService {
 5. **Network Error (status 0)**: Retry mechanism + error message
 
 **HTTP Error Mapping**:
+
 ```typescript
 error: (httpError: HttpErrorResponse) => {
   if (httpError.status === 400) {
@@ -560,11 +584,13 @@ error: (httpError: HttpErrorResponse) => {
 ### Testing Strategy
 
 **Unit Tests (Jest)**:
+
 - **Component Tests**: Form validation, actorType change updates organizationName validators, password strength updates
 - **Validator Tests**: Password strength accepts/rejects based on requirements, password match detects mismatch
 - **Service Tests**: RegistrationService POST call, PasswordStrengthService calculations
 
 **Test Example**:
+
 ```typescript
 it('should update organization name validators when actor type changes', () => {
   component.registrationForm.get('actorType')!.setValue('IdeaGenerator');
@@ -578,6 +604,7 @@ it('should update organization name validators when actor type changes', () => {
 ```
 
 **E2E Tests (Playwright)**:
+
 - **Happy Path**: Register → pending-activation → activate → login → dashboard
 - **Validation**: Test all 24 acceptance criteria from spec.md Section 8
 - **Errors**: Invalid token, network error, duplicate email

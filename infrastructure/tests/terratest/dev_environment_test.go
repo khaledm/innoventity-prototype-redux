@@ -22,6 +22,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -49,7 +50,7 @@ func TestAppServiceModule(t *testing.T) {
 			"environment":       testEnv,
 			"app_service_sku":   "B1",
 			"jwt_secret_key":    generateRandomBase64(t, 32),
-			"connection_string": "Server=tcp:placeholder.database.windows.net,1433;Database=Innoventity;User ID=innoventity-admin;Password=TestP@ssw0rd123!;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;",
+			"connection_string": fmt.Sprintf("Server=tcp:placeholder.database.windows.net,1433;Database=Innoventity;User ID=innoventity-admin;Password=%s;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;", getTestSQLPassword(t)),
 		},
 		NoColor: true,
 	}
@@ -93,9 +94,9 @@ func TestDevEnvironmentAppServiceInfra(t *testing.T) {
 	dataOptions := &terraform.Options{
 		TerraformDir: "../../environments/dev/data",
 		Vars: map[string]interface{}{
-			"environment":       testEnv,
-			"sql_database_sku":  "Basic",
-			"sql_admin_password": "TestP@ssw0rd123!",
+			"environment":        testEnv,
+			"sql_database_sku":   "Basic",
+			"sql_admin_password": getTestSQLPassword(t),
 		},
 		NoColor: true,
 	}
@@ -129,6 +130,19 @@ func TestDevEnvironmentAppServiceInfra(t *testing.T) {
 		"App Service must enforce HTTPS-only (https_only = true)")
 	assert.Equal(t, "1.2", string(appService.SiteConfig.MinTLSVersion),
 		"App Service must require TLS 1.2 minimum")
+}
+
+// getTestSQLPassword returns the SQL admin password for Terratest runs.
+// It reads TERRATEST_SQL_ADMIN_PASSWORD from the environment so that CI pipelines
+// can supply a secret without committing credentials. When the variable is absent
+// (local runs without a configured secret) a cryptographically random base64 value
+// is generated and used for that test run only; it is never stored anywhere.
+func getTestSQLPassword(t *testing.T) string {
+	t.Helper()
+	if pw := os.Getenv("TERRATEST_SQL_ADMIN_PASSWORD"); pw != "" {
+		return pw
+	}
+	return generateRandomBase64(t, 16)
 }
 
 // generateRandomBase64 generates a cryptographically random base64-encoded string

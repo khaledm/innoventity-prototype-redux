@@ -74,13 +74,13 @@ git clone https://github.com/yourusername/innoventity-prototype-redux.git
 cd innoventity-prototype-redux
 ```
 
-1. **Checkout the feature branch**:
+2. **Checkout the feature branch**:
 
 ```powershell
 git checkout 001-platform-core
 ```
 
-1. **Verify you're on the correct branch**:
+3. **Verify you're on the correct branch**:
 
 ```powershell
 git branch --show-current
