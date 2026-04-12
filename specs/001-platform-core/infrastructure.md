@@ -574,6 +574,7 @@ curl https://$(terraform output -raw app_service_hostname)/health
 **Duration**: ~5-7 minutes (Azure resource provisioning) + 2-3 minutes (app deployment)
 
 **Validation Checklist**:
+
 - [ ] Terraform apply completed with 0 errors
 - [ ] App Service health endpoint returns 200
 - [ ] Database migrations applied successfully (check `__EFMigrationsHistory` table)
@@ -587,6 +588,7 @@ curl https://$(terraform output -raw app_service_hostname)/health
 > **📋 Full Runbook**: For the complete DEV teardown guide (pre-flight checks, all three teardown options, validation steps, post-teardown cleanup, and lessons learned), see **[teardown.md](teardown.md)**.
 
 **Prerequisites**:
+
 1. Confirm no active users (production environments)
 2. Confirm Terraform state backend (`innoventity-tfstate-rg` / `innoventitytfstate`) is intact before proceeding
 
@@ -603,7 +605,7 @@ terraform plan -destroy -out=tfplan-destroy
 # 4. Destroy all resources
 terraform apply tfplan-destroy
 
-# 6. (Optional) Clean up local Terraform cache
+# 5. (Optional) Clean up local Terraform cache
 # rm -rf .terraform tfplan-destroy
 # ❌ DO NOT delete the remote state blob in Azure Storage during routine teardown:
 # az storage blob delete --account-name innoventitytfstate --container-name tfstate-dev --name platform-core.tfstate
@@ -622,6 +624,7 @@ terraform apply tfplan-destroy
 **Scenario**: Change App Service SKU, add firewall rule, update secret rotation
 
 **Steps**:
+
 ```bash
 # 1. Modify terraform.tfvars or module code
 # Example: Increase SQL Database SKU
@@ -643,6 +646,7 @@ curl https://$(terraform output -raw app_service_hostname)/health
 ```
 
 **Recreate vs Update**:
+
 - **Update in-place**: App Service SKU change, firewall rule addition, app settings modification
 - **Recreate**: SQL Server name change, App Service name change (DNS-dependent resources)
 
@@ -657,7 +661,7 @@ curl https://$(terraform output -raw app_service_hostname)/health
 **Control options evaluated**:
 
 | Option | Mechanism | Verdict for this project |
-|--------|-----------|-------------------------|
+| -------- | ----------- | ------------------------- |
 | **Azure Policy** | Audit/deny resource properties at create/modify time | ⚠️ Partial — does not cover all config properties (e.g. `app_settings`); adds authoring/testing overhead. Overkill for Phase 0. |
 | **Deny Assignments** (Azure Blueprints / Deployment Stacks) | Block changes even at Owner level | ❌ Too heavy — designed for enterprise compliance. Azure Blueprints is deprecated. Deployment Stacks is the successor but adds significant complexity. |
 | **RBAC restriction** | Remove portal write access for humans | ✅ Primary prevention control — already applied for prod (Reader-only). The correct structural answer for drift prevention. |
@@ -666,10 +670,12 @@ curl https://$(terraform output -raw app_service_hostname)/health
 **Decision**: RBAC is the primary prevention layer. Nightly drift detection is the detection layer. Azure Policy and Deny Assignments are deferred.
 
 **Prevention (RBAC — already partially enforced)**:
+
 - Production: developers have Reader-only access → portal changes are blocked by RBAC. Full prevention.
 - Development: developers currently have Contributor access → portal changes are technically possible. Drift in dev is recoverable (`terraform apply` corrects it), so this is an accepted risk for dev agility.
 
 **Detection (Nightly Drift Scan — T076 pipeline addition)**:
+
 ```yaml
 # .github/workflows/drift-detection.yml  (or equivalent pipeline step)
 schedule:

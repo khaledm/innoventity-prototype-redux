@@ -1,6 +1,6 @@
 # DEV Environment Teardown Runbook
 
-**Branch**: `001-platform-core` | **Last Updated**: April 11, 2026  
+**Branch**: `001-platform-core` | **Last Updated**: April 11, 2026
 **Related**: [infrastructure.md](infrastructure.md) (full IaC reference) | [quickstart.md](quickstart.md) (environment setup)
 
 ---
@@ -10,6 +10,7 @@
 This runbook provides step-by-step instructions to **completely tear down the DEV environment** while **preserving the foundational infrastructure** (Terraform state backend and service principal credentials). It synthesises all experience accumulated across Platform Core (001), Domain Enhancements (002), and API Completion (003) phases.
 
 Use this when:
+
 - Stopping active DEV work to save Azure costs (~$20/month for the DEV environment)
 - Cleaning up after a feature branch merge
 - Resetting a broken or drifted DEV environment before re-provisioning
@@ -38,7 +39,7 @@ Use this when:
 These resources were bootstrapped **once, manually**, and are shared across all environments. Destroying them loses Terraform state and locks you out of IaC management.
 
 | Resource | Azure Name | Purpose |
-|----------|------------|---------|
+| -------- | ---------- | ------- |
 | Resource Group | `innoventity-tfstate-rg` | Container for Terraform state storage |
 | Storage Account | `innoventitytfstate` | Hosts all Terraform remote state files |
 | Blob Container | `tfstate-dev` | DEV-specific state container |
@@ -50,10 +51,14 @@ These resources were bootstrapped **once, manually**, and are shared across all 
 
 ### 💣 DEV Environment Resources — SAFE TO DESTROY
 
+DEV resource names differ by provisioning path. Use the correct set for the option you are executing.
+
+#### Terraform-managed DEV (Option A)
+
 Everything below lives in `innoventity-dev-rg` and is fully reproducible from Terraform.
 
 | Resource | Azure Name | Blast Radius |
-|----------|------------|--------------|
+| -------- | ---------- | ------------ |
 | Resource Group | `innoventity-dev-rg` | Destroys all children below |
 | App Service | `innoventity-dev-api` | API goes offline |
 | App Service Plan | `innoventity-dev-asp` | Hosting plan removed |
@@ -62,6 +67,20 @@ Everything below lives in `innoventity-dev-rg` and is fully reproducible from Te
 | Application Insights | `innoventity-dev-ai` | Historical telemetry loss (30–90d retained in workspace) |
 | Log Analytics Workspace | `innoventity-dev-law` | Telemetry logs lost |
 | Service Bus Namespace | `innoventity-dev-sb` | In-flight messages lost (negligible for DEV) |
+
+#### azd/manual DEV (Option B and quickstart Azure CLI flow)
+
+The quickstart `azd up` / manual Azure CLI examples use the following naming pattern.
+
+| Resource | Azure Name Pattern |
+| -------- | ------------------ |
+| Resource Group | `innoventity-rg-dev` |
+| App Service | `innoventity-api-dev` |
+| App Service Plan | `innoventity-asp-dev` |
+| SQL Server | `innoventity-sql-dev` |
+| Application Insights | `innoventity-ai-dev` |
+
+> If your names differ, discover them before deletion with: `az group list --query "[?contains(name, 'innoventity')].name" -o table`
 
 > **Data Note**: The DEV database contains only seeded test data (quantum battery prototype, test actors, 10 ICB industries). No real user data is ever stored in DEV. Data loss is expected and acceptable.
 
@@ -79,8 +98,8 @@ Complete all items before executing any destroy commands.
 
 ### 2. Capture Any Important State
 
-- [ ] Note the current App Service URL: `https://innoventity-dev-api.azurewebsites.net` (or `terraform output app_service_hostname`)
-- [ ] Note the current SQL Server name: `innoventity-dev-sql` (or `terraform output sql_server_name`)
+- [ ] Note the current App Service URL (for example, `https://innoventity-dev-api.azurewebsites.net` or `https://innoventity-api-dev.azurewebsites.net`)
+- [ ] Note the current SQL Server name (for example, `innoventity-dev-sql` or `innoventity-sql-dev`)
 - [ ] (Optional) Export Application Insights telemetry if you want to retain diagnostics data
 
 ### 3. Confirm Terraform State is Clean
@@ -106,8 +125,8 @@ terraform state list
 
 ## Option A: Terraform Teardown (Recommended)
 
-**Use when**: The DEV environment was provisioned with Terraform (Tasks T068–T069).  
-**Duration**: ~3–5 minutes  
+**Use when**: The DEV environment was provisioned with Terraform (Tasks T068–T069).
+**Duration**: ~3–5 minutes
 **Preserves**: Terraform state backend in `innoventity-tfstate-rg`/`innoventitytfstate`
 
 ```bash
@@ -156,8 +175,8 @@ terraform apply tfplan-destroy
 
 ## Option B: Azure Developer CLI Teardown
 
-**Use when**: The DEV environment was provisioned with `azd up` (as documented in quickstart.md Option 1).  
-**Duration**: ~5–8 minutes  
+**Use when**: The DEV environment was provisioned with `azd up` (as documented in quickstart.md Option 1).
+**Duration**: ~5–8 minutes
 **Preserves**: `azd`-managed resources only — does NOT touch the Terraform state backend
 
 ```bash
@@ -180,10 +199,12 @@ azd down
 Deleting all resources and deployed code on Azure (azd down)
 
   (✓) Done: Deleting service innoventity-api
-  (✓) Done: Deleting resource group innoventity-rg-dev
+  (✓) Done: Deleting resource group <dev-resource-group>
 
 SUCCESS: Your application has been removed from Azure in 6 minutes.
 ```
+
+For quickstart `azd up`, `<dev-resource-group>` is typically `innoventity-rg-dev`. For Terraform Option A it is `innoventity-dev-rg`.
 
 > **Note**: `azd down` only removes resources managed in the `azd` environment manifest. It does **not** touch the Terraform state storage account (`innoventitytfstate`) because that resource was created outside `azd`.
 
@@ -191,8 +212,8 @@ SUCCESS: Your application has been removed from Azure in 6 minutes.
 
 ## Option C: Manual Azure CLI Teardown
 
-**Use when**: Neither Terraform nor `azd` was used, OR as an emergency fallback if both tools fail.  
-**Duration**: ~2–4 minutes  
+**Use when**: Neither Terraform nor `azd` was used, OR as an emergency fallback if both tools fail.
+**Duration**: ~2–4 minutes
 **Warning**: This bypasses Terraform state — run `terraform state rm <resource>` for each deleted resource afterwards, or accept that the next `terraform plan` will show drift.
 
 ```bash
@@ -201,22 +222,29 @@ az login
 az account set --subscription "<your-subscription-id>"
 
 # 2. Delete the DEV resource group (destroys ALL contained resources simultaneously)
-# This is the nuclear option — it deletes everything in innoventity-dev-rg in one command.
+# This is the nuclear option — it deletes everything in the selected DEV resource group in one command.
+# Pick the group that matches your provisioning path:
+#   Terraform path: DEV_RG="innoventity-dev-rg"
+#   azd/manual path: DEV_RG="innoventity-rg-dev"
+DEV_RG="innoventity-dev-rg"
+
 az group delete \
-  --name innoventity-dev-rg \
+  --name "$DEV_RG" \
   --yes \
   --no-wait
 
 # The --no-wait flag returns immediately; deletion runs asynchronously (~2-4 min).
 # Monitor progress:
-az group show --name innoventity-dev-rg --query "properties.provisioningState" -o tsv
+az group show --name "$DEV_RG" --query "properties.provisioningState" -o tsv
 # Keep running until it shows "Deleting" then disappears entirely (404).
 
 # 3. ⚠️ IMPORTANT: Sync Terraform state after manual deletion
 # Since we bypassed Terraform, the state file still references the deleted resources.
 # The next terraform plan will detect the drift. To clean up the state manually:
 cd infrastructure/environments/dev
-terraform state list | xargs -r -I {} terraform state rm {}
+terraform state list | while IFS= read -r resource; do
+  terraform state rm "$resource"
+done
 # OR simply run: terraform plan -destroy (it will show "to add" resources and you can
 # re-apply to re-create, or leave the state as-is if not re-provisioning)
 ```
@@ -232,7 +260,8 @@ Run these checks to confirm the teardown completed successfully.
 ### 1. Verify DEV Resource Group is Gone
 
 ```bash
-az group show --name innoventity-dev-rg
+DEV_RG="innoventity-dev-rg"  # or innoventity-rg-dev for azd/manual flow
+az group show --name "$DEV_RG"
 # Expected: "ResourceGroupNotFound" error (404)
 # If 200 is returned, check Azure Portal for stuck resource locks
 ```
@@ -240,7 +269,8 @@ az group show --name innoventity-dev-rg
 ### 2. Verify App Service is Unreachable
 
 ```bash
-curl -f https://innoventity-dev-api.azurewebsites.net/health
+APP_NAME="innoventity-dev-api"  # or innoventity-api-dev for azd/manual flow
+curl -f "https://${APP_NAME}.azurewebsites.net/health"
 # Expected: connection refused or DNS resolution failure
 # (azurewebsites.net DNS will still resolve briefly — look for 503 or connection error)
 ```
@@ -260,8 +290,11 @@ az storage blob show \
   --account-name innoventitytfstate \
   --container-name tfstate-dev \
   --name platform-core.tfstate \
+  --auth-mode login \
   --query "name" -o tsv
 # Expected: "platform-core.tfstate"
+# Note: `--auth-mode login` uses your Azure AD identity from `az login` (user or service principal).
+# Ensure that identity has Storage Blob Data Reader (or higher) on the state storage account.
 
 # Terraform state list must return an empty list (not an error)
 cd infrastructure/environments/dev
@@ -272,15 +305,18 @@ terraform state list
 ### 4. Verify SQL Server is Gone
 
 ```bash
+SQL_SERVER_NAME="innoventity-dev-sql"  # or innoventity-sql-dev for azd/manual flow
+DEV_RG="innoventity-dev-rg"            # or innoventity-rg-dev for azd/manual flow
+
 az sql server show \
-  --name innoventity-dev-sql \
-  --resource-group innoventity-dev-rg
+  --name "$SQL_SERVER_NAME" \
+  --resource-group "$DEV_RG"
 # Expected: "ResourceNotFound" error (404)
 ```
 
 ### 5. Confirm Monthly Cost Drop
 
-- In Azure Portal → Cost Management → Filter by `innoventity-dev-rg`
+- In Azure Portal → Cost Management → Filter by your DEV resource group (`innoventity-dev-rg` for Terraform flow, `innoventity-rg-dev` for azd/manual flow)
 - Resource group should show $0 going forward (no running resources)
 - Expected savings: ~$20/month (B1 App Service + Basic SQL + Application Insights)
 
@@ -296,10 +332,10 @@ cd infrastructure/environments/dev
 rm -rf .terraform
 rm -f tfplan-destroy
 
-# 2. DO NOT delete the local terraform.tfvars (it contains secrets used for re-provisioning)
-# If you want to remove it from disk for security, note the values elsewhere first:
-cat terraform.tfvars  # Review and save values securely before deleting
-rm -f terraform.tfvars
+# 2. Keep local terraform.tfvars by default; it contains values needed for re-provisioning.
+# Only delete it if you have already archived required values in a secure secret store,
+# or if you intend to rotate those secrets before the next deployment.
+# rm -f terraform.tfvars
 
 # 3. Remove any temporary development files (lessons learned: L7 from implementation-lessons.md)
 # These should already be in .gitignore (commit-*.txt, test-*.txt) but clean up manually:
@@ -313,7 +349,7 @@ dotnet ef database drop --force --project src/Innoventity.API
 ### What to Keep Locally
 
 | File/Directory | Keep? | Reason |
-|----------------|-------|--------|
+| -------------- | ----- | ------ |
 | `infrastructure/environments/dev/.terraform/` | ❌ Delete | Regenerated by `terraform init` |
 | `infrastructure/environments/dev/terraform.tfvars` | ⚠️ Secure | Contains secrets — store in password manager |
 | `infrastructure/environments/dev/tfplan-destroy` | ❌ Delete | Stale plan after successful destroy |
@@ -329,28 +365,28 @@ These are drawn from implementation experience across all three feature phases.
 
 ### P1: State Isolation Prevents Cross-Environment Accidents
 
-**From**: infrastructure.md §Terraform State Management  
+**From**: infrastructure.md §Terraform State Management
 Each environment (dev, test, prod) has a **separate state file** in a separate container. Running `terraform destroy` in `infrastructure/environments/dev` can ONLY destroy DEV resources — it cannot accidentally touch prod because there is no overlap in state.
 
 **Lesson**: Always `cd` into the correct environment directory before running any Terraform command.
 
 ### P2: HasData() Seeding Does Not Need Rollback on Teardown
 
-**From**: implementation-lessons.md L1 (EF Core HasData() Seed Conflicts)  
+**From**: implementation-lessons.md L1 (EF Core HasData() Seed Conflicts)
 The ICB industry data (HLTH-001, TECH-001, ENRG-001, etc.) seeded via `AppDbContext.HasData()` lives entirely in the SQL Database. When the database is destroyed, all seeded data is deleted automatically — no separate cleanup step is needed.
 
 **Lesson**: There is no separate data cleanup step before teardown. Destroy the database directly.
 
 ### P3: App Service Deployment Slots (Production Only)
 
-**From**: infrastructure.md §App Service Module  
+**From**: infrastructure.md §App Service Module
 The DEV App Service does NOT use deployment slots (staging slot is production-only). There is no slot to swap or delete separately.
 
 **Lesson**: For DEV teardown, just destroy the single App Service instance.
 
 ### P4: gitignore Prevents Re-Committing Terraform State
 
-**From**: infrastructure.md §Security Considerations | implementation-lessons.md L7  
+**From**: infrastructure.md §Security Considerations | implementation-lessons.md L7
 The `.gitignore` should include:
 ```
 infrastructure/**/*.tfvars
@@ -361,21 +397,24 @@ These entries prevent accidentally committing secrets or local state files. Veri
 
 ### P5: Application Insights Telemetry Survives Environment Destruction
 
-**From**: infrastructure.md §Component Validation Matrix  
+**From**: infrastructure.md §Component Validation Matrix
 Application Insights logs are retained for 30–90 days by default in the Log Analytics Workspace. After the workspace is destroyed, historical logs are permanently lost. If you need to retain diagnostic data from the DEV run, export it before teardown:
 
 ```bash
 # Export recent traces via Azure CLI before destroying
+APP_INSIGHTS_NAME="innoventity-dev-ai"  # or innoventity-ai-dev for azd/manual flow
+DEV_RG="innoventity-dev-rg"             # or innoventity-rg-dev for azd/manual flow
+
 az monitor app-insights query \
-  --app innoventity-dev-ai \
+  --app "$APP_INSIGHTS_NAME" \
   --analytics-query "traces | where timestamp > ago(7d) | limit 1000" \
-  --resource-group innoventity-dev-rg \
+  --resource-group "$DEV_RG" \
   -o json > /tmp/dev-traces-$(date +%Y%m%d).json
 ```
 
 ### P6: Terraform Service Principal Credentials Are NOT Destroyed
 
-**From**: infrastructure.md §Least Privilege Access  
+**From**: infrastructure.md §Least Privilege Access
 The Terraform Service Principal lives in Azure Active Directory (not in the `innoventity-dev-rg` resource group) and is NOT managed by the DEV environment Terraform state. It persists across environment teardowns.
 
 **Lesson**: After teardown, the SP credentials in GitHub Secrets remain valid for re-provisioning.
@@ -410,7 +449,7 @@ location             = "East US"
 app_service_sku      = "B1"
 sql_database_sku     = "Basic"
 retention_days       = 7
-sql_admin_password   = "$(python3 -c "import secrets, string; chars = string.ascii_uppercase + string.ascii_lowercase + string.digits + '!@#%^&*'; pw = [secrets.choice(string.ascii_uppercase), secrets.choice(string.ascii_lowercase), secrets.choice(string.digits), secrets.choice('!@#%^&*')] + [secrets.choice(chars) for _ in range(12)]; import random; random.shuffle(pw); print(''.join(pw))")"
+sql_admin_password   = "$(python3 -c 'import secrets, string; chars = string.ascii_uppercase + string.ascii_lowercase + string.digits + "!@#%^&*"; pw = [secrets.choice(string.ascii_uppercase), secrets.choice(string.ascii_lowercase), secrets.choice(string.digits), secrets.choice("!@#%^&*")] + [secrets.choice(chars) for _ in range(12)]; import random; random.shuffle(pw); print("".join(pw))')"
 jwt_secret_key       = "$(openssl rand -base64 32)"
 EOF
 
@@ -418,11 +457,16 @@ EOF
 terraform apply
 
 # 5. Deploy application code
-dotnet publish src/Innoventity.API -c Release -o /tmp/publish
+PUBLISH_DIR=/tmp/publish
+ZIP_PATH=/tmp/publish.zip
+
+dotnet publish src/Innoventity.API -c Release -o "$PUBLISH_DIR"
+(cd "$PUBLISH_DIR" && zip -r "$ZIP_PATH" .)
+
 az webapp deployment source config-zip \
   --resource-group innoventity-dev-rg \
   --name innoventity-dev-api \
-  --src /tmp/publish.zip
+  --src "$ZIP_PATH"
 
 # 6. Apply database migrations
 dotnet ef database update \
@@ -441,7 +485,7 @@ curl https://$(terraform output -raw app_service_hostname)/health
 ## Teardown Decision Matrix
 
 | Situation | Recommended Option |
-|-----------|-------------------|
+| --------- | ------------------ |
 | Standard cost-saving teardown (will re-provision later) | **Option A** (Terraform) |
 | DEV was provisioned with `azd up` | **Option B** (azd down) |
 | Terraform state is corrupt / tools not available | **Option C** (Azure CLI) |
@@ -451,8 +495,8 @@ curl https://$(terraform output -raw app_service_hostname)/health
 
 ---
 
-*This runbook was synthesised from:*  
-- *[infrastructure.md](infrastructure.md) — Terraform modules, lifecycle workflows, security considerations*  
-- *[quickstart.md](quickstart.md) — Azure Developer CLI deployment, Azure CLI manual deployment*  
-- *[implementation-lessons.md](../003-api-completion/implementation-lessons.md) — EF Core seeding patterns, gitignore pitfalls*  
+*This runbook was synthesised from:*
+- *[infrastructure.md](infrastructure.md) — Terraform modules, lifecycle workflows, security considerations*
+- *[quickstart.md](quickstart.md) — Azure Developer CLI deployment, Azure CLI manual deployment*
+- *[implementation-lessons.md](../003-api-completion/implementation-lessons.md) — EF Core seeding patterns, gitignore pitfalls*
 - *[tasks.md](tasks.md) — T068–T070 IaC task backlog*

@@ -564,6 +564,7 @@ az webapp deploy --resource-group innoventity-rg-dev --name innoventity-api-dev 
 When you are done with active development and want to stop Azure costs (~$20/month), use the teardown runbook:
 
 - **[teardown.md](teardown.md)** — Complete DEV teardown guide covering all three options (Terraform, Azure Developer CLI, manual Azure CLI), pre-teardown checklist, post-teardown validation, and lessons learned.
+- **Name mapping note**: Terraform resources use different Azure names than the `azd`/manual quickstart paths (for example, `innoventity-dev-rg`/`innoventity-dev-api` vs. `innoventity-rg-dev`/`innoventity-api-dev`) — confirm the correct names in `teardown.md` before deleting anything.
 - **Key rule**: Never delete the `innoventity-tfstate-rg` resource group or the `innoventitytfstate` storage account — these are foundational infrastructure that must survive environment teardowns.
 
 ---
