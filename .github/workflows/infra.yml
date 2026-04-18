@@ -157,6 +157,26 @@ jobs:
       - name: terraform init
         run: terraform init -input=false
 
+      - name: Import pre-existing resources (idempotent)
+        run: |
+          set -euo pipefail
+          DATA_JSON=$(terraform -chdir=../data output -json 2>/dev/null)
+          CONN=$(echo "$DATA_JSON" | jq -re '.connection_string.value')
+          SQL_ID=$(echo "$DATA_JSON" | jq -re '.sql_server_id.value')
+          ENV="${{ inputs.environment || 'dev' }}"
+          DIAG_ID="/subscriptions/$ARM_SUBSCRIPTION_ID/resourceGroups/innoventity-${ENV}-rg/providers/Microsoft.Sql/servers/innoventity-${ENV}-sql|innoventity-${ENV}-sql-diag"
+          # Import only if not already tracked in state; safe to re-run.
+          if terraform state show 'azurerm_monitor_diagnostic_setting.sql_server[0]' > /dev/null 2>&1; then
+            echo "azurerm_monitor_diagnostic_setting.sql_server[0] already in state — skipping import"
+          else
+            terraform import \
+              -var "connection_string=$CONN" \
+              -var "jwt_secret_key=${{ secrets.JWT_SECRET_KEY }}" \
+              -var "sql_server_id=$SQL_ID" \
+              'azurerm_monitor_diagnostic_setting.sql_server[0]' \
+              "$DIAG_ID"
+          fi
+
       - name: terraform plan
         run: |
           DATA_JSON=$(terraform -chdir=../data output -json 2>/dev/null)
