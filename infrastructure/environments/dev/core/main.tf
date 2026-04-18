@@ -94,6 +94,17 @@ module "app_service" {
   log_analytics_workspace_id = module.monitoring.workspace_id
 }
 
+module "static_web_app" {
+  source              = "../../../modules/static-web-app"
+  name                = "innoventity-${var.environment}-web"
+  resource_group_name = "innoventity-${var.environment}-rg"
+  location            = var.location
+  sku_tier            = "Free"
+  tags = {
+    Environment = var.environment
+  }
+}
+
 # ─────────────────────────────────────────────────────────────────
 # Azure Monitor Diagnostic Settings — SQL Server (FR7.6 MUST)
 # Created here (not in sql-database module) because the Log Analytics workspace
@@ -141,4 +152,20 @@ output "resource_group_name" {
 output "appinsights_name" {
   value       = module.monitoring.app_insights_name
   description = "Application Insights resource name"
+}
+
+output "static_web_app_hostname" {
+  value       = module.static_web_app.default_host_name
+  description = "SWA hostname (without https://) — production URL: https://<hostname>"
+}
+
+output "static_web_app_api_key" {
+  value       = module.static_web_app.api_key
+  sensitive   = true
+  description = "SWA deployment token — store as AZURE_STATIC_WEB_APPS_API_TOKEN GitHub secret"
+}
+
+output "static_web_app_id" {
+  value       = module.static_web_app.id
+  description = "SWA resource ID"
 }

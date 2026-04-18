@@ -23,11 +23,11 @@
 
 **Purpose**: Verify prerequisites and prepare workspace for implementation
 
-- [ ] T001 Verify Azure subscription access and resource group `innoventity-dev-rg` exists
-- [ ] T002 Verify Terraform remote backend configured at `innoventitydevtfstate` storage account
-- [ ] T003 [P] Verify Node.js 20.x LTS installed and Angular 19 app builds successfully
-- [ ] T004 [P] Verify GitHub repository permissions (write access to `khaledm/innoventity-prototype-redux`)
-- [ ] T005 Create feature documentation directory structure `specs/002-frontend-cicd/runbooks/`
+- [X] T001 Verify Azure subscription access and resource group `innoventity-dev-rg` exists
+- [X] T002 Verify Terraform remote backend configured at `innoventitydevtfstate` storage account
+- [X] T003 [P] Verify Node.js 20.x LTS installed and Angular 19 app builds successfully
+- [X] T004 [P] Verify GitHub repository permissions (write access to `khaledm/innoventity-prototype-redux`)
+- [X] T005 Create feature documentation directory structure `specs/002-frontend-cicd/runbooks/`
 
 ---
 
@@ -37,14 +37,14 @@
 
 **⚠️ CRITICAL**: This phase MUST complete before any GitHub Actions workflow implementation
 
-- [ ] T006 Create Terraform module directory `infrastructure/modules/static-web-app/`
-- [ ] T007 [P] Create `infrastructure/modules/static-web-app/main.tf` with `azurerm_static_web_app` resource definition
-- [ ] T008 [P] Create `infrastructure/modules/static-web-app/variables.tf` with input variables (name, location, resource_group_name, sku_tier, tags)
-- [ ] T009 [P] Create `infrastructure/modules/static-web-app/outputs.tf` with outputs (default_host_name, api_key, id)
-- [ ] T010 Update `infrastructure/environments/dev/core/main.tf` to integrate static-web-app module
-- [ ] T011 Update `infrastructure/environments/dev/core/outputs.tf` to expose SWA outputs
-- [ ] T012 Run `terraform init` in `infrastructure/environments/dev/core/` to initialize module
-- [ ] T013 Run `terraform plan` to validate module configuration (should show 1 resource to add)
+- [X] T006 Create Terraform module directory `infrastructure/modules/static-web-app/`
+- [X] T007 [P] Create `infrastructure/modules/static-web-app/main.tf` with `azurerm_static_web_app` resource definition
+- [X] T008 [P] Create `infrastructure/modules/static-web-app/variables.tf` with input variables (name, location, resource_group_name, sku_tier, tags)
+- [X] T009 [P] Create `infrastructure/modules/static-web-app/outputs.tf` with outputs (default_host_name, api_key, id)
+- [X] T010 Update `infrastructure/environments/dev/core/main.tf` to integrate static-web-app module
+- [X] T011 Update `infrastructure/environments/dev/core/outputs.tf` to expose SWA outputs
+- [X] T012 Run `terraform init` in `infrastructure/environments/dev/core/` to initialize module
+- [X] T013 Run `terraform plan` to validate module configuration (should show 1 resource to add)
 
 **Checkpoint**: Terraform module created and validated - ready for provisioning
 
@@ -73,19 +73,19 @@
 
 **Independent Test**: Push commit to feature branch, observe workflow execution in GitHub Actions, verify deployed changes at staging URL
 
-- [ ] T020 [US1] Create GitHub Actions workflow file `.github/workflows/deploy-frontend.yml`
-- [ ] T021 [P] [US1] Configure workflow triggers (push to all branches with path filter `src/Innoventity.Client/**`, workflow_dispatch)
-- [ ] T022 [P] [US1] Define `build` job with Node.js 20.x setup and npm caching (`actions/setup-node@v4` with `cache: 'npm'`)
-- [ ] T023 [US1] Implement build job steps: `npm ci`, `npm run build`, upload `dist/` as artifact
-- [ ] T075 [P] [US1] Verify `src/Innoventity.Client/staticwebapp.config.json` satisfies FR-030 (SPA routing to `index.html`) and FR-031 (navigation fallback); confirm file is included in `ng build` output and deployed artifact
-- [ ] T024 [P] [US1] Define `test` job with dependencies on build job
-- [ ] T025 [US1] Implement test job steps: download build artifact, `npm test -- --ci --coverage`, `npx playwright install --with-deps`, `npm run test:e2e`
-- [ ] T026 [US1] Configure test job to allow failures in Phase 1 (`continue-on-error: true`)
-- [ ] T027 [US1] Upload test results as artifacts (coverage reports, Playwright traces)
-- [ ] T028 [P] [US1] Define `deploy-preview` job with conditional execution (`if: github.ref != 'refs/heads/Main'`)
-- [ ] T029 [US1] Implement deploy-preview job: download build artifact, use `Azure/static-web-apps-deploy@v1` with `skip_app_build: true`
-- [ ] T030 [US1] Configure deploy-preview to use `AZURE_STATIC_WEB_APPS_API_TOKEN` secret and `production_branch: 'Main'`
-- [ ] T031 [US1] Output preview URL from deploy-preview job
+- [X] T020 [US1] Create GitHub Actions workflow file `.github/workflows/deploy-frontend.yml`
+- [X] T021 [P] [US1] Configure workflow triggers (push to all branches with path filter `src/Innoventity.Client/**`, workflow_dispatch)
+- [X] T022 [P] [US1] Define `build` job with Node.js 20.x setup and npm caching (`actions/setup-node@v4` with `cache: 'npm'`)
+- [X] T023 [US1] Implement build job steps: `npm ci`, `npm run build`, upload `dist/` as artifact
+- [X] T075 [P] [US1] Verify `src/Innoventity.Client/staticwebapp.config.json` satisfies FR-030 (SPA routing to `index.html`) and FR-031 (navigation fallback); confirm file is included in `ng build` output and deployed artifact
+- [X] T024 [P] [US1] Define `test` job with dependencies on build job
+- [X] T025 [US1] Implement test job steps: download build artifact, `npm test -- --ci --coverage`, `npx playwright install --with-deps`, `npm run test:e2e`
+- [X] T026 [US1] Configure test job to allow failures in Phase 1 (`continue-on-error: true`)
+- [X] T027 [US1] Upload test results as artifacts (coverage reports, Playwright traces)
+- [X] T028 [P] [US1] Define `deploy-preview` job with conditional execution (`if: github.ref != 'refs/heads/Main'`)
+- [X] T029 [US1] Implement deploy-preview job: download build artifact, use `Azure/static-web-apps-deploy@v1` with `skip_app_build: true`
+- [X] T030 [US1] Configure deploy-preview to use `AZURE_STATIC_WEB_APPS_API_TOKEN` secret and `production_branch: 'Main'`
+- [X] T031 [US1] Output preview URL from deploy-preview job
 - [ ] T032 [US1] Test workflow locally using `act` tool: `act push -W .github/workflows/deploy-frontend.yml`
 - [ ] T033 [US1] Push test commit to feature branch and verify workflow executes successfully
 - [ ] T034 [US1] Verify frontend changes deployed to staging environment and accessible

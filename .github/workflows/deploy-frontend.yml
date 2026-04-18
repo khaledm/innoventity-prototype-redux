@@ -1,0 +1,206 @@
+# .github/workflows/deploy-frontend.yml
+#
+# Frontend CI/CD pipeline — builds, tests, and deploys Angular 19 app to Azure Static Web Apps.
+#
+# Job chain: build → test → deploy-preview
+#
+# Trigger:
+#   push to any branch      — auto-deploy when frontend code changes
+#   pull_request (closed)   — cleanup preview environment on PR close/merge
+#   workflow_dispatch       — manual deploy (bypasses path filter)
+#
+# Phase 1 behavior:
+#   - Tests run with continue-on-error: true (enforcement begins Phase 2)
+#   - deploy-preview runs on feature branches only (Main excluded)
+#   - Production deployment with approval gate: Phase 3 (speckit.implement Phase 5-8)
+#
+# Required secrets:
+#   AZURE_STATIC_WEB_APPS_API_TOKEN  — from: terraform output -raw static_web_app_api_key
+#
+# SWA Free tier limits (FR-043):
+#   - 1 production environment
+#   - 3 preview environments max; deploy-preview FAILS HARD when quota exhausted
+#     (do NOT add continue-on-error — failure is the intended signal to clean up PRs)
+
+name: Deploy Frontend
+
+permissions:
+  contents: read
+  pull-requests: write   # Required for GitHub bot to post preview URL as PR comment
+
+on:
+  push:
+    branches:
+      - '**'
+    paths:
+      - 'src/Innoventity.Client/**'
+      - '.github/workflows/deploy-frontend.yml'
+  pull_request:
+    types: [closed]
+    branches:
+      - Main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment (dev only in Phase 1)'
+        required: false
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+
+env:
+  NODE_VERSION: '20.x'
+  WORKING_DIR: 'src/Innoventity.Client'
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────
+  # 1. Build — compile Angular app with production configuration
+  # ─────────────────────────────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    # Skip build-test-deploy when PR is closed (only cleanup job needed)
+    if: github.event_name != 'pull_request' || github.event.action != 'closed'
+    outputs:
+      artifact-name: ${{ steps.set-artifact.outputs.name }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIR }}
+        run: npm ci
+
+      - name: Build Angular app (production)
+        working-directory: ${{ env.WORKING_DIR }}
+        run: npm run build -- --configuration production
+
+      - name: Set artifact name
+        id: set-artifact
+        run: echo "name=frontend-dist-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.set-artifact.outputs.name }}
+          # Angular 17+ application builder outputs to dist/<name>/browser/
+          path: ${{ env.WORKING_DIR }}/dist/innoventity.client/browser
+          retention-days: 7
+          if-no-files-found: error
+
+  # ─────────────────────────────────────────────────────────────────
+  # 2. Test — run unit and E2E tests (Phase 1: warnings only)
+  # ─────────────────────────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIR }}
+        run: npm ci
+
+      - name: Run Jest unit tests
+        working-directory: ${{ env.WORKING_DIR }}
+        # Phase 1: continue-on-error allows deployment even with test failures.
+        # Remove continue-on-error in Phase 2 to enforce blocking (FR-009).
+        continue-on-error: true
+        run: npm run test:coverage -- --ci
+
+      - name: Install Playwright browsers
+        working-directory: ${{ env.WORKING_DIR }}
+        continue-on-error: true
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright E2E tests
+        working-directory: ${{ env.WORKING_DIR }}
+        continue-on-error: true
+        run: npm run e2e
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ github.run_id }}
+          path: |
+            ${{ env.WORKING_DIR }}/coverage/
+            ${{ env.WORKING_DIR }}/test-results/
+            ${{ env.WORKING_DIR }}/playwright-report/
+          retention-days: 90
+          if-no-files-found: ignore
+
+  # ─────────────────────────────────────────────────────────────────
+  # 3. Deploy Preview — deploy to SWA preview environment (feature branches)
+  #    Skipped on Main branch (production deployment is Phase 3).
+  #    SWA Free tier: max 3 preview environments. Workflow FAILS HARD when
+  #    quota is exhausted — close a stale PR to free a slot (FR-043).
+  # ─────────────────────────────────────────────────────────────────
+  deploy-preview:
+    name: Deploy Preview
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    # Run on feature branches only — Main branch production deployment is Phase 3
+    if: github.ref != 'refs/heads/Main' && (github.event_name != 'pull_request' || github.event.action != 'closed')
+    outputs:
+      preview-url: ${{ steps.deploy.outputs.static_web_app_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact-name }}
+          path: dist
+
+      - name: Deploy to Azure Static Web Apps preview
+        id: deploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          # app_location is relative to repo root; artifact already built — skip SWA build
+          app_location: dist
+          skip_app_build: true
+          output_location: ''
+          # production_branch tells SWA which branch maps to the production environment.
+          # All other branches (including this one) are routed to preview environments.
+          production_branch: Main
+
+  # ─────────────────────────────────────────────────────────────────
+  # 4. Cleanup Preview — delete SWA preview environment on PR close/merge
+  #    Triggered by pull_request: [closed] to prevent quota exhaustion.
+  #    Immediate deletion aligns with FR-037 (Q1 decision: delete on close).
+  # ─────────────────────────────────────────────────────────────────
+  cleanup-preview:
+    name: Cleanup Preview
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Delete Azure Static Web Apps preview environment
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: close
