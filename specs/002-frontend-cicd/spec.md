@@ -34,6 +34,12 @@
 - **Q**: What should the production approval timeout be? → **A**: 24 hours (Option C - maximum flexibility for small team).
 - **Q**: What notification channel for deployment failures? → **A**: GitHub Actions native notifications only (email, UI, mobile) - defer Slack/Teams to Phase 2+ (Option A).
 
+### Session 2026-04-18
+
+- **Q**: After a PR is merged or closed, should the preview environment be deleted immediately or persist for post-merge review? → **A**: Delete immediately on PR close/merge using native SWA `action: 'close'` on `pull_request: [closed]` event. Persisting risks exhausting the Free tier 3-preview limit.
+- **Q**: When the Free tier's 3-preview limit is hit, what should the workflow do? → **A**: Fail workflow with clear error message (Option A). Developer must manually delete a stale preview environment. No automatic SKU upgrade or silent continue-on-error.
+- **Q**: What URL should the validation job target after deployment? → **A**: Use the output URL from the preceding deploy job — preview URL for feature branches, production URL for Main (Option A). Hardcoding a URL would validate the wrong environment.
+
 ---
 
 ## User Scenarios & Testing *(mandatory)*
@@ -79,7 +85,7 @@ As a **platform operator**, I need a manual approval step before production depl
 
 **Why this priority**: HIGH - Critical for production safety. Prevents accidental deployments and allows coordination with stakeholders.
 
-**Independent Test**: Can be fully tested by merging to Main branch, observing workflow pause at approval gate, manually approving, and verifying production swap completes.
+**Independent Test**: Can be fully tested by merging to Main branch, observing workflow pause at approval gate, manually approving, and verifying production deployment completes.
 
 **Acceptance Scenarios**:
 
@@ -111,7 +117,7 @@ As a **DevOps engineer**, I need Azure Static Web Apps provisioned via Terraform
 
 ### User Story 5 - Validation and Health Checks (Priority: P3)
 
-As a **quality assurance engineer**, I need automated health checks after deployment so that critical failures are detected before production swap.
+As a **quality assurance engineer**, I need automated health checks after deployment so that critical failures are detected before production deployment.
 
 **Why this priority**: LOW - Nice-to-have quality gate. Can initially proceed with manual validation if time-constrained.
 
@@ -119,20 +125,20 @@ As a **quality assurance engineer**, I need automated health checks after deploy
 
 **Acceptance Scenarios**:
 
-1. **Given** deployment to staging complete, **When** validation job executes, **Then** HTTP GET request sent to staging URL
-2. **Given** staging URL responds, **When** response validated, **Then** status code must be 200 and Content-Type must be `text/html`
+1. **Given** deployment to preview or production complete, **When** validation job executes, **Then** HTTP GET request sent to the URL output from the preceding deploy job
+2. **Given** deployment URL responds, **When** response validated, **Then** status code must be 200 and Content-Type must be `text/html`
 3. **Given** health check passes, **When** validation job completes, **Then** workflow proceeds to approval gate (for Main) or succeeds (for feature branches)
-4. **Given** staging URL returns 404 or 500, **When** validation job evaluates response, **Then** workflow fails and production swap prevented
+4. **Given** deployment URL returns 404 or 500, **When** validation job evaluates response, **Then** workflow fails and production deployment prevented
 5. **Given** validation failure, **When** developer notified, **Then** GitHub Actions sends notification with failure details
 
 ---
 
 ### Edge Cases
 
-- **What happens when Azure Static Web Apps deployment quota exhausted?** Workflow fails with clear error message indicating quota limit reached. Operator must manually delete unused preview environments or upgrade SKU.
+- **What happens when Azure Static Web Apps deployment quota exhausted?** Workflow MUST fail with a clear error message (e.g., "SWA preview quota reached: 3/3 environments in use"). Developer must manually close a stale PR or run the cleanup workflow (`action: 'close'`) to free a slot. No automatic SKU upgrade or silent skip permitted.
 - **What happens when GitHub Actions workflow fails mid-deployment?** Preview environment may have partial deployment. Workflow retry will overwrite with fresh deployment. Production environment remains unchanged.
 - **What happens when Playwright E2E tests fail during test job?** Workflow fails and deployment does not proceed. Developer must fix tests and push new commit to retry.
-- **What happens when two developers push to Main simultaneously?** GitHub Actions queues workflows sequentially. Second workflow waits for first to complete production swap.
+- **What happens when two developers push to Main simultaneously?** GitHub Actions queues workflows sequentially. Second workflow waits for first to complete production deployment.
 - **What happens when deployment token expires or is rotated?** Workflow fails with authentication error. Operator must update `AZURE_STATIC_WEB_APPS_API_TOKEN` secret with new token from Azure Portal.
 - **What happens when approval gate times out (24 hours)?** Workflow automatically fails before production deployment. Production environment unchanged. Operator must re-run workflow to retry.
 
@@ -161,8 +167,8 @@ As a **quality assurance engineer**, I need automated health checks after deploy
 - **FR-015**: `deploy-production` job MUST require manual approval via GitHub Environment protection rule BEFORE deployment
 - **FR-016**: `deploy-production` job MUST download build artifact from `build` job
 - **FR-017**: `deploy-production` job MUST deploy directly to production environment (NOT preview)
-- **FR-018**: `deploy-production` job MUST validate production URL returns HTTP 200 and serves new version
-- **FR-019**: Workflow MUST send deployment status notification on success or failure
+- **FR-018**: `deploy-production` job MUST validate the production URL (output from deploy step) returns HTTP 200 and serves the new version
+- **FR-019**: Workflow MUST send deployment status notification on success or failure via GitHub Actions native notifications (email, UI, mobile app); Slack/Teams integrations deferred to Phase 2+
 
 #### Terraform Infrastructure
 
@@ -189,8 +195,9 @@ As a **quality assurance engineer**, I need automated health checks after deploy
 - **FR-034**: Azure Static Web Apps MUST automatically create preview environment for each PR to Main branch
 - **FR-035**: Preview environment MUST have unique URL format: `https://<swa-name>-<pr-number>.azurestaticapps.net`
 - **FR-036**: GitHub Actions bot MUST post preview URL as comment on PR
-- **FR-037**: Preview environment MUST automatically delete when PR is closed or merged
-- **FR-038**: Preview environments MUST not count against production deployment quota
+- **FR-037**: Preview environment MUST automatically delete immediately when PR is closed or merged, triggered by `pull_request: [closed]` event using `Azure/static-web-apps-deploy@v1` with `action: 'close'`
+- **FR-038**: Preview environments MUST NOT count against production deployment quota
+- **FR-043**: When SWA Free tier preview quota (3 environments) is exhausted, workflow MUST fail with a descriptive error message; no silent skip or automatic SKU upgrade permitted
 
 #### Security & Access Control
 
@@ -202,7 +209,7 @@ As a **quality assurance engineer**, I need automated health checks after deploy
 ### Non-Functional Requirements
 
 - **NFR-001**: Workflow execution time MUST complete within 15 minutes for feature branches (build+test+deploy+validate)
-- **NFR-002**: Production swap MUST complete within 5 minutes after approval granted
+- **NFR-002**: Production deployment MUST complete within 5 minutes after approval granted
 - **NFR-003**: Deployment must achieve 99.9% success rate (excluding user errors like test failures)
 - **NFR-004**: Workflow logs MUST be retained for 90 days minimum
 - **NFR-005**: Failed deployments MUST send notification via GitHub Actions native notifications (email, UI, mobile app)
@@ -222,13 +229,13 @@ As a **quality assurance engineer**, I need automated health checks after deploy
 
 ### Measurable Outcomes
 
-- **SC-001**: Developer can push frontend changes and see them deployed to staging within 10 minutes without manual intervention
+- **SC-001**: Developer can push frontend changes and see them deployed to the preview environment within 10 minutes without manual intervention
 - **SC-002**: Pull requests automatically generate preview URLs posted in PR comments within 5 minutes of PR creation
 - **SC-003**: Production deployments require manual approval and complete within 5 minutes after approval granted
 - **SC-004**: Zero manual `swa deploy` commands required for any deployment (complete automation)
 - **SC-005**: Infrastructure provisioning via Terraform completes in under 3 minutes and is idempotent
 - **SC-006**: Frontend test results visible in workflow logs; Phase 2+: test failures prevent deployment 100% of the time
-- **SC-007**: Staging validation health checks detect critical failures (HTTP 404/500) and prevent production swap 100% of the time
+- **SC-007**: Preview validation health checks detect critical failures (HTTP 404/500) and prevent production deployment 100% of the time
 - **SC-008**: All frontend environment configurations (dev, staging, production) correctly route to backend API endpoints
 - **SC-009**: Preview environments for PRs automatically clean up within 1 hour of PR closure
 - **SC-010**: Workflow execution logs provide clear error messages enabling developers to resolve failures within 15 minutes
@@ -302,9 +309,7 @@ As a **quality assurance engineer**, I need automated health checks after deploy
 
 ## Open Questions
 
-*All open questions resolved during clarification session (2026-04-12)*
-
-4. **Preview environment retention**: Should preview environments persist after PR merge for post-merge review, or delete immediately?
+*All open questions resolved. See Clarifications section for decisions.*
 
 ---
 

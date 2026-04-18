@@ -77,6 +77,7 @@
 - [ ] T021 [P] [US1] Configure workflow triggers (push to all branches with path filter `src/Innoventity.Client/**`, workflow_dispatch)
 - [ ] T022 [P] [US1] Define `build` job with Node.js 20.x setup and npm caching (`actions/setup-node@v4` with `cache: 'npm'`)
 - [ ] T023 [US1] Implement build job steps: `npm ci`, `npm run build`, upload `dist/` as artifact
+- [ ] T075 [P] [US1] Verify `src/Innoventity.Client/staticwebapp.config.json` satisfies FR-030 (SPA routing to `index.html`) and FR-031 (navigation fallback); confirm file is included in `ng build` output and deployed artifact
 - [ ] T024 [P] [US1] Define `test` job with dependencies on build job
 - [ ] T025 [US1] Implement test job steps: download build artifact, `npm test -- --ci --coverage`, `npx playwright install --with-deps`, `npm run test:e2e`
 - [ ] T026 [US1] Configure test job to allow failures in Phase 1 (`continue-on-error: true`)
