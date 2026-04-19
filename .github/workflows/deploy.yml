@@ -256,8 +256,6 @@ jobs:
           cd "$GITHUB_WORKSPACE"
 
           echo "Applying database update..."
-          # Set connection string as environment variable for EF Core
-          export ConnectionStrings__DefaultConnection="$CONN"
           
           # Diagnostic: Check migration history count before applying migrations
           echo "Pre-flight check: Verifying migration history state..."
@@ -283,11 +281,38 @@ jobs:
             echo "✓ Migration history is empty - EF Core will apply all migrations"
           fi
           
+          # Create temporary appsettings file with connection string for EF Core tools
+          cat > src/Innoventity.API/appsettings.Migration.json <<EOF
+          {
+            "ConnectionStrings": {
+              "DefaultConnection": "$CONN"
+            }
+          }
+          EOF
+          echo "✓ Created temporary migration configuration"
+          
+          # Set environment to use Migration configuration
+          export ASPNETCORE_ENVIRONMENT=Migration
+          
+          # List migrations to see what EF Core can discover
+          echo "Listing migrations available in assembly..."
+          dotnet ef migrations list \
+            --project src/Innoventity.API/Innoventity.API.csproj \
+            --startup-project src/Innoventity.API/Innoventity.API.csproj \
+            --context AppDbContext \
+            --configuration Release \
+            --verbose
+          
+          echo "Applying database update..."
           dotnet ef database update \
             --project src/Innoventity.API/Innoventity.API.csproj \
             --startup-project src/Innoventity.API/Innoventity.API.csproj \
+            --context AppDbContext \
             --configuration Release \
             --verbose
+          
+          # Clean up temporary file
+          rm -f src/Innoventity.API/appsettings.Migration.json
 
       - name: Validate schema integrity
         working-directory: infrastructure/environments/dev/data
