@@ -43,9 +43,9 @@ jobs:
       run:
         working-directory: infrastructure/environments/dev/data
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "~1.6"
           terraform_wrapper: false
@@ -78,9 +78,9 @@ jobs:
     name: Drift / core
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "~1.6"
           terraform_wrapper: false

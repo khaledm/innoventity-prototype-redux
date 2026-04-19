@@ -52,9 +52,9 @@ jobs:
       run:
         working-directory: infrastructure/environments/${{ inputs.environment || 'dev' }}/data
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "~1.6"
           terraform_wrapper: false
@@ -67,7 +67,7 @@ jobs:
         env:
           TF_VAR_sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: tfplan-data-${{ github.run_id }}
           path: infrastructure/environments/${{ inputs.environment || 'dev' }}/data/tfplan-data
@@ -102,9 +102,9 @@ jobs:
       run:
         working-directory: infrastructure/environments/${{ inputs.environment || 'dev' }}/data
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "~1.6"
           terraform_wrapper: false   # required — wrapper prevents capturing terraform output
@@ -112,7 +112,7 @@ jobs:
       - name: terraform init
         run: terraform init -input=false
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: tfplan-data-${{ github.run_id }}
           path: infrastructure/environments/${{ inputs.environment || 'dev' }}/data
@@ -143,9 +143,9 @@ jobs:
       run:
         working-directory: infrastructure/environments/${{ inputs.environment || 'dev' }}/core
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "~1.6"
           terraform_wrapper: false
@@ -187,7 +187,7 @@ jobs:
             -var "jwt_secret_key=${{ secrets.JWT_SECRET_KEY }}" \
             -var "sql_server_id=$SQL_ID"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: tfplan-core-${{ github.run_id }}
           path: infrastructure/environments/${{ inputs.environment || 'dev' }}/core/tfplan-core
@@ -211,9 +211,9 @@ jobs:
       run:
         working-directory: infrastructure/environments/${{ inputs.environment || 'dev' }}/core
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "~1.6"
           terraform_wrapper: false
@@ -221,7 +221,7 @@ jobs:
       - name: terraform init
         run: terraform init -input=false
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: tfplan-core-${{ github.run_id }}
           path: infrastructure/environments/${{ inputs.environment || 'dev' }}/core
@@ -248,7 +248,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() && needs.terraform-apply-core.result == 'success' && needs.terraform-apply-data.result == 'success' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Azure CLI login
         run: |
@@ -282,14 +282,14 @@ jobs:
           $config.Run.Exit                = $true
           Invoke-Pester -Configuration $config
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: pester-infra-results
           path: pester-infra-results.xml
 
       - name: Publish test results to Summary
-        uses: dorny/test-reporter@v2
+        uses: dorny/test-reporter@v3
         if: always()
         with:
           name: Pester Infrastructure Tests
