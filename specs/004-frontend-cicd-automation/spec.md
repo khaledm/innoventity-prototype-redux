@@ -302,7 +302,7 @@ As a **quality assurance engineer**, I need automated health checks after deploy
 
 ## Open Questions
 
-*All open questions resolved during clarification session (2026-04-12)*
+*Most open questions were resolved during clarification session (2026-04-12); one question remains open:*
 
 4. **Preview environment retention**: Should preview environments persist after PR merge for post-merge review, or delete immediately?
 

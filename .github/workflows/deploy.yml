@@ -216,12 +216,22 @@ jobs:
 
       - name: Deploy to App Service (zip deploy)
         run: |
-          # On Main branch, deploy to staging slot so it can be validated before swap.
-          # On feature branches / dev, deploy directly to the production slot.
+          # On Main branch, deploy to staging slot (if it exists) so it can be
+          # validated before swap. Staging slots require Standard (S1+) plan and
+          # are only provisioned for prod in Terraform — guard with existence check.
+          # On feature branches, or when no staging slot exists, deploy directly
+          # to the production slot.
+          SLOT_ARG=""
           if [[ "$GITHUB_REF" == "refs/heads/Main" ]]; then
-            SLOT_ARG="--slot staging"
-          else
-            SLOT_ARG=""
+            SLOT_EXISTS=$(az webapp deployment slot list \
+              --name "${{ needs.preflight.outputs.app_service_name }}" \
+              --resource-group "${{ needs.preflight.outputs.resource_group_name }}" \
+              --query "[?name=='staging'] | length(@)" --output tsv 2>/dev/null || echo 0)
+            if [[ "$SLOT_EXISTS" != "0" ]]; then
+              SLOT_ARG="--slot staging"
+            else
+              echo "::warning::No staging slot found — deploying directly to production slot. Upgrade App Service plan to Standard (S1+) to enable blue-green deployments."
+            fi
           fi
           az webapp deploy \
             --name "${{ needs.preflight.outputs.app_service_name }}" \

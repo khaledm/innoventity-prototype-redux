@@ -164,7 +164,7 @@ jobs:
           CONN=$(echo "$DATA_JSON" | jq -re '.connection_string.value')
           SQL_ID=$(echo "$DATA_JSON" | jq -re '.sql_server_id.value')
           ENV="${{ inputs.environment || 'dev' }}"
-          DIAG_ID="/subscriptions/$ARM_SUBSCRIPTION_ID/resourceGroups/innoventity-${ENV}-rg/providers/Microsoft.Sql/servers/innoventity-${ENV}-sql|innoventity-${ENV}-sql-diag"
+          DIAG_ID="${SQL_ID}|innoventity-${ENV}-sql-diag"
           # Import only if not already tracked in state; safe to re-run.
           if terraform state show 'azurerm_monitor_diagnostic_setting.sql_server[0]' > /dev/null 2>&1; then
             echo "azurerm_monitor_diagnostic_setting.sql_server[0] already in state — skipping import"

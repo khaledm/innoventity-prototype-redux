@@ -62,8 +62,6 @@ jobs:
     runs-on: ubuntu-latest
     # Skip build-test-deploy when PR is closed (only cleanup job needed)
     if: github.event_name != 'pull_request' || github.event.action != 'closed'
-    outputs:
-      artifact-name: ${{ steps.set-artifact.outputs.name }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -83,17 +81,13 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
         run: npm run build -- --configuration production
 
-      - name: Set artifact name
-        id: set-artifact
-        run: echo "name=frontend-dist-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
-
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ steps.set-artifact.outputs.name }}
+          name: frontend-build
           # Angular 17+ application builder outputs to dist/<name>/browser/
           path: ${{ env.WORKING_DIR }}/dist/innoventity.client/browser
-          retention-days: 7
+          retention-days: 90
           if-no-files-found: error
 
   # ─────────────────────────────────────────────────────────────────
@@ -168,7 +162,7 @@ jobs:
       - name: Download build artifact
         uses: actions/download-artifact@v8
         with:
-          name: ${{ needs.build.outputs.artifact-name }}
+          name: frontend-build
           path: dist
 
       - name: Deploy to Azure Static Web Apps preview

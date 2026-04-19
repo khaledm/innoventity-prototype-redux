@@ -5,7 +5,7 @@
 **Generated**: April 18, 2026
 **Input**: Design documents from `/specs/002-frontend-cicd/` (plan.md, spec.md, data-model.md, research.md, contracts/, quickstart.md)
 
-**Tests**: No test tasks included (not explicitly requested in specification)
+**Tests**: Test-related tasks are included where needed for implementation validation (including Jest/Playwright workflow steps, artifact uploads, and end-to-end coverage)
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
