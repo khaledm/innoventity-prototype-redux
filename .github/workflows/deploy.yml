@@ -162,7 +162,7 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Install dotnet-ef tool
-        run: dotnet tool install --global dotnet-ef --version "8.*"
+        run: dotnet tool install --global dotnet-ef
 
       - uses: hashicorp/setup-terraform@v4
         with:
