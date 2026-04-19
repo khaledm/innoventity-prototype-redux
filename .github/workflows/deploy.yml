@@ -195,7 +195,7 @@ jobs:
           # Parse connection string components
           SERVER=$(echo "$CONN" | sed -n 's/.*Server=\([^;]*\).*/\1/p')
           DATABASE=$(echo "$CONN" | sed -n 's/.*Database=\([^;]*\).*/\1/p')
-          USER=$(echo "$CONN" | sed -n 's/.*User Id=\([^;]*\).*/\1/p')
+          USER=$(echo "$CONN" | sed -n 's/.*User ID=\([^;]*\).*/\1/p')
           PASSWORD=$(echo "$CONN" | sed -n 's/.*Password=\([^;]*\).*/\1/p')
           
           echo "Checking for schema drift..."
@@ -247,7 +247,7 @@ jobs:
           # Parse connection string
           SERVER=$(echo "$CONN" | sed -n 's/.*Server=\([^;]*\).*/\1/p')
           DATABASE=$(echo "$CONN" | sed -n 's/.*Database=\([^;]*\).*/\1/p')
-          USER=$(echo "$CONN" | sed -n 's/.*User Id=\([^;]*\).*/\1/p')
+          USER=$(echo "$CONN" | sed -n 's/.*User ID=\([^;]*\).*/\1/p')
           PASSWORD=$(echo "$CONN" | sed -n 's/.*Password=\([^;]*\).*/\1/p')
           
           echo "Validating database schema..."
