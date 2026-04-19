@@ -88,7 +88,7 @@
 - [X] T031 [US1] Output preview URL from deploy-preview job
 - [ ] T032 [US1] Test workflow locally using `act` tool: `act push -W .github/workflows/deploy-frontend.yml`
 - [X] T033 [US1] Push test commit to feature branch and verify workflow executes successfully
-- [ ] T034 [US1] Verify frontend changes deployed to staging environment and accessible
+- [X] T034 [US1] Verify frontend changes deployed to staging environment and accessible
 
 **Checkpoint**: Feature branch deployments fully automated - User Story 1 complete
 
