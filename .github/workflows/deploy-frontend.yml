@@ -5,9 +5,9 @@
 # Job chain: build → test → deploy-preview
 #
 # Trigger:
-#   push to any branch      — auto-deploy when frontend code changes
-#   pull_request (closed)   — cleanup preview environment on PR close/merge
-#   workflow_dispatch       — manual deploy (bypasses path filter)
+#   push to any branch      — build/test validation when frontend code changes
+#   pull_request            — preview deploy on open/sync/reopen; cleanup on close
+#   workflow_dispatch       — manual build/test (bypasses path filter)
 #
 # Phase 1 behavior:
 #   - Tests run with continue-on-error: true (enforcement begins Phase 2)
@@ -37,7 +37,7 @@ on:
       - 'src/Innoventity.Client/**'
       - '.github/workflows/deploy-frontend.yml'
   pull_request:
-    types: [closed]
+    types: [opened, synchronize, reopened, closed]
     branches:
       - Main
   workflow_dispatch:

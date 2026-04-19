@@ -56,12 +56,12 @@
 
 **Independent Test**: Run `terraform apply`, verify SWA resource created in Azure Portal, extract deployment token
 
-- [ ] T014 [US4] Run `terraform apply` in `infrastructure/environments/dev/core/` to provision Azure Static Web Apps resource
-- [ ] T015 [US4] Verify SWA resource created in Azure Portal (`innoventity-dev-web.azurestaticapps.net`)
-- [ ] T016 [US4] Extract deployment token: `terraform output -raw static_web_app_api_key` and copy to clipboard
-- [ ] T017 [US4] Create GitHub repository secret `AZURE_STATIC_WEB_APPS_API_TOKEN` via `gh secret set` command
-- [ ] T018 [US4] Verify secret created: `gh secret list` should show `AZURE_STATIC_WEB_APPS_API_TOKEN`
-- [ ] T019 [US4] Run `terraform plan` again to verify idempotency (no changes detected)
+- [X] T014 [US4] Run `terraform apply` in `infrastructure/environments/dev/core/` to provision Azure Static Web Apps resource
+- [X] T015 [US4] Verify SWA resource created in Azure Portal (`innoventity-dev-web.azurestaticapps.net`)
+- [X] T016 [US4] Extract deployment token: `terraform output -raw static_web_app_api_key` and copy to clipboard
+- [X] T017 [US4] Create GitHub repository secret `AZURE_STATIC_WEB_APPS_API_TOKEN` via `gh secret set` command
+- [X] T018 [US4] Verify secret created: `gh secret list` should show `AZURE_STATIC_WEB_APPS_API_TOKEN`
+- [X] T019 [US4] Run `terraform plan` again to verify idempotency (no changes detected)
 
 **Checkpoint**: Infrastructure provisioned, deployment token configured - ready for workflow implementation
 
@@ -87,7 +87,7 @@
 - [X] T030 [US1] Configure deploy-preview to use `AZURE_STATIC_WEB_APPS_API_TOKEN` secret and `production_branch: 'Main'`
 - [X] T031 [US1] Output preview URL from deploy-preview job
 - [ ] T032 [US1] Test workflow locally using `act` tool: `act push -W .github/workflows/deploy-frontend.yml`
-- [ ] T033 [US1] Push test commit to feature branch and verify workflow executes successfully
+- [X] T033 [US1] Push test commit to feature branch and verify workflow executes successfully
 - [ ] T034 [US1] Verify frontend changes deployed to staging environment and accessible
 
 **Checkpoint**: Feature branch deployments fully automated - User Story 1 complete
