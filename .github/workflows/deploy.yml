@@ -216,12 +216,20 @@ jobs:
 
       - name: Deploy to App Service (zip deploy)
         run: |
+          # On Main branch, deploy to staging slot so it can be validated before swap.
+          # On feature branches / dev, deploy directly to the production slot.
+          if [[ "$GITHUB_REF" == "refs/heads/Main" ]]; then
+            SLOT_ARG="--slot staging"
+          else
+            SLOT_ARG=""
+          fi
           az webapp deploy \
             --name "${{ needs.preflight.outputs.app_service_name }}" \
             --resource-group "${{ needs.preflight.outputs.resource_group_name }}" \
             --src-path api.zip \
             --type zip \
-            --async false
+            --async false \
+            $SLOT_ARG
 
   # ─────────────────────────────────────────────────────────────────
   # 5. Pester health check — validates GET /health returns 200 + Healthy
@@ -257,6 +265,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────
   # 6. Slot swap — promote staging → production (Main branch only)
   #    Requires 'production' GitHub environment with required reviewers configured.
+  #    Requires Standard (S1+) App Service plan — staging slot not available on Basic.
   # ─────────────────────────────────────────────────────────────────
   slot-swap:
     name: Swap staging → production slot
@@ -273,7 +282,20 @@ jobs:
             --tenant "$ARM_TENANT_ID"
           az account set --subscription "$ARM_SUBSCRIPTION_ID"
 
+      - name: Check staging slot exists
+        id: check-slot
+        run: |
+          SLOT_EXISTS=$(az webapp deployment slot list \
+            --name "${{ needs.preflight.outputs.app_service_name }}" \
+            --resource-group "${{ needs.preflight.outputs.resource_group_name }}" \
+            --query "[?name=='staging'] | length(@)" --output tsv 2>/dev/null || echo 0)
+          echo "exists=$SLOT_EXISTS" >> "$GITHUB_OUTPUT"
+          if [[ "$SLOT_EXISTS" == "0" ]]; then
+            echo "::warning::No staging slot found — slot-swap skipped. Upgrade App Service plan to Standard (S1+) to enable blue-green deployments."
+          fi
+
       - name: Swap slots
+        if: steps.check-slot.outputs.exists != '0'
         run: |
           az webapp deployment slot swap \
             --name "${{ needs.preflight.outputs.app_service_name }}" \
