@@ -138,12 +138,12 @@ Added three new steps to `migrate` job:
    ```powershell
    git add .
    git commit -m "feat: Add automated schema drift detection and remediation
-   
+
    - Add drift detection step before migrations
    - Implement remediation SQL script
    - Add post-migration schema validation
    - Fixes #[issue-number] - Actors table missing in production"
-   
+
    git push origin 002-frontend-cicd
    ```
 
@@ -253,7 +253,7 @@ If remediation causes issues:
 1. **Restore migration history backup:**
    ```sql
    DELETE FROM __EFMigrationsHistory;
-   INSERT INTO __EFMigrationsHistory 
+   INSERT INTO __EFMigrationsHistory
    SELECT * FROM __EFMigrationsHistory_Backup;
    ```
 
@@ -365,6 +365,6 @@ sudo add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubunt
 
 ---
 
-**Author:** Infrastructure Team  
-**Date:** 2026-04-19  
+**Author:** Infrastructure Team
+**Date:** 2026-04-19
 **Status:** Ready for deployment

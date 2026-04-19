@@ -80,21 +80,21 @@ PRINT '';
 IF @DriftDetected = 1
 BEGIN
     PRINT '3. Remediating complete schema drift...';
-    
+
     -- Backup current migration history with timestamp
     DECLARE @BackupTableName NVARCHAR(200) = '__EFMigrationsHistory_Backup_' + FORMAT(GETDATE(), 'yyyyMMddHHmmss');
     PRINT '   Creating backup: ' + @BackupTableName;
-    
-    DECLARE @BackupSQL NVARCHAR(MAX) = 
+
+    DECLARE @BackupSQL NVARCHAR(MAX) =
         'SELECT * INTO [' + @BackupTableName + '] FROM __EFMigrationsHistory';
     EXEC sp_executesql @BackupSQL;
-    
+
     PRINT '   ✓ Backup created successfully';
-    
+
     -- Truncate migration history to force complete re-application
     PRINT '   Truncating migration history to allow full re-application...';
     TRUNCATE TABLE __EFMigrationsHistory;
-    
+
     PRINT '   ✓ Migration history reset - EF Core will now re-apply all migrations';
     PRINT '';
     PRINT '   ACTION REQUIRED: Run "dotnet ef database update" to re-create all tables';

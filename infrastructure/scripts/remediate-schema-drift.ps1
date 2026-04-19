@@ -6,7 +6,7 @@
 .DESCRIPTION
     Detects when __EFMigrationsHistory is out of sync with actual database schema.
     Executes remediation SQL script to fix drift, then re-applies migrations.
-    
+
     This script is designed to run in GitHub Actions but can also run locally
     with appropriate Azure SQL credentials.
 
@@ -34,7 +34,7 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$ConnectionString,
-    
+
     [Parameter(Mandatory = $false)]
     [switch]$DryRun
 )
@@ -80,21 +80,21 @@ function Invoke-SqlQuery {
         [string]$Query,
         [string]$ConnectionString
     )
-    
+
     try {
         $connection = New-Object System.Data.SqlClient.SqlConnection($ConnectionString)
         $connection.Open()
-        
+
         $command = $connection.CreateCommand()
         $command.CommandText = $Query
         $command.CommandTimeout = 30
-        
+
         $adapter = New-Object System.Data.SqlClient.SqlDataAdapter($command)
         $dataset = New-Object System.Data.DataSet
         [void]$adapter.Fill($dataset)
-        
+
         $connection.Close()
-        
+
         return $dataset.Tables[0]
     }
     catch {
@@ -108,25 +108,25 @@ function Invoke-SqlScript {
         [string]$ScriptPath,
         [string]$ConnectionString
     )
-    
+
     try {
         $connection = New-Object System.Data.SqlClient.SqlConnection($ConnectionString)
         $connection.Open()
-        
+
         $script = Get-Content -Path $ScriptPath -Raw
-        
+
         # Split on GO statements
         $batches = $script -split '\r?\nGO\r?\n'
-        
+
         foreach ($batch in $batches) {
             if ([string]::IsNullOrWhiteSpace($batch)) { continue }
-            
+
             $command = $connection.CreateCommand()
             $command.CommandText = $batch
             $command.CommandTimeout = 60
-            
+
             $reader = $command.ExecuteReader()
-            
+
             # Capture PRINT statements
             while ($reader.Read()) {
                 if ($reader.FieldCount -gt 0) {
@@ -137,9 +137,9 @@ function Invoke-SqlScript {
             }
             $reader.Close()
         }
-        
+
         $connection.Close()
-        
+
         Write-LogSuccess "SQL script executed successfully"
     }
     catch {
@@ -179,45 +179,45 @@ Write-Host ""
 try {
     # Check migration history
     $migrationCheckQuery = @"
-SELECT CASE 
+SELECT CASE
     WHEN EXISTS (SELECT 1 FROM __EFMigrationsHistory WHERE MigrationId = '20260209204020_AddActorEntity')
-    THEN 1 ELSE 0 
+    THEN 1 ELSE 0
 END AS MigrationExists
 "@
-    
+
     $migrationResult = Invoke-SqlQuery -Query $migrationCheckQuery -ConnectionString $ConnectionString
     $migrationExists = $migrationResult.Rows[0]['MigrationExists'] -eq 1
-    
+
     if ($migrationExists) {
         Write-LogSuccess "Migration record found in __EFMigrationsHistory"
     }
     else {
         Write-LogWarning "Migration record NOT found - unexpected state"
     }
-    
+
     # Check table existence
     $tableCheckQuery = @"
-SELECT CASE 
-    WHEN OBJECT_ID('Actors', 'U') IS NOT NULL 
-    THEN 1 ELSE 0 
+SELECT CASE
+    WHEN OBJECT_ID('Actors', 'U') IS NOT NULL
+    THEN 1 ELSE 0
 END AS TableExists
 "@
-    
+
     $tableResult = Invoke-SqlQuery -Query $tableCheckQuery -ConnectionString $ConnectionString
     $tableExists = $tableResult.Rows[0]['TableExists'] -eq 1
-    
+
     if ($tableExists) {
         Write-LogSuccess "Actors table exists in database"
     }
     else {
         Write-LogWarning "Actors table MISSING from database"
     }
-    
+
     Write-Host ""
-    
+
     # Determine drift state
     $driftDetected = $migrationExists -and (-not $tableExists)
-    
+
     if ($driftDetected) {
         Write-LogError "SCHEMA DRIFT DETECTED"
         Write-LogInfo "Migration recorded but table missing - remediation required"
@@ -249,20 +249,20 @@ if ($driftDetected) {
         Write-LogInfo "Run without -DryRun to apply remediation"
         exit 2  # Exit code 2 = drift detected but not fixed
     }
-    
+
     Write-Host "Step 2: Applying remediation..." -ForegroundColor Yellow
     Write-Host ""
-    
+
     $scriptPath = Join-Path $PSScriptRoot "fix-schema-drift.sql"
-    
+
     if (-not (Test-Path $scriptPath)) {
         Write-LogError "Remediation script not found: $scriptPath"
         exit 1
     }
-    
+
     try {
         Invoke-SqlScript -ScriptPath $scriptPath -ConnectionString $ConnectionString
-        
+
         Write-Host ""
         Write-LogSuccess "Remediation completed successfully"
         Write-LogInfo "Migration record removed from __EFMigrationsHistory"

@@ -1,7 +1,7 @@
 # Database Migration Failure - Root Cause Analysis
 
-**Date:** 2026-04-19  
-**Severity:** CRITICAL  
+**Date:** 2026-04-19
+**Severity:** CRITICAL
 **Impact:** Production /auth/register endpoint returning 500 errors
 
 ---
@@ -77,8 +77,8 @@ Actual Database Schema:
 
 ### Step 1: Confirm Migration History
 ```sql
-SELECT MigrationId, ProductVersion 
-FROM __EFMigrationsHistory 
+SELECT MigrationId, ProductVersion
+FROM __EFMigrationsHistory
 ORDER BY MigrationId;
 ```
 
@@ -86,8 +86,8 @@ ORDER BY MigrationId;
 
 ### Step 2: Verify Table Existence
 ```sql
-SELECT TABLE_NAME 
-FROM INFORMATION_SCHEMA.TABLES 
+SELECT TABLE_NAME
+FROM INFORMATION_SCHEMA.TABLES
 WHERE TABLE_TYPE = 'BASE TABLE'
 ORDER BY TABLE_NAME;
 ```
@@ -131,7 +131,7 @@ ELSE
     RAISERROR('Actors table exists - no drift detected', 16, 1)
 
 -- Step 2: Remove migration history entry for AddActorEntity
-DELETE FROM __EFMigrationsHistory 
+DELETE FROM __EFMigrationsHistory
 WHERE MigrationId = '20260209204020_AddActorEntity';
 
 PRINT 'Migration record removed - ready for re-application'
@@ -145,7 +145,7 @@ PRINT 'Migration record removed - ready for re-application'
     set -euo pipefail
     CONN=$(terraform output -json | jq -re '.connection_string.value')
     echo "::add-mask::$CONN"
-    
+
     # Check if Actors table exists
     dotnet ef dbcontext script --project "$GITHUB_WORKSPACE/src/Innoventity.API/Innoventity.API.csproj" \
       --connection "$CONN" | grep -q "CREATE TABLE.*Actors" || {
@@ -191,7 +191,7 @@ verify-migrations:
       run: |
         # Generate expected schema from migrations
         dotnet ef migrations script --idempotent --output expected-schema.sql
-        
+
         # Query actual database schema
         # Compare against expected schema
         # Fail if discrepancies found
@@ -208,7 +208,7 @@ verify-migrations:
   run: |
     dotnet ef migrations script --idempotent --output migrations.sql \
       --project src/Innoventity.API/Innoventity.API.csproj
-    
+
     # Apply script via sqlcmd (creates objects only if missing)
     sqlcmd -S $SERVER -d $DB -U $USER -P $PASS -i migrations.sql
 ```
@@ -223,7 +223,7 @@ Describe "Database Schema Integrity" {
         $tables = Invoke-Sqlcmd -Query "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES"
         $tables.TABLE_NAME | Should -Contain 'Actors'
     }
-    
+
     It "Should have migration history matching codebase" {
         $migrations = Get-ChildItem "src/Innoventity.API/Infrastructure/Persistence/Migrations/*.cs"
         # Verify each migration in __EFMigrationsHistory corresponds to actual schema
@@ -240,7 +240,7 @@ migrate:
     - name: Backup migration history
       run: |
         sqlcmd -Q "SELECT * INTO __EFMigrationsHistory_Backup FROM __EFMigrationsHistory"
-    
+
     # AFTER applying migrations
     - name: Validate schema consistency
       run: |
@@ -301,5 +301,5 @@ migrate:
 
 ---
 
-**Status:** Draft - Awaiting approval for Option A implementation  
+**Status:** Draft - Awaiting approval for Option A implementation
 **Next Review:** After remediation execution
