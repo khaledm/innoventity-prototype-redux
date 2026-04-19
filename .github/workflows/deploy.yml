@@ -175,6 +175,15 @@ jobs:
       - name: Build API project for EF tooling
         run: dotnet build src/Innoventity.API/Innoventity.API.csproj --no-restore -c Release
 
+      - name: Install SQL command-line tools
+        run: |
+          set -euo pipefail
+          curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc >/dev/null
+          curl -sSL https://packages.microsoft.com/config/ubuntu/24.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list >/dev/null
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive ACCEPT_EULA=Y apt-get install -y -qq mssql-tools18 unixodbc-dev
+          echo "/opt/mssql-tools18/bin" >> $GITHUB_PATH
+
       - name: Detect and remediate schema drift
         working-directory: infrastructure/environments/dev/data
         run: |
@@ -182,12 +191,6 @@ jobs:
           terraform init -input=false
           CONN=$(terraform output -json | jq -re '.connection_string.value')
           echo "::add-mask::$CONN"
-          
-          # Install sqlcmd for drift detection (Ubuntu 24.04)
-          curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
-          sudo add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list)"
-          sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y mssql-tools18 unixodbc-dev
           
           # Parse connection string components
           SERVER=$(echo "$CONN" | sed -n 's/.*Server=\([^;]*\).*/\1/p')
@@ -198,7 +201,7 @@ jobs:
           echo "Checking for schema drift..."
           
           # Check if migration exists but table doesn't (schema drift)
-          DRIFT_CHECK=$(/opt/mssql-tools18/bin/sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
+          DRIFT_CHECK=$(sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
             SET NOCOUNT ON;
             SELECT CASE 
               WHEN EXISTS (SELECT 1 FROM __EFMigrationsHistory WHERE MigrationId = '20260209204020_AddActorEntity')
@@ -210,7 +213,7 @@ jobs:
           
           if [ "$DRIFT_CHECK" = "1" ]; then
             echo "⚠️ Schema drift detected - applying remediation"
-            /opt/mssql-tools18/bin/sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C \
+            sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C \
               -i "$GITHUB_WORKSPACE/infrastructure/scripts/fix-schema-drift.sql"
             echo "✓ Remediation complete - migration will be re-applied"
           else
@@ -250,7 +253,7 @@ jobs:
           echo "Validating database schema..."
           
           # Verify critical tables exist
-          MISSING_TABLES=$(/opt/mssql-tools18/bin/sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
+          MISSING_TABLES=$(sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
             SET NOCOUNT ON;
             SELECT 
               CASE WHEN OBJECT_ID('Actors', 'U') IS NULL THEN 'Actors,' ELSE '' END +
@@ -267,7 +270,7 @@ jobs:
           echo "✓ All critical tables present"
           
           # Verify migration history is complete
-          MIGRATION_COUNT=$(/opt/mssql-tools18/bin/sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
+          MIGRATION_COUNT=$(sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
             SET NOCOUNT ON;
             SELECT COUNT(*) FROM __EFMigrationsHistory
           " | tr -d '[:space:]')
