@@ -256,20 +256,20 @@ jobs:
           cd "$GITHUB_WORKSPACE"
 
           echo "Applying database update..."
-          
+
           # Diagnostic: Check migration history count before applying migrations
           echo "Pre-flight check: Verifying migration history state..."
           SERVER=$(echo "$CONN" | sed -n 's/.*Server=\([^;]*\).*/\1/p')
           DATABASE=$(echo "$CONN" | sed -n 's/.*Database=\([^;]*\).*/\1/p')
           USER=$(echo "$CONN" | sed -n 's/.*User ID=\([^;]*\).*/\1/p')
           PASSWORD=$(echo "$CONN" | sed -n 's/.*Password=\([^;]*\).*/\1/p')
-          
+
           CURRENT_MIGRATION_COUNT=$(sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
             SET NOCOUNT ON;
             SELECT COUNT(*) FROM __EFMigrationsHistory
           " | tr -d '[:space:]')
           echo "Current migration history count: $CURRENT_MIGRATION_COUNT"
-          
+
           if [ "$CURRENT_MIGRATION_COUNT" -gt "0" ]; then
             echo "⚠️ WARNING: Migration history is not empty! Contains $CURRENT_MIGRATION_COUNT records."
             echo "Listing current migrations in history:"
@@ -280,7 +280,7 @@ jobs:
           else
             echo "✓ Migration history is empty - EF Core will apply all migrations"
           fi
-          
+
           # Create temporary appsettings file with connection string for EF Core tools
           cat > src/Innoventity.API/appsettings.Migration.json <<EOF
           {
@@ -290,10 +290,10 @@ jobs:
           }
           EOF
           echo "✓ Created temporary migration configuration"
-          
+
           # Set environment to use Migration configuration
           export ASPNETCORE_ENVIRONMENT=Migration
-          
+
           # List migrations to see what EF Core can discover
           echo "Listing migrations available in assembly..."
           dotnet ef migrations list \
@@ -302,7 +302,7 @@ jobs:
             --context AppDbContext \
             --configuration Release \
             --verbose
-          
+
           echo "Applying database update..."
           dotnet ef database update \
             --project src/Innoventity.API/Innoventity.API.csproj \
@@ -310,7 +310,7 @@ jobs:
             --context AppDbContext \
             --configuration Release \
             --verbose
-          
+
           # Clean up temporary file
           rm -f src/Innoventity.API/appsettings.Migration.json
 
