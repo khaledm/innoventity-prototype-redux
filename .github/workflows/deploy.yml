@@ -199,28 +199,45 @@ jobs:
           PASSWORD=$(echo "$CONN" | sed -n 's/.*Password=\([^;]*\).*/\1/p')
           
           echo "Checking for schema drift..."
+          echo "Database: $DATABASE on $SERVER"
           
-          # Check if any critical tables are missing despite migration history
-          DRIFT_CHECK=$(sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
+          # Check migration history table existence and row count
+          HISTORY_EXISTS=$(sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
             SET NOCOUNT ON;
-            SELECT CASE 
-              WHEN EXISTS (SELECT 1 FROM __EFMigrationsHistory)
-                AND (OBJECT_ID('Actors', 'U') IS NULL 
-                  OR OBJECT_ID('Innovations', 'U') IS NULL
-                  OR OBJECT_ID('Industries', 'U') IS NULL
-                  OR OBJECT_ID('Bids', 'U') IS NULL)
-              THEN 1 
-              ELSE 0 
-            END AS DriftDetected
+            SELECT CASE WHEN OBJECT_ID('__EFMigrationsHistory', 'U') IS NOT NULL THEN 1 ELSE 0 END
           " | tr -d '[:space:]')
           
-          if [ "$DRIFT_CHECK" = "1" ]; then
-            echo "⚠️ Schema drift detected - applying remediation"
-            sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C \
-              -i "$GITHUB_WORKSPACE/infrastructure/scripts/fix-schema-drift.sql"
-            echo "✓ Remediation complete - all migrations will be re-applied"
+          if [ "$HISTORY_EXISTS" = "0" ]; then
+            echo "⚠️ __EFMigrationsHistory table does not exist - creating and triggering full migration"
+            # EF Core will create it and apply all migrations
           else
-            echo "✓ No schema drift detected - proceeding with normal migration"
+            MIGRATION_COUNT=$(sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
+              SET NOCOUNT ON;
+              SELECT COUNT(*) FROM __EFMigrationsHistory
+            " | tr -d '[:space:]')
+            echo "Migration history contains $MIGRATION_COUNT records"
+            
+            # Check if critical tables are missing
+            DRIFT_CHECK=$(sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
+              SET NOCOUNT ON;
+              SELECT CASE 
+                WHEN OBJECT_ID('Actors', 'U') IS NULL 
+                  OR OBJECT_ID('Innovations', 'U') IS NULL
+                  OR OBJECT_ID('Industries', 'U') IS NULL
+                  OR OBJECT_ID('Bids', 'U') IS NULL
+                THEN 1 
+                ELSE 0 
+              END AS DriftDetected
+            " | tr -d '[:space:]')
+            
+            if [ "$DRIFT_CHECK" = "1" ]; then
+              echo "⚠️ Schema drift detected - tables missing despite $MIGRATION_COUNT migrations"
+              sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C \
+                -i "$GITHUB_WORKSPACE/infrastructure/scripts/fix-schema-drift.sql"
+              echo "✓ Remediation complete - all migrations will be re-applied"
+            else
+              echo "✓ No drift - $MIGRATION_COUNT migrations applied, all tables present"
+            fi
           fi
 
       - name: Apply migrations
@@ -233,12 +250,30 @@ jobs:
           # any output value that contains SQL_ADMIN_PASSWORD.
           CONN=$(terraform output -json | jq -re '.connection_string.value')
           echo "::add-mask::$CONN"
+          
+          # Log connection details (masked password)
+          SERVER=$(echo "$CONN" | sed -n 's/.*Server=\([^;]*\).*/\1/p')
+          DATABASE=$(echo "$CONN" | sed -n 's/.*Database=\([^;]*\).*/\1/p')
+          echo "Applying migrations to: $DATABASE on $SERVER"
+          
           cd "$GITHUB_WORKSPACE"
+          
+          # List pending migrations
+          echo "Checking pending migrations..."
+          dotnet ef migrations list \
+            --project src/Innoventity.API/Innoventity.API.csproj \
+            --startup-project src/Innoventity.API/Innoventity.API.csproj \
+            --configuration Release \
+            --no-build \
+            --connection "$CONN"
+          
+          echo "Applying database update..."
           dotnet ef database update \
             --project src/Innoventity.API/Innoventity.API.csproj \
             --startup-project src/Innoventity.API/Innoventity.API.csproj \
             --configuration Release \
             --no-build \
+            --verbose \
             --connection "$CONN"
 
       - name: Validate schema integrity
