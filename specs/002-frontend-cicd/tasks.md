@@ -100,14 +100,14 @@
 
 **Independent Test**: Create PR from feature branch to Main, verify SWA creates preview environment, access preview URL from PR comments
 
-- [ ] T035 [US2] Verify `Azure/static-web-apps-deploy@v1` action configured with `repo_token: ${{ secrets.GITHUB_TOKEN }}`
-- [ ] T036 [US2] Test PR preview: create PR from feature branch to Main
-- [ ] T037 [US2] Verify Azure Static Web Apps automatically creates preview environment
-- [ ] T038 [US2] Verify GitHub Actions bot posts preview URL as PR comment
-- [ ] T039 [US2] Test preview URL accessible and shows PR changes
-- [ ] T040 [US2] Add cleanup workflow job to handle PR closure
-- [ ] T041 [US2] Create workflow trigger for `pull_request` event type `closed`
-- [ ] T042 [US2] Implement cleanup job: run `Azure/static-web-apps-deploy@v1` with `action: 'close'`
+- [X] T035 [US2] Verify `Azure/static-web-apps-deploy@v1` action configured with `repo_token: ${{ secrets.GITHUB_TOKEN }}`
+- [X] T036 [US2] Test PR preview: create PR from feature branch to Main
+- [X] T037 [US2] Verify Azure Static Web Apps automatically creates preview environment
+- [X] T038 [US2] Verify GitHub Actions bot posts preview URL as PR comment
+- [X] T039 [US2] Test preview URL accessible and shows PR changes
+- [X] T040 [US2] Add cleanup workflow job to handle PR closure
+- [X] T041 [US2] Create workflow trigger for `pull_request` event type `closed`
+- [X] T042 [US2] Implement cleanup job: run `Azure/static-web-apps-deploy@v1` with `action: 'close'`
 - [ ] T043 [US2] Test cleanup: close PR and verify preview environment deleted within 1 hour
 
 **Checkpoint**: PR preview environments fully automated - User Story 2 complete
