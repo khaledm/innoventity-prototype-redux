@@ -200,12 +200,15 @@ jobs:
           
           echo "Checking for schema drift..."
           
-          # Check if migration exists but table doesn't (schema drift)
+          # Check if any critical tables are missing despite migration history
           DRIFT_CHECK=$(sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
             SET NOCOUNT ON;
             SELECT CASE 
-              WHEN EXISTS (SELECT 1 FROM __EFMigrationsHistory WHERE MigrationId = '20260209204020_AddActorEntity')
-                AND OBJECT_ID('Actors', 'U') IS NULL
+              WHEN EXISTS (SELECT 1 FROM __EFMigrationsHistory)
+                AND (OBJECT_ID('Actors', 'U') IS NULL 
+                  OR OBJECT_ID('Innovations', 'U') IS NULL
+                  OR OBJECT_ID('Industries', 'U') IS NULL
+                  OR OBJECT_ID('Bids', 'U') IS NULL)
               THEN 1 
               ELSE 0 
             END AS DriftDetected
@@ -215,7 +218,7 @@ jobs:
             echo "⚠️ Schema drift detected - applying remediation"
             sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C \
               -i "$GITHUB_WORKSPACE/infrastructure/scripts/fix-schema-drift.sql"
-            echo "✓ Remediation complete - migration will be re-applied"
+            echo "✓ Remediation complete - all migrations will be re-applied"
           else
             echo "✓ No schema drift detected - proceeding with normal migration"
           fi

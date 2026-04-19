@@ -2,87 +2,107 @@
 -- Database Schema Drift Remediation
 -- ====================================================================
 -- Purpose: Fix inconsistency between __EFMigrationsHistory and actual schema
--- Issue: Migration 20260209204020_AddActorEntity recorded but Actors table missing
--- Approach: Remove orphaned migration record, allow EF Core to re-apply
+-- Issue: Migrations recorded but critical tables missing (complete schema wipeout)
+-- Approach: Reset migration history, allow EF Core to re-apply all migrations
 -- ====================================================================
 
 SET NOCOUNT ON;
 GO
 
-DECLARE @MigrationId NVARCHAR(150) = '20260209204020_AddActorEntity';
-DECLARE @TableName NVARCHAR(128) = 'Actors';
 DECLARE @DriftDetected BIT = 0;
+DECLARE @MissingTables NVARCHAR(500) = '';
 
 PRINT '=================================================================';
 PRINT 'Schema Drift Detection and Remediation';
 PRINT '=================================================================';
 PRINT '';
 
--- Step 1: Check if migration is recorded
+-- Step 1: Check migration history count
 PRINT '1. Checking migration history...';
-IF EXISTS (SELECT 1 FROM __EFMigrationsHistory WHERE MigrationId = @MigrationId)
+DECLARE @MigrationCount INT;
+SELECT @MigrationCount = COUNT(*) FROM __EFMigrationsHistory;
+PRINT '   Migration history contains ' + CAST(@MigrationCount AS NVARCHAR) + ' migrations';
+PRINT '';
+
+-- Step 2: Check if critical tables exist
+PRINT '2. Checking critical table existence...';
+
+IF OBJECT_ID('Actors', 'U') IS NULL
 BEGIN
-    PRINT '   ✓ Migration "' + @MigrationId + '" found in history';
+    SET @MissingTables = @MissingTables + 'Actors, ';
+    PRINT '   ✗ Table "Actors" does NOT exist';
 END
 ELSE
+    PRINT '   ✓ Table "Actors" exists';
+
+IF OBJECT_ID('Innovations', 'U') IS NULL
 BEGIN
-    PRINT '   ✗ Migration "' + @MigrationId + '" NOT in history';
-    PRINT '   ERROR: Expected migration record missing - manual investigation required';
-    THROW 50001, 'Migration record not found', 1;
+    SET @MissingTables = @MissingTables + 'Innovations, ';
+    PRINT '   ✗ Table "Innovations" does NOT exist';
 END
+ELSE
+    PRINT '   ✓ Table "Innovations" exists';
+
+IF OBJECT_ID('Industries', 'U') IS NULL
+BEGIN
+    SET @MissingTables = @MissingTables + 'Industries, ';
+    PRINT '   ✗ Table "Industries" does NOT exist';
+END
+ELSE
+    PRINT '   ✓ Table "Industries" exists';
+
+IF OBJECT_ID('Bids', 'U') IS NULL
+BEGIN
+    SET @MissingTables = @MissingTables + 'Bids, ';
+    PRINT '   ✗ Table "Bids" does NOT exist';
+END
+ELSE
+    PRINT '   ✓ Table "Bids" exists';
 
 PRINT '';
 
--- Step 2: Check if table exists
-PRINT '2. Checking table existence...';
-IF OBJECT_ID(@TableName, 'U') IS NULL
+-- Step 3: Determine drift status
+IF LEN(@MissingTables) > 0
 BEGIN
-    PRINT '   ✗ Table "' + @TableName + '" does NOT exist';
-    PRINT '   DRIFT DETECTED: Migration recorded but table missing';
     SET @DriftDetected = 1;
+    PRINT '   ⚠️  DRIFT DETECTED: Missing tables = ' + LEFT(@MissingTables, LEN(@MissingTables) - 1);
+    PRINT '';
 END
 ELSE
 BEGIN
-    PRINT '   ✓ Table "' + @TableName + '" exists';
-    PRINT '   No drift detected - schema is consistent';
+    PRINT '   ✓ No drift detected - all critical tables exist';
+    PRINT '';
 END
 
 PRINT '';
 
--- Step 3: Remediate if drift detected
+-- Step 4: Remediate if drift detected
 IF @DriftDetected = 1
 BEGIN
-    PRINT '3. Remediating schema drift...';
+    PRINT '3. Remediating complete schema drift...';
     
-    -- Backup current migration history
-    PRINT '   Creating backup of migration history...';
-    IF OBJECT_ID('__EFMigrationsHistory_Backup_' + FORMAT(GETDATE(), 'yyyyMMddHHmmss'), 'U') IS NOT NULL
-    BEGIN
-        DROP TABLE __EFMigrationsHistory_Backup;
-    END
+    -- Backup current migration history with timestamp
+    DECLARE @BackupTableName NVARCHAR(200) = '__EFMigrationsHistory_Backup_' + FORMAT(GETDATE(), 'yyyyMMddHHmmss');
+    PRINT '   Creating backup: ' + @BackupTableName;
     
-    SELECT * 
-    INTO __EFMigrationsHistory_Backup
-    FROM __EFMigrationsHistory;
+    DECLARE @BackupSQL NVARCHAR(MAX) = 
+        'SELECT * INTO [' + @BackupTableName + '] FROM __EFMigrationsHistory';
+    EXEC sp_executesql @BackupSQL;
     
-    PRINT '   ✓ Backup created: __EFMigrationsHistory_Backup';
+    PRINT '   ✓ Backup created successfully';
     
-    -- Remove orphaned migration record
-    PRINT '   Removing orphaned migration record...';
-    DELETE FROM __EFMigrationsHistory 
-    WHERE MigrationId = @MigrationId;
+    -- Truncate migration history to force complete re-application
+    PRINT '   Truncating migration history to allow full re-application...';
+    TRUNCATE TABLE __EFMigrationsHistory;
     
-    DECLARE @RowsDeleted INT = @@ROWCOUNT;
-    PRINT '   ✓ Removed ' + CAST(@RowsDeleted AS NVARCHAR(10)) + ' migration record(s)';
-    
+    PRINT '   ✓ Migration history reset - EF Core will now re-apply all migrations';
+    PRINT '';
+    PRINT '   ACTION REQUIRED: Run "dotnet ef database update" to re-create all tables';
+    PRINT '';
+    PRINT '   Recovery: If needed, restore from backup table: ' + @BackupTableName;
     PRINT '';
     PRINT '=================================================================';
-    PRINT 'REMEDIATION SUCCESSFUL';
-    PRINT '=================================================================';
-    PRINT 'Next steps:';
-    PRINT '  1. Run: dotnet ef database update';
-    PRINT '  2. Verify Actors table creation';
-    PRINT '  3. Test /auth/register endpoint';
+    PRINT 'REMEDIATION COMPLETE';
     PRINT '=================================================================';
 END
 ELSE
@@ -90,9 +110,7 @@ BEGIN
     PRINT '3. No remediation needed';
     PRINT '';
     PRINT '=================================================================';
-    PRINT 'SCHEMA VALIDATION PASSED';
-    PRINT '=================================================================';
-    PRINT 'Database schema is consistent with migration history.';
+    PRINT 'Schema is consistent - no action required';
     PRINT '=================================================================';
 END
 
