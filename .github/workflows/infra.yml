@@ -264,6 +264,7 @@ jobs:
           APP_SERVICE_NAME:    ${{ needs.terraform-apply-core.outputs.app_service_name }}
           RESOURCE_GROUP_NAME: ${{ needs.terraform-apply-data.outputs.resource_group_name }}
           SQL_SERVER_NAME:     innoventity-${{ inputs.environment || 'dev' }}-sql
+          SWA_NAME:            innoventity-${{ inputs.environment || 'dev' }}-web
           ENVIRONMENT:         ${{ inputs.environment || 'dev' }}
         run: |
           Install-Module Pester -Force -SkipPublisherCheck -RequiredVersion 5.6.1
@@ -273,7 +274,8 @@ jobs:
           $config.Run.Path          = @(
               './infrastructure/tests/pester/AppService.Tests.ps1',
               './infrastructure/tests/pester/Secrets.Tests.ps1',
-              './infrastructure/tests/pester/SqlDatabase.Tests.ps1'
+              './infrastructure/tests/pester/SqlDatabase.Tests.ps1',
+              './infrastructure/tests/pester/StaticWebApp.Tests.ps1'
           )
           $config.Output.CIFormat         = 'GithubActions'  # annotates failures inline in Actions log
           $config.TestResult.Enabled      = $true
