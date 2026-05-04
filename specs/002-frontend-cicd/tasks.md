@@ -120,14 +120,14 @@
 
 **Independent Test**: Merge to Main branch, observe workflow pause at approval gate, manually approve, verify production deployment completes
 
-- [ ] T044 [US3] Create GitHub Environment via GitHub CLI: `gh api repos/khaledm/innoventity-prototype-redux/environments/production -X PUT`
-- [ ] T045 [US3] Configure production environment protection rules via GitHub UI (Settings → Environments → production)
-- [ ] T046 [US3] Add required reviewers to production environment (GitHub username)
-- [ ] T047 [US3] Set deployment branches to `Main` only
-- [ ] T048 [US3] Configure approval timeout to 1440 minutes (24 hours)
-- [ ] T049 [P] [US3] Define `deploy-production` job in workflow with conditional execution (`if: github.ref == 'refs/heads/Main'`)
-- [ ] T050 [US3] Add `environment: production` to deploy-production job configuration
-- [ ] T051 [US3] Implement deploy-production job: download build artifact, use `Azure/static-web-apps-deploy@v1` targeting production
+- [X] T044 [US3] Create GitHub Environment via GitHub CLI: `gh api repos/khaledm/innoventity-prototype-redux/environments/production -X PUT`
+- [X] T045 [US3] Configure production environment protection rules via GitHub UI (Settings → Environments → production)
+- [X] T046 [US3] Add required reviewers to production environment (GitHub username)
+- [X] T047 [US3] Set deployment branches to `Main` only
+- [X] T048 [US3] Configure approval timeout to 1440 minutes (24 hours)
+- [X] T049 [P] [US3] Define `deploy-production` job in workflow with conditional execution (`if: github.ref == 'refs/heads/Main'`)
+- [X] T050 [US3] Add `environment: production` to deploy-production job configuration
+- [X] T051 [US3] Implement deploy-production job: download build artifact, use `Azure/static-web-apps-deploy@v1` targeting production
 - [ ] T052 [US3] Test approval workflow: merge feature branch to Main
 - [ ] T053 [US3] Verify workflow pauses at production approval gate
 - [ ] T054 [US3] Approve deployment via GitHub UI and verify production deployment completes
