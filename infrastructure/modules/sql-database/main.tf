@@ -111,6 +111,14 @@ resource "azurerm_mssql_database" "main" {
   # That operation requires explicit change-control — it is NOT part of any routine workflow.
   lifecycle {
     prevent_destroy = true
+    # Ignore Azure-managed computed attributes that drift between provider versions
+    # or are set by Azure backend (not exposed in Terraform state).
+    # Common culprits: enclave_type, maintenance_configuration_name, secondary_type
+    ignore_changes = [
+      enclave_type,                 # Azure sets this based on server config
+      maintenance_configuration_name, # Azure-managed attribute
+      secondary_type                # Set by Azure for geo-replicated DBs
+    ]
   }
 }
 
