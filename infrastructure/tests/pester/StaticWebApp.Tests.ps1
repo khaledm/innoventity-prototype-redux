@@ -1,5 +1,10 @@
 # infrastructure/tests/pester/StaticWebApp.Tests.ps1
-# Pester v5 — validates live Azure Static Web App configuration after terraform apply
+# Pester v5 — validates Azure Static Web App infrastructure provisioning
+#
+# Purpose: Infrastructure-level validation after terraform apply.
+# Tests ONLY resource provisioning (SKU, location, tags, etc.).
+# Application-level concerns (security headers, routing) are validated
+# in DeploymentValidation.Tests.ps1 after deploy-frontend.yml completes.
 #
 # Inputs (from environment variables — never hardcode):
 #   $env:SWA_NAME            — from: innoventity-<environment>-web (derived in infra.yml)
@@ -42,53 +47,5 @@ Describe "Static Web App — Provisioning" {
         # Azure SWA hostnames are of the form: <unique-id>.azurestaticapps.net
         $script:swa.defaultHostname | Should -Match "\.azurestaticapps\.net$" `
             -Because "SWA default hostname must end with .azurestaticapps.net"
-    }
-}
-
-Describe "Static Web App — Security Headers" {
-    BeforeAll {
-        # Probe the production hostname to verify security headers are served.
-        # staticwebapp.config.json (in public/) is included in the Angular build artifact
-        # and uploaded to SWA — these headers come from that config, not Azure defaults.
-        # Only run if the SWA hostname is reachable (skip if resource is freshly provisioned
-        # with no content yet — first deploy may not have happened).
-        $script:headersChecked = $false
-        $script:responseHeaders = $null
-
-        if ($script:swa.defaultHostname) {
-            try {
-                $response = Invoke-WebRequest `
-                    -Uri "https://$($script:swa.defaultHostname)" `
-                    -UseBasicParsing `
-                    -MaximumRedirection 0 `
-                    -ErrorAction SilentlyContinue
-                $script:responseHeaders = $response.Headers
-                $script:headersChecked  = $true
-            } catch {
-                Write-Host "  SWA not yet serving content (no deploy yet) — skipping header assertions: $_"
-            }
-        }
-    }
-
-    It "serves X-Content-Type-Options: nosniff" {
-        if (-not $script:headersChecked) {
-            Set-ItResult -Skipped -Because "SWA has no deployed content yet; re-run after first deploy-frontend.yml"
-        }
-        $script:responseHeaders["X-Content-Type-Options"] | Should -Be "nosniff"
-    }
-
-    It "serves X-Frame-Options: DENY" {
-        if (-not $script:headersChecked) {
-            Set-ItResult -Skipped -Because "SWA has no deployed content yet; re-run after first deploy-frontend.yml"
-        }
-        $script:responseHeaders["X-Frame-Options"] | Should -Be "DENY"
-    }
-
-    It "serves Strict-Transport-Security header (HSTS)" {
-        if (-not $script:headersChecked) {
-            Set-ItResult -Skipped -Because "SWA has no deployed content yet; re-run after first deploy-frontend.yml"
-        }
-        $script:responseHeaders["Strict-Transport-Security"] | Should -Not -BeNullOrEmpty `
-            -Because "HSTS must be present to prevent protocol downgrade attacks"
     }
 }
