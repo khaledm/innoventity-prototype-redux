@@ -159,6 +159,15 @@ resource "azurerm_linux_web_app" "main" {
     ManagedBy   = "Terraform"
     Project     = "Innoventity Platform Core"
   }
+
+  # Ignore Azure-managed tags that are automatically added by platform services
+  # The hidden-link tag is auto-added when Application Insights integration is enabled
+  # and cannot be managed via Terraform (Azure recreates it automatically)
+  lifecycle {
+    ignore_changes = [
+      tags["hidden-link: /app-insights-resource-id"]
+    ]
+  }
 }
 
 # ─────────────────────────────────────────────────────────────────
