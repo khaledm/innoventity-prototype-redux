@@ -225,7 +225,7 @@ jobs:
           SWA_URL: ${{ needs.deploy-preview.outputs.preview-url }}
         run: |
           Write-Host "Validating deployment at: $env:SWA_URL"
-          
+
           # Run Pester tests with CI output (fails workflow on test failure)
           $config = New-PesterConfiguration
           $config.Run.Path = './infrastructure/tests/pester/DeploymentValidation.Tests.ps1'
@@ -235,7 +235,7 @@ jobs:
           $config.TestResult.OutputFormat = 'NUnit3'  # NUnit 3.x — required by dorny/test-reporter dotnet-nunit parser
           $config.Run.Exit                = $true
           $config.Output.Verbosity        = 'Detailed'
-          
+
           Invoke-Pester -Configuration $config
 
       - name: Upload test results

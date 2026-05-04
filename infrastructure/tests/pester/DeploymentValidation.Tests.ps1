@@ -15,13 +15,13 @@
 # Run: Invoke-Pester -CI ./infrastructure/tests/pester/DeploymentValidation.Tests.ps1
 
 BeforeAll {
-    if (-not $env:SWA_URL) { 
-        throw "SWA_URL env var is required (e.g., https://preview-url.azurestaticapps.net)" 
+    if (-not $env:SWA_URL) {
+        throw "SWA_URL env var is required (e.g., https://preview-url.azurestaticapps.net)"
     }
 
     # Normalize URL (remove trailing slash)
     $script:swaUrl = $env:SWA_URL.TrimEnd('/')
-    
+
     Write-Host "Validating deployment at: $script:swaUrl"
 
     # Fetch the homepage to get headers
@@ -31,7 +31,7 @@ BeforeAll {
             -UseBasicParsing `
             -MaximumRedirection 5 `
             -TimeoutSec 30
-        
+
         $script:headers = $script:response.Headers
         $script:statusCode = $script:response.StatusCode
         Write-Host "  ✓ Homepage returned HTTP $script:statusCode"
@@ -54,7 +54,7 @@ Describe "Deployment Validation — Security Headers" {
     It "serves Strict-Transport-Security header (HSTS)" {
         $script:headers["Strict-Transport-Security"] | Should -Not -BeNullOrEmpty `
             -Because "staticwebapp.config.json must configure HSTS to prevent protocol downgrade attacks"
-        
+
         # Verify HSTS includes max-age directive
         $script:headers["Strict-Transport-Security"] | Should -Match "max-age=\d+" `
             -Because "HSTS header must include max-age directive"
@@ -63,7 +63,7 @@ Describe "Deployment Validation — Security Headers" {
     It "serves Content-Security-Policy header" {
         $script:headers["Content-Security-Policy"] | Should -Not -BeNullOrEmpty `
             -Because "staticwebapp.config.json must configure CSP to mitigate XSS attacks"
-        
+
         # Verify CSP includes expected directives
         $csp = $script:headers["Content-Security-Policy"]
         $csp | Should -Match "default-src" -Because "CSP must define default-src"
@@ -99,10 +99,10 @@ Describe "Deployment Validation — SPA Routing" {
                 -UseBasicParsing `
                 -MaximumRedirection 0 `
                 -TimeoutSec 30
-            
+
             $response.StatusCode | Should -Be 200 `
                 -Because "navigationFallback should serve index.html for /register route"
-            
+
             $response.Content | Should -Match '<app-root' `
                 -Because "SPA route must serve the Angular app (index.html)"
         } catch {
@@ -119,7 +119,7 @@ Describe "Deployment Validation — SPA Routing" {
                 -UseBasicParsing `
                 -MaximumRedirection 0 `
                 -ErrorAction Stop
-            
+
             # If we get here, the asset path returned 200 — that's wrong
             throw "Expected 404 for nonexistent asset, got $($response.StatusCode)"
         } catch {
