@@ -102,7 +102,7 @@ specs/002-frontend-cicd/
 ├── deploy-frontend.yml         # NEW: Frontend CI/CD workflow (build/test/deploy)
 ├── deploy.yml                  # EXISTS: Backend API deployment (unchanged)
 ├── infra.yml                   # EXISTS: Infrastructure provisioning (unchanged)
-└── drift.yml                   # EXISTS: Terraform drift detection (unchanged)
+└── drift.yml                   # EXISTS: Terraform drift detection (MODIFIED: enhanced for SWA api_key)
 
 infrastructure/
 ├── modules/
@@ -252,6 +252,39 @@ Implementation is **complete** when:
 ```
 
 This will generate the task breakdown (`tasks.md`) based on this implementation plan.
+
+---
+
+## Implementation Notes
+
+### Post-Plan Amendments
+
+#### drift.yml Enhancement (May 4, 2026)
+
+**Issue**: After implementing the SWA Terraform module (T010), the daily drift detection workflow began failing with exit code 2. Investigation revealed that `azurerm_static_web_app.api_key` is a computed attribute that Azure may rotate, causing Terraform to detect output changes even when no manual resource modifications occurred.
+
+**Root Cause**: The original drift.yml logic treated any exit code 2 from `terraform plan -detailed-exitcode` as drift requiring manual reconciliation. This was correct for actual resource changes (tags, SKU, location modified in portal), but created false positives for output-only changes like SWA `api_key` rotation.
+
+**Solution** (Commit `150b1e7`):
+- Enhanced `drift-check-core` job to parse plan JSON using `terraform show -json tfplan.binary`
+- Added logic to distinguish between:
+  - **Resource changes** (`resource_changes > 0`) → Real drift, workflow fails with error annotation
+  - **Output-only changes** (`resource_changes == 0`) → Acceptable, workflow passes with info log
+- Uses `jq` to count `resource_changes` vs `output_changes` and only fails if resources were actually modified
+
+**Impact**:
+- ✅ Prevents false positive drift alerts from computed attributes (SWA api_key, future computed values)
+- ✅ Maintains detection of actual infrastructure drift (manual changes in Azure Portal)
+- ✅ Workflow now passes when only outputs change, fails when resources change
+- ⚠️ Adds dependency on `jq` utility (available by default on GitHub Actions ubuntu-latest runners)
+
+**Files Modified**:
+- `.github/workflows/drift.yml`: Added JSON parsing and conditional exit logic to `drift-check-core` job (commit `150b1e7`)
+- `.github/workflows/drift.yml`: Refined jq filter to exclude no-op resources from count (commit `b8937a1`)
+
+**Related Issues**: Resolves C1 CRITICAL finding from `/speckit.analyze` command
+
+**Note**: After implementing this enhancement, drift detection revealed actual infrastructure drift in both data/ (SQL Server `object_id`/`tenant_id` nullification) and core/ (Linux Web App configuration) layers. These require reconciliation via `terraform apply` — not related to the SWA false positive issue.
 
 ---
 
