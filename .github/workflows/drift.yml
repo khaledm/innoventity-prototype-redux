@@ -120,12 +120,13 @@ jobs:
             # Exit 2 = changes detected. Parse JSON to distinguish resource vs output-only changes.
             terraform show -json tfplan.binary > tfplan.json
             
-            RESOURCE_CHANGES=$(cat tfplan.json | jq -r '.resource_changes // [] | length')
+            # Count only resources with actual changes (not no-op)
+            RESOURCE_CHANGES=$(cat tfplan.json | jq -r '[.resource_changes // [] | .[] | select(.change.actions != ["no-op"])] | length')
             OUTPUT_CHANGES=$(cat tfplan.json | jq -r '.output_changes // {} | length')
             
             if [ "$RESOURCE_CHANGES" -gt 0 ]; then
               # Real drift — resources changed outside Terraform
-              cat tfplan.json | jq -r '.resource_changes[] | "  - \(.address): \(.change.actions | join(", "))"'
+              cat tfplan.json | jq -r '[.resource_changes[] | select(.change.actions != ["no-op"])] | .[] | "  - \(.address): \(.change.actions | join(", "))"'
               echo "::error file=infrastructure/environments/dev/core/main.tf::Drift detected in core/ layer — $RESOURCE_CHANGES resource(s) changed outside Terraform. Run infra.yml workflow_dispatch to reconcile."
               exit 1
             else
