@@ -159,6 +159,7 @@ jobs:
     # Named branch environments (push/workflow_dispatch on non-Main) require Standard tier.
     # Production deployment (Main branch) is Phase 3.
     if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    environment: development
     outputs:
       preview-url: ${{ steps.deploy.outputs.static_web_app_url }}
     steps:
@@ -283,6 +284,15 @@ jobs:
           name: frontend-build
           path: dist
 
+      - name: Ensure staticwebapp.config.json is at deployment root
+        run: |
+          # Angular may place staticwebapp.config.json in parent dir
+          # Ensure it's alongside index.html for SWA to read headers config
+          if [ ! -f dist/browser/staticwebapp.config.json ] && [ -f dist/staticwebapp.config.json ]; then
+            echo "Moving staticwebapp.config.json into browser/ folder"
+            mv dist/staticwebapp.config.json dist/browser/
+          fi
+
       - name: Deploy to Azure Static Web Apps production
         id: deploy
         uses: Azure/static-web-apps-deploy@v1
@@ -290,7 +300,7 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
-          app_location: dist
+          app_location: dist/browser
           skip_app_build: true
           output_location: ''
           production_branch: Main
