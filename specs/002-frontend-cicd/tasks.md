@@ -108,7 +108,7 @@
 - [X] T040 [US2] Add cleanup workflow job to handle PR closure
 - [X] T041 [US2] Create workflow trigger for `pull_request` event type `closed`
 - [X] T042 [US2] Implement cleanup job: run `Azure/static-web-apps-deploy@v1` with `action: 'close'`
-- [ ] T043 [US2] Test cleanup: close PR and verify preview environment deleted within 1 hour
+- [X] T043 [US2] Test cleanup: close PR and verify preview environment deleted within 1 hour
 
 **Checkpoint**: PR preview environments fully automated - User Story 2 complete
 
