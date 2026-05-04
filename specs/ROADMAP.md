@@ -589,7 +589,7 @@ Endpoints:
 # infrastructure/modules/sql-database/main.tf
 resource "azurerm_mssql_server" "main" {
   # ... existing config ...
-  
+
   azuread_administrator {
     login_username              = var.sql_admin_entra_user_principal_name
     object_id                   = var.sql_admin_entra_object_id
@@ -673,7 +673,7 @@ resource "azurerm_key_vault" "main" {
   resource_group_name = var.resource_group_name
   tenant_id           = var.tenant_id
   sku_name            = "standard"
-  
+
   # App Service identity can read secrets
   access_policy {
     tenant_id = var.tenant_id

@@ -57,15 +57,32 @@ jobs:
         run: |
           set +e
           terraform plan -detailed-exitcode -input=false \
-            -var "sql_admin_password=${{ secrets.SQL_ADMIN_PASSWORD }}"
+            -var "sql_admin_password=${{ secrets.SQL_ADMIN_PASSWORD }}" \
+            -out=tfplan.binary
           EXIT_CODE=$?
           set -e
-          if [ $EXIT_CODE -eq 2 ]; then
-            echo "::error file=infrastructure/environments/dev/data/main.tf::Drift detected in data/ layer (exit 2) — manual resource change suspected. Run infra.yml workflow_dispatch to reconcile."
-            exit 1
-          elif [ $EXIT_CODE -eq 1 ]; then
+
+          if [ $EXIT_CODE -eq 1 ]; then
             echo "::error::terraform plan errored in data/ (exit 1) — check ARM auth, backend config, and state integrity."
             exit 1
+          elif [ $EXIT_CODE -eq 2 ]; then
+            # Exit 2 = changes detected. Parse JSON to distinguish resource vs output-only changes.
+            terraform show -json tfplan.binary > tfplan.json
+
+            RESOURCE_CHANGES=$(cat tfplan.json | jq -r '[.resource_changes // [] | .[] | select(.change.actions != ["no-op"])] | length')
+            OUTPUT_CHANGES=$(cat tfplan.json | jq -r '.output_changes // {} | length')
+
+            if [ "$RESOURCE_CHANGES" -gt 0 ]; then
+              # Real drift — resources changed outside Terraform
+              cat tfplan.json | jq -r '.resource_changes[] | select(.change.actions != ["no-op"]) | "  - \(.address): \(.change.actions | join(", "))"'
+              echo "::error file=infrastructure/environments/dev/data/main.tf::Drift detected in data/ layer — $RESOURCE_CHANGES resource(s) changed outside Terraform. Run infra.yml workflow_dispatch to reconcile."
+              exit 1
+            else
+              # Output-only changes (e.g., connection_string from password rotation) — acceptable
+              echo "ℹ️ Output-only changes detected ($OUTPUT_CHANGES output(s)) — no resource drift."
+              echo "This is expected for computed attributes like connection_string (password is write-only)."
+              exit 0
+            fi
           fi
           echo "✅ No drift in data/ — state is consistent with Azure resources."
 
@@ -112,18 +129,18 @@ jobs:
             -out=tfplan.binary
           EXIT_CODE=$?
           set -e
-          
+
           if [ $EXIT_CODE -eq 1 ]; then
             echo "::error::terraform plan errored in core/ (exit 1) — check ARM auth, backend config, and state integrity."
             exit 1
           elif [ $EXIT_CODE -eq 2 ]; then
             # Exit 2 = changes detected. Parse JSON to distinguish resource vs output-only changes.
             terraform show -json tfplan.binary > tfplan.json
-            
+
             # Count only resources with actual changes (not no-op)
             RESOURCE_CHANGES=$(cat tfplan.json | jq -r '[.resource_changes // [] | .[] | select(.change.actions != ["no-op"])] | length')
             OUTPUT_CHANGES=$(cat tfplan.json | jq -r '.output_changes // {} | length')
-            
+
             if [ "$RESOURCE_CHANGES" -gt 0 ]; then
               # Real drift — resources changed outside Terraform
               cat tfplan.json | jq -r '[.resource_changes[] | select(.change.actions != ["no-op"])] | .[] | "  - \(.address): \(.change.actions | join(", "))"'
