@@ -562,6 +562,167 @@ Endpoints:
 
 ---
 
+## Phase 2.5 (Future) - Security Hardening & Production Readiness
+
+**Estimated Duration**: 1-2 weeks (May-Jun 2026)
+**Status**: 💡 VISION (specifications NOT yet written)
+**Constitutional Goal**: Align with Azure security best practices (zero-trust, passwordless auth)
+
+### Features to Specify
+
+#### 1. Entra ID Authentication for SQL Database
+
+**Effort**: 2-3 days | **Priority**: HIGH (Security) | **Spec**: ⚠️ NOT YET DOCUMENTED
+
+**Gap Analysis Reference**: Current reliance on SQL authentication (`sql_admin_password`) is acceptable for Phase 0 MVP but violates Azure security best practices for production systems.
+
+**Problem Solved**: SQL authentication requires:
+
+- ❌ Password rotation and secure storage (KeyVault dependency)
+- ❌ Credential leakage risk (secrets in CI/CD, local dev)
+- ❌ No granular access control (admin password = full access)
+- ❌ Limited audit trail (who accessed what, when?)
+
+**What To Implement**:
+
+```hcl
+# infrastructure/modules/sql-database/main.tf
+resource "azurerm_mssql_server" "main" {
+  # ... existing config ...
+  
+  azuread_administrator {
+    login_username              = var.sql_admin_entra_user_principal_name
+    object_id                   = var.sql_admin_entra_object_id
+    tenant_id                   = var.tenant_id
+    azuread_authentication_only = true  # 🔐 DISABLE SQL AUTH
+  }
+}
+
+# App Service Managed Identity for database access
+resource "azurerm_user_assigned_identity" "app_service" {
+  name                = "${var.prefix}-api-identity"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+}
+
+# Grant db_datareader + db_datawriter to App Service identity
+# (via post-deployment SQL script or Terraform SQL provider)
+```
+
+**Migration Path**:
+
+1. **Phase 1**: Add `azuread_administrator` block (keep SQL auth enabled: `azuread_authentication_only = false`)
+2. **Phase 2**: Create App Service Managed Identity, grant SQL roles
+3. **Phase 3**: Update connection string to use Managed Identity (remove password)
+4. **Phase 4**: Set `azuread_authentication_only = true` (disable SQL auth completely)
+5. **Phase 5**: Remove `sql_admin_password` from all secrets/tfvars
+
+**Benefits**:
+
+- ✅ **Passwordless**: No credentials to rotate, leak, or store
+- ✅ **Least Privilege**: App Service identity has only `db_datareader` + `db_datawriter` (not `db_owner`)
+- ✅ **Audit Trail**: Entra ID logs every access attempt with identity context
+- ✅ **Zero-Trust Alignment**: Identity-based access, not secret-based
+
+**Breaking Changes**: YES (connection string format changes)
+
+```csharp
+// BEFORE (SQL Auth)
+"Server=tcp:innoventity-dev-sql.database.windows.net;Database=Innoventity;User ID=sqladmin;Password={password};"
+
+// AFTER (Managed Identity)
+"Server=tcp:innoventity-dev-sql.database.windows.net;Database=Innoventity;Authentication=Active Directory Default;"
+```
+
+**User Stories to Write**:
+
+- US Security-1: App Service authenticates to SQL using Managed Identity (no password)
+- US Security-2: Database administrator uses personal Entra ID account (no shared password)
+- US Security-3: Audit logs show which identity accessed database and when
+- US Security-4: Revoke developer access by removing Entra ID role (instant, no password change)
+
+**References**:
+
+- [Azure SQL Database authentication best practices](https://learn.microsoft.com/azure/azure-sql/database/authentication-aad-configure)
+- [Use Managed Identity to connect to SQL Database](https://learn.microsoft.com/azure/app-service/tutorial-connect-msi-sql-database)
+
+**⚠️ ACTION REQUIRED**:
+
+- Create `specs/009-entra-id-auth/spec.md`
+- Document phased migration approach (avoid breaking existing deployments)
+- Test Managed Identity connection string in local development (Azure CLI auth)
+- Update CI/CD workflows (drift.yml, infra.yml) to remove `SQL_ADMIN_PASSWORD` secret
+
+---
+
+#### 2. Key Vault Integration for Secrets Management
+
+**Effort**: 1-2 days | **Priority**: MEDIUM | **Spec**: ⚠️ NOT YET DOCUMENTED
+
+**Problem Solved**: Current secrets management uses:
+
+- GitHub Secrets for CI/CD (`JWT_SECRET_KEY`, `SQL_ADMIN_PASSWORD`)
+- App Service Application Settings for runtime config
+
+**Better approach**: Azure Key Vault with App Service Managed Identity
+
+```hcl
+resource "azurerm_key_vault" "main" {
+  name                = "${var.prefix}-kv"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  tenant_id           = var.tenant_id
+  sku_name            = "standard"
+  
+  # App Service identity can read secrets
+  access_policy {
+    tenant_id = var.tenant_id
+    object_id = azurerm_user_assigned_identity.app_service.principal_id
+    secret_permissions = ["Get", "List"]
+  }
+}
+
+# Store JWT signing key in Key Vault
+resource "azurerm_key_vault_secret" "jwt_key" {
+  name         = "JwtSecretKey"
+  value        = var.jwt_secret_key  # Initial provisioning only
+  key_vault_id = azurerm_key_vault.main.id
+}
+
+# App Service references Key Vault secret (not inline value)
+resource "azurerm_linux_web_app" "main" {
+  app_settings = {
+    "JWT_SECRET_KEY" = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.jwt_key.id})"
+  }
+}
+```
+
+**Benefits**:
+
+- ✅ Centralized secret rotation (change in Key Vault, auto-sync to App Service)
+- ✅ Secret versioning and audit trail
+- ✅ Secrets never appear in Terraform state (only references)
+
+**⚠️ ACTION REQUIRED**:
+
+- Create `specs/010-key-vault-integration/spec.md`
+- Plan migration for existing secrets (`JWT_SECRET_KEY`, future API keys)
+
+---
+
+### Phase 2.5 Specifications Summary
+
+| Feature | Spec Needed | Plan Needed | Priority | Effort | Security Impact |
+|---------|-------------|-------------|----------|--------|-----------------|
+| **Entra ID Auth for SQL** | ⚠️ YES | ⚠️ YES | HIGH | 2-3 days | 🔐 CRITICAL (eliminates password risk) |
+| **Key Vault Integration** | ⚠️ YES | ⚠️ YES | MEDIUM | 1-2 days | 🔒 HIGH (secret rotation, audit) |
+
+**Total Effort Estimate**: 3-5 days
+
+**Constitutional Alignment**: Principle 2 ("Security baked in, not bolted on") — this phase ensures production-grade security posture before scaling beyond pilot users.
+
+---
+
 ## Phase 3 (Vision) - Virtual Incubator & Business Planning
 
 **Estimated Duration**: 4-6 weeks (Jun-Jul 2026)
