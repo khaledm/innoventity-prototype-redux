@@ -2,7 +2,7 @@
 
 **Feature**: Frontend CI/CD Automation
 **Branch**: `002-frontend-cicd`
-**Generated**: April 18, 2026
+**Last Synced**: May 9, 2026
 **Input**: Design documents from `/specs/002-frontend-cicd/` (plan.md, spec.md, data-model.md, research.md, contracts/, quickstart.md)
 
 **Tests**: Test-related tasks are included where needed for implementation validation (including Jest/Playwright workflow steps, artifact uploads, and end-to-end coverage)
@@ -71,7 +71,7 @@
 
 **Goal**: Developers can push frontend changes and see them deployed automatically without manual `swa deploy` commands
 
-**Independent Test**: Push commit to feature branch, observe workflow execution in GitHub Actions, verify deployed changes at staging URL
+**Independent Test**: Push commit to preview path, observe `build` → `test` → `deploy-preview` → `validate-preview` in GitHub Actions, verify deployed changes at preview URL
 
 - [X] T020 [US1] Create GitHub Actions workflow file `.github/workflows/deploy-frontend.yml`
 - [X] T021 [P] [US1] Configure workflow triggers (push to all branches with path filter `src/Innoventity.Client/**`, workflow_dispatch)
@@ -80,17 +80,22 @@
 - [X] T075 [P] [US1] Verify `src/Innoventity.Client/staticwebapp.config.json` satisfies FR-030 (SPA routing to `index.html`) and FR-031 (navigation fallback); confirm file is included in `ng build` output and deployed artifact
 - [X] T024 [P] [US1] Define `test` job with dependencies on build job
 - [X] T025 [US1] Implement test job steps: download build artifact, `npm test -- --ci --coverage`, `npx playwright install --with-deps`, `npm run test:e2e`
-- [X] T026 [US1] Configure test job to allow failures in Phase 1 (`continue-on-error: true`)
+- [X] T026 [US1] Configure required Jest and Playwright tests to fail the workflow and block both preview and production deployments on failure
 - [X] T027 [US1] Upload test results as artifacts (coverage reports, Playwright traces)
 - [X] T028 [P] [US1] Define `deploy-preview` job with conditional execution (`if: github.ref != 'refs/heads/Main'`)
 - [X] T029 [US1] Implement deploy-preview job: download build artifact, use `Azure/static-web-apps-deploy@v1` with `skip_app_build: true`
 - [X] T030 [US1] Configure deploy-preview to use `AZURE_STATIC_WEB_APPS_API_TOKEN` secret and `production_branch: 'Main'`
 - [X] T031 [US1] Output preview URL from deploy-preview job
-- [ ] T032 [US1] Test workflow locally using `act` tool: `act push -W .github/workflows/deploy-frontend.yml`
-- [X] T033 [US1] Push test commit to feature branch and verify workflow executes successfully
-- [X] T034 [US1] Verify frontend changes deployed to staging environment and accessible
+- [X] T057 [P] [US1] Define `validate-preview` job in `.github/workflows/deploy-frontend.yml` with dependency on `deploy-preview`
+- [X] T058 [US1] Implement `validate-preview` to target the preview URL output from `deploy-preview`
+- [X] T059 [US1] Add preview validation checks for HTTP 200, `text/html`, and deployment health assertions from `infrastructure/tests/pester/DeploymentValidation.Tests.ps1`
+- [X] T060 [US1] Add preview validation retry/propagation handling and fail the workflow when preview checks fail
+- [X] T061 [US1] Publish preview validation results to GitHub Actions artifacts/check output so reviewers have clear success/failure evidence in the UI and native notifications (FR-019)
+- [X] T032 [US1] Dry-run the workflow locally with `act --dryrun -W .github/workflows/deploy-frontend.yml` to verify YAML syntax and job graph
+- [X] T033 [US1] Push test commit to preview path and verify `build` → `test` → `deploy-preview` → `validate-preview` executes successfully
+- [X] T034 [US1] Verify frontend changes deployed to preview environment and preview validation evidence is accessible
 
-**Checkpoint**: Feature branch deployments fully automated - User Story 1 complete
+**Checkpoint**: Preview deployment path is automated end-to-end with blocking tests and post-deploy preview validation
 
 ---
 
@@ -118,7 +123,7 @@
 
 **Goal**: Platform operators can control production deployment timing with manual approval before changes reach end users
 
-**Independent Test**: Merge to Main branch, observe workflow pause at approval gate, manually approve, verify production deployment completes
+**Independent Test**: Merge to Main branch, observe `build`/`test` complete before approval, manually approve, then verify `deploy-production` and `validate-production` complete
 
 - [X] T044 [US3] Create GitHub Environment via GitHub CLI: `gh api repos/khaledm/innoventity-prototype-redux/environments/production -X PUT`
 - [X] T045 [US3] Configure production environment protection rules via GitHub UI (Settings → Environments → production)
@@ -128,48 +133,44 @@
 - [X] T049 [P] [US3] Define `deploy-production` job in workflow with conditional execution (`if: github.ref == 'refs/heads/Main'`)
 - [X] T050 [US3] Add `environment: production` to deploy-production job configuration
 - [X] T051 [US3] Implement deploy-production job: download build artifact, use `Azure/static-web-apps-deploy@v1` targeting production
-- [ ] T052 [US3] Test approval workflow: merge feature branch to Main
-- [ ] T053 [US3] Verify workflow pauses at production approval gate
-- [ ] T054 [US3] Approve deployment via GitHub UI and verify production deployment completes
-- [ ] T055 [US3] Verify production URL `https://innoventity-dev-web.azurestaticapps.net` serves new frontend version
-- [ ] T056 [US3] Test approval rejection: trigger workflow, reject approval, verify workflow fails without deploying
+- [ ] T062 [US3] Define `validate-production` job in `.github/workflows/deploy-frontend.yml` with dependency on `deploy-production`
+- [ ] T063 [US3] Implement `validate-production` to target the production URL output from `deploy-production` using the same core health checks as preview validation
+- [ ] T064 [US3] Configure `validate-production` to fail the Main workflow and publish clear GitHub Actions success/failure evidence when production checks fail
+- [ ] T052 [US3] Test approval workflow by merging validated preview changes to Main
+- [ ] T053 [US3] Verify Main workflow pauses only after `build` and `test` succeed and before `deploy-production` starts
+- [ ] T054 [US3] Approve deployment via GitHub UI and verify `deploy-production` then `validate-production` complete successfully
+- [ ] T055 [US3] Verify production URL `https://innoventity-dev-web.azurestaticapps.net` serves the new frontend version and passes `validate-production`
+- [ ] T056 [US3] Test approval rejection or timeout and verify no production deployment or production validation runs
 
-**Checkpoint**: Production approval gate functional - User Story 3 complete
+**Checkpoint**: Main deployment path is sequenced as build → test → approval → deploy-production → validate-production
 
 ---
 
-## Phase 7: User Story 5 - Validation and Health Checks (Priority: P3)
+## Phase 7: User Story 5 - Validation Failure-Mode Testing (Priority: P3)
 
-**Goal**: Automated health checks detect critical failures before production deployment to prevent broken deployments
+**Goal**: Validation must be proven by observable preview and production failure/success runs, not just configured on paper
 
-**Independent Test**: Deploy frontend with broken configuration, observe validation job fails, verify deployment does not proceed
+**Independent Test**: Exercise broken and healthy preview/Main deployments, verify `validate-preview` and `validate-production` emit the expected red/green evidence
 
-- [ ] T057 [P] [US5] Define `validate` job in workflow with dependencies on deploy jobs
-- [ ] T058 [US5] Implement validation job: HTTP GET request to deployment URL using `curl` or PowerShell
-- [ ] T059 [US5] Add validation checks: HTTP status must be 200, Content-Type must be `text/html`
-- [ ] T060 [US5] Add retry logic (3 attempts with 10-second delay) to handle CDN propagation
-- [ ] T061 [US5] Configure validation job to fail workflow on check failure
-- [ ] T062 [US5] Test validation failure: deploy intentionally broken build (missing `index.html`)
-- [ ] T063 [US5] Verify validation job fails and prevents production approval
-- [ ] T064 [US5] Test validation success: deploy working build and verify validation passes
+- [ ] T076 [US5] Test preview validation failure with an intentionally broken preview deployment and verify the workflow does not present a merge-ready success signal
+- [ ] T077 [US5] Test production validation failure after approval and verify the Main workflow concludes failed with clear GitHub-native evidence for operators
 
-**Checkpoint**: Health checks validate deployments - User Story 5 complete
+**Checkpoint**: Validation failure modes have been observed and captured for both preview and production paths
 
 ---
 
 ## Phase 8: Polish & Documentation
 
-**Purpose**: Complete documentation, optimize workflow, finalize implementation
+**Purpose**: Complete documentation, rollout evidence, and final workflow hardening
 
 - [ ] T065 [P] Create deployment runbook `specs/002-frontend-cicd/runbooks/deployment.md` with manual procedures and troubleshooting
 - [ ] T066 [P] Update `infrastructure/README.md` with SWA module documentation
 - [ ] T067 [P] Update repository README with CI/CD pipeline status badge
-- [ ] T068 Remove `continue-on-error: true` from test job (Phase 2+ enforcement per FR-009)
-- [ ] T069 Add npm dependency caching optimization to workflow
+- [X] T068 Verify required-test enforcement remains hard-blocking for preview and production deployments (FR-009; no warning-only mode)
 - [ ] T070 [P] Validate quickstart.md steps end-to-end with fresh clone
-- [ ] T071 Run constitution checklist validation (Principle 5: observe workflow failures)
+- [ ] T071 Run constitution checklist validation with observed preview/Main failure evidence captured for reviewers
 - [ ] T072 Verify all success criteria met (SC-001 through SC-010 from spec.md)
-- [ ] T073 [P] Update `.github/agents/copilot-instructions.md` with CI/CD workflow patterns
+- [ ] T073 [P] Add and verify descriptive SWA preview quota exhaustion failure handling in `.github/workflows/deploy-frontend.yml` and `specs/002-frontend-cicd/runbooks/deployment.md` (FR-043)
 - [ ] T074 Final commit following Conventional Commits format: `feat(ci): complete frontend CI/CD automation`
 
 ---
@@ -183,8 +184,8 @@
 - **User Story 4 (Phase 3)**: Depends on Foundational (Terraform module must exist) - BLOCKS workflow implementation
 - **User Story 1 (Phase 4)**: Depends on US4 (infrastructure must be provisioned) - Core MVP
 - **User Story 2 (Phase 5)**: Depends on US1 (workflow must exist) - Builds on core workflow
-- **User Story 3 (Phase 6)**: Depends on US1 (workflow must exist) - Adds approval to existing workflow
-- **User Story 5 (Phase 7)**: Depends on US1 (workflow must exist) - Adds validation to existing workflow
+- **User Story 3 (Phase 6)**: Depends on US1 (preview path and shared validation assets must exist) - Adds Main approval and production validation
+- **User Story 5 (Phase 7)**: Depends on US1 and US3 - Proves preview and production validation failure paths with observable evidence
 - **Polish (Phase 8)**: Depends on all user stories being complete
 
 ### User Story Dependencies
@@ -196,11 +197,12 @@ Phase 2 (Foundational - Terraform Module)
   ↓
 Phase 3 (US4 - Infrastructure Provisioning) ← Must complete first
   ↓
-Phase 4 (US1 - Automated Deployment) ← Core workflow
+Phase 4 (US1 - Automated Deployment + Preview Validation) ← Core workflow
   ↓
-  ├→ Phase 5 (US2 - PR Previews) ← Can parallelize with US3 and US5
-  ├→ Phase 6 (US3 - Production Approval) ← Can parallelize with US2 and US5
-  └→ Phase 7 (US5 - Health Checks) ← Can parallelize with US2 and US3
+  ├→ Phase 5 (US2 - PR Previews) ← Can parallelize with US3
+  └→ Phase 6 (US3 - Production Approval + Production Validation) ← Can parallelize with US2
+        ↓
+      Phase 7 (US5 - Validation Failure-Mode Testing)
   ↓
 Phase 8 (Polish)
 ```
@@ -209,37 +211,37 @@ Phase 8 (Polish)
 
 - Setup and foundational tasks must complete sequentially
 - US4: Terraform tasks must be sequential (module creation → plan → apply → secret config)
-- US1: Build job → test job → deploy job (sequential due to artifact dependencies)
+- US1: Build job → test job → deploy-preview → validate-preview (sequential due to artifact and environment dependencies)
 - US2: Can add to US1 workflow in parallel with US3 and US5
-- US3: Requires GitHub environment setup before workflow changes
-- US5: Validation job can be added in parallel with US2 and US3 changes
+- US3: Requires GitHub environment setup before approval, deploy-production, and validate-production wiring
+- US5: Depends on preview and production validation jobs existing before failure-mode testing begins
 
 ### Parallel Opportunities
 
 - **Phase 1**: Tasks T003 and T004 can run in parallel
 - **Phase 2**: Tasks T007, T008, T009 (Terraform module files) can be created in parallel
 - **Phase 4 (US1)**: Tasks T021, T022 (workflow configuration sections) can be written in parallel, T024, T025 (test job definition) can be parallel with T028 (deploy job definition)
-- **After US1 completes**: US2, US3, and US5 can be implemented in parallel by different developers (different sections of same workflow file may require coordination)
+- **After US1 completes**: US2 and US3 can be implemented in parallel by different developers; US5 begins after production validation wiring lands
 - **Phase 8**: Tasks T065, T066, T067, T070, T073 can run in parallel (different files)
 
 ---
 
 ## Parallel Example: After US1 Complete
 
-Once User Story 1 is complete, multiple developers can work in parallel:
+Once User Story 1 is complete, multiple developers can split remaining work:
 
 ```bash
 # Developer A: Add PR preview cleanup
 Task T040-T043: PR preview environment cleanup workflow
 
-# Developer B: Add production approval gate
-Task T044-T056: GitHub Environment setup and production deployment
+# Developer B: Add production approval and production validation
+Task T044-T064: GitHub Environment setup, production deployment, production validation
 
-# Developer C: Add health check validation
-Task T057-T064: Validation job with HTTP health checks
+# Developer C: After Developer B lands production validation, exercise failure-mode tests
+Task T076-T077: Preview/production validation failure-path verification
 ```
 
-**Coordination Note**: All three developers are modifying `.github/workflows/deploy-frontend.yml`, so coordination is needed to avoid merge conflicts. Alternative: implement sequentially in priority order (US3 → US5 → US2 if single developer).
+**Coordination Note**: US2 and US3 both modify `.github/workflows/deploy-frontend.yml`; US5 depends on the resulting validation jobs and can start once those changes merge.
 
 ---
 
@@ -253,10 +255,10 @@ Task T057-T064: Validation job with HTTP health checks
 2. **Phase 2**: Foundational (create Terraform module)
 3. **Phase 3**: User Story 4 (provision infrastructure)
 4. **Phase 4**: User Story 1 (core workflow)
-5. **STOP and VALIDATE**: Test automated deployments end-to-end
+5. **STOP and VALIDATE**: Test the preview path end-to-end, including `validate-preview`
 6. **Deploy/Demo**: Show working CI/CD pipeline
 
-**Result**: Developer can push code and see it deployed automatically (FR-001 through FR-006 satisfied)
+**Result**: Developer can push code and see a preview deployment validated automatically before the workflow reports success
 
 ### Incremental Delivery (Full Feature)
 
@@ -264,8 +266,8 @@ Task T057-T064: Validation job with HTTP health checks
 
 1. Complete MVP (Phases 1-4) → **Automated deployments working**
 2. Add User Story 2 (Phase 5) → **PR previews working**
-3. Add User Story 3 (Phase 6) → **Production approval working**
-4. Add User Story 5 (Phase 7) → **Health checks working**
+3. Add User Story 3 (Phase 6) → **Production approval + production validation working**
+4. Add User Story 5 (Phase 7) → **Failure-mode evidence observed**
 5. Polish (Phase 8) → **Documentation complete**
 
 **Advantage**: Each phase adds value without breaking previous functionality
@@ -277,10 +279,11 @@ Task T057-T064: Validation job with HTTP health checks
 1. **Together**: Complete Phases 1-4 (Setup → Foundation → Infrastructure → Core Workflow)
 2. **Split**: Once Phase 4 complete:
    - Developer A: User Story 2 (PR previews)
-   - Developer B: User Story 3 (Production approval)
-   - Developer C: User Story 5 (Health checks)
-3. **Merge**: Integrate all three enhancements
-4. **Together**: Phase 8 (Polish)
+   - Developer B: User Story 3 (Production approval + production validation)
+   - Developer C: User Story 5 (Validation failure-mode testing, after US3 wiring lands)
+3. **Merge**: Integrate US2 and US3 enhancements
+4. **Then**: Execute US5 failure-mode testing
+5. **Together**: Phase 8 (Polish)
 
 **Coordination**: Developers must coordinate on `.github/workflows/deploy-frontend.yml` file to avoid conflicts
 
@@ -290,16 +293,16 @@ Task T057-T064: Validation job with HTTP health checks
 
 Implementation is **COMPLETE** when all criteria from spec.md are met:
 
-- [ ] **SC-001**: Developer can push frontend changes and see them deployed to staging within 10 minutes (test with commit to feature branch)
+- [ ] **SC-001**: Developer can push frontend changes and see them deployed to preview within 10 minutes (test with commit or PR update on the preview path)
 - [ ] **SC-002**: Pull requests automatically generate preview URLs posted in PR comments within 5 minutes (test by creating PR)
-- [ ] **SC-003**: Production deployments require manual approval and complete within 5 minutes after approval (test by merging to Main)
+- [ ] **SC-003**: Production deployments require manual approval and complete `deploy-production` plus `validate-production` within 5 minutes after approval (test by merging to Main)
 - [ ] **SC-004**: Zero manual `swa deploy` commands required for any deployment scenario
 - [ ] **SC-005**: Infrastructure provisioning via Terraform completes in under 3 minutes and is idempotent (run `terraform apply` twice)
 - [ ] **SC-006**: Frontend test results visible in workflow logs (Phase 2+: test failures prevent deployment)
-- [ ] **SC-007**: Staging validation health checks detect critical failures (test with broken deployment)
+- [ ] **SC-007**: Preview validation detects critical failures before merge, and production validation detects them after Main deployment (test with broken deployments)
 - [ ] **SC-008**: All frontend environment configurations correctly route to backend API endpoints
 - [ ] **SC-009**: Preview environments for PRs automatically clean up within 1 hour of PR closure
-- [ ] **SC-010**: Workflow execution logs provide clear error messages enabling developers to resolve failures within 15 minutes
+- [ ] **SC-010**: Workflow execution logs and GitHub-native status evidence provide clear error messages, including preview quota exhaustion guidance, enabling developers to resolve failures within 15 minutes
 
 ---
 
@@ -307,8 +310,8 @@ Implementation is **COMPLETE** when all criteria from spec.md are met:
 
 **Principle 5 (Tests Must Prove They Work)**: Validation checklist
 
-- [ ] Workflow tested locally with `act` tool before pushing (observed syntax errors during development)
-- [ ] Terraform `plan` observed before `apply` (infrastructure changes previewed)
+- [x] Workflow tested locally with `act --dryrun` before pushing (observed workflow structure before relying on GitHub Actions)
+- [x] Terraform `plan` observed before `apply` (infrastructure changes previewed)
 - [ ] Intentionally broken deployment tested to verify validation catches failures
 - [ ] Test job observed failing before implementation (red-green-refactor workflow)
 - [ ] Approval gate tested with rejection scenario (workflow fails without deploying)
@@ -326,16 +329,18 @@ Implementation is **COMPLETE** when all criteria from spec.md are met:
 - **[P] tasks**: Different files, no dependencies, can run in parallel
 - **[Story] labels**: Map task to specific user story for traceability
 - **Independent testing**: Each user story should be testable independently after its phase completes
-- **Phase 1 test warnings**: `continue-on-error: true` allows deployment despite test failures (remove in Phase 2+)
+- **Core sequencing**: Preview path is `build` → `test` → `deploy-preview` → `validate-preview`; Main path is `build` → `test` → `approval` → `deploy-production` → `validate-production`
 - **Commit frequency**: Commit after each logical task or group of related tasks
 - **Checkpoints**: Stop at any checkpoint to validate story independently before proceeding
 - **File conflicts**: Coordinate when multiple developers work on same workflow file
+- **Validation evidence**: GitHub Actions checks, summaries, and artifacts must make success/failure obvious to reviewers and operators
+- **Quota failures**: Preview quota exhaustion must fail descriptively; no continue-on-error, silent skip, or automatic SKU upgrade is acceptable
 - **Validation**: Run quickstart.md steps end-to-end before considering feature complete
 
 ---
 
-**Total Tasks**: 74
-**Estimated Duration**: 8-12 hours (solo developer, sequential implementation)
-**MVP Tasks** (Phase 1-4): 34 tasks (~4-6 hours)
+**Total Tasks**: 76
+**Estimated Duration**: 9-13 hours (solo developer, sequential implementation)
+**MVP Tasks** (Phase 1-4): 40 tasks (~5-7 hours)
 **Branch**: `002-frontend-cicd`
-**Next Step**: Begin with Phase 1 (Setup) task T001
+**Next Step**: Complete the remaining Main-path work starting with T052-T064, then exercise failure-mode validation via T076-T077

@@ -7,7 +7,7 @@
 
 ## Summary
 
-Automate Angular 19 frontend deployment to Azure Static Web Apps via GitHub Actions. Eliminates manual `swa deploy` commands and enables PR preview environments. Primary components: (1) GitHub Actions workflow for build/test/deploy with production approval gate, (2) Terraform module for SWA provisioning, (3) integration with existing Angular configurations and backend API proxy.
+Automate Angular 19 frontend deployment to Azure Static Web Apps via GitHub Actions. Eliminates manual `swa deploy` commands and enables PR preview environments. Primary components: (1) GitHub Actions workflow for build/test/deploy/validate with production approval gate, (2) Terraform module for SWA provisioning, (3) integration with existing Angular configurations and backend API proxy.
 
 ## Technical Context
 
@@ -28,7 +28,7 @@ Automate Angular 19 frontend deployment to Azure Static Web Apps via GitHub Acti
 **Constraints**:
   - Free tier Azure SWA: 1 production + 3 preview environments (PR preview quota)
   - GitHub Actions free tier: 2000 minutes/month (optimize build caching)
-  - Test enforcement: Phase 1 allows warnings, Phase 2+ fails on test failures
+  - Test enforcement: Failed required tests block preview and production deployment paths in Phase 1 and later
   - Approval timeout: 24 hours (workflow auto-fails if not approved)
   - Zero breaking changes to existing Angular app or backend API
 **Scale/Scope**: Single-environment deployment (dev), ~10 deployments/week, 3-5 developers, Angular SPA (~500kB initial bundle size)
@@ -41,13 +41,13 @@ Automate Angular 19 frontend deployment to Azure Static Web Apps via GitHub Acti
 
 **✅ Principle 1 — User Experience First**: CI/CD automation directly serves developer users by eliminating manual deployment friction (main pain point from Phase 0 deferred item). Preview environments enable reviewers to test changes interactively. Approval gates provide control. Solution is user-centric.
 
-**✅ Principle 2 — Quality is Non-Negotiable**: Phase 1 allows test failures with warnings (pragmatic for test stabilization), Phase 2+ enforces blocking. Validation health checks prevent broken deployments reaching production. Terraform modules ensure infrastructure reproducibility. Quality gates are implemented, with phased enforcement matching project maturity.
+**✅ Principle 2 — Quality is Non-Negotiable**: Required unit and E2E tests block all deployment paths in Phase 1 and later. Preview validation happens before merge, and production validation happens after production deployment, preventing broken releases from advancing unnoticed. Terraform modules ensure infrastructure reproducibility, and GitHub-native notifications surface failures without adding extra delivery channels.
 
-**✅ Principle 3 — Simplicity Over Cleverness**: Uses Azure SWA's native preview environment feature (no custom infrastructure). GitHub Actions follows standard patterns (build→test→deploy). No complex orchestration or custom tooling. Leverages platform capabilities as intended. Boring, reliable automation.
+**✅ Principle 3 — Simplicity Over Cleverness**: Uses Azure SWA's native preview environment feature (no custom infrastructure). GitHub Actions follows standard branch-appropriate patterns (build→test→deploy→validate, with approval only on Main). No complex orchestration or custom tooling. Leverages platform capabilities as intended. Boring, reliable automation.
 
 **✅ Principle 4 — Specification Drives Implementation**: Comprehensive 898-line spec exists with 42 FRs, 20 scenarios, 10 success criteria. This plan follows spec workflow (SPECIFY→PLAN→TASKS→IMPLEMENT). All requirements traceable.
 
-**⚠️ Principle 5 — Tests Must Prove They Work**: Infrastructure tests (Pester) will validate Terraform outputs. Workflow tests will use act (GitHub Actions local runner) or manual test runs. **CRITICAL**: Must observe workflow failures before trusting success path. Phase 0 research must define test validation strategy (how to intentionally break and verify detection).
+**⚠️ Principle 5 — Tests Must Prove They Work**: Infrastructure tests (Pester) will validate Terraform outputs. Workflow tests will use act (GitHub Actions local runner) or manual test runs to prove required test failures stop `deploy-preview`, `deploy-production`, and downstream validation until issues are fixed. **CRITICAL**: Must observe workflow failures before trusting success paths or approval-driven production releases.
 
 **✅ Principle 6 — AI Augments, Humans Decide**: GitHub Actions workflow structure is human-designed (job sequencing, approval gates, conditional logic). Terraform module design is human-architected (resource dependencies, output design). AI may generate boilerplate YAML/HCL syntax after architecture defined.
 
@@ -72,7 +72,7 @@ Automate Angular 19 frontend deployment to Azure Static Web Apps via GitHub Acti
 - [x] SWA free tier limits confirmed (1 production + 3 preview environments sufficient for 3-5 developers with PR cleanup)
 
 **WARNING** items to monitor:
-- ⚠️ Phase 1 test warnings may hide real failures — document all warnings for Phase 2 audit
+- ⚠️ Required test failures will block deployments immediately — stabilize flaky suites early to avoid release delays
 - ⚠️ 24-hour approval timeout is generous — may delay deployments if team unavailable
 - ⚠️ Free tier SWA preview quota (3 environments) can exhaust quickly — cleanup strategy needed
 
@@ -182,7 +182,7 @@ No abstraction layers or architectural complexity added—leverages platform cap
 | Decision | Rationale | Alternative Rejected |
 |----------|-----------|----------------------|
 | **Direct production deployment** (no slot swap) | SWA uses preview/production environments, not slots. Approval gate provides safety. | Staging → swap pattern (not supported by SWA Free tier) |
-| **Phase 1 test warnings allowed** | Pragmatic for test stabilization, enforcement in Phase 2+ | Block on failures immediately (too strict for unstable tests) |
+| **Required tests block all deployments** | Aligns with spec and constitutional quality gates; failed required tests must stop preview and production paths immediately in Phase 1+ | Warning-only enforcement (conflicts with required blocking behavior) |
 | **GitHub native notifications** | Built-in email/UI/mobile notifications sufficient for Phase 1 | Slack/Teams integration (adds complexity, deferred to Phase 2+) |
 | **24-hour approval timeout** | Maximum flexibility for small team availability | Shorter timeout (may cause delays if team unavailable) |
 | **Free tier SWA** | 1 production + 3 previews sufficient for dev environment | Standard tier (unnecessary cost for dev) |
@@ -203,18 +203,24 @@ No abstraction layers or architectural complexity added—leverages platform cap
     │
     ├─► [Build Job]  → Compile Angular → Upload artifact
     │
-    ├─► [Test Job]   → Jest unit + Playwright E2E (warnings allowed Phase 1)
+    ├─► [Test Job]   → Jest unit + Playwright E2E (required failures stop workflow)
     │
     ├─► [Deploy-Preview Job] (if branch != Main)
     │   └─► Azure Static Web Apps (Preview Environment)
     │       └─► URL: https://<swa>-<pr-number>.azurestaticapps.net
     │
-    └─► [Deploy-Production Job] (if branch == Main)
-        ├─► [PAUSE: Approval Gate] (GitHub Environment, 24-hour timeout)
-        │   └─► Required Reviewer approves/rejects
+    ├─► [Validate-Preview Job] (if branch != Main)
+    │   └─► HTTP 200 + expected version before merge evidence
+    │
+    └─► [Approval Gate] (if branch == Main)
+        ├─► GitHub Environment, 24-hour timeout
+        ├─► Required Reviewer approves/rejects
+        ├─► [Deploy-Production Job]
+        │   └─► Azure Static Web Apps (Production)
+        │       └─► URL: https://innoventity-dev-web.azurestaticapps.net
         │
-        └─► Azure Static Web Apps (Production)
-            └─► URL: https://innoventity-dev-web.azurestaticapps.net
+        └─► [Validate-Production Job]
+            └─► HTTP 200 + expected version after production deploy
 ```
 
 **Terraform Provisioning**:
@@ -233,11 +239,11 @@ infrastructure/environments/dev/core/main.tf (MODIFIED)
 Implementation is **complete** when:
 
 1. ✅ Terraform module exists and provisions SWA resource
-2. ✅ GitHub Actions workflow exists with all jobs (build, test, deploy-preview, deploy-production, validate)
-3. ✅ Pull request to Main triggers preview deployment (<15 minutes total workflow time)
-4. ✅ Merge to Main triggers approval gate → production deployment after approval
+2. ✅ GitHub Actions workflow exists with all jobs (build, test, deploy-preview, validate-preview, approval, deploy-production, validate-production)
+3. ✅ Feature branch and PR workflows trigger preview deployment and preview validation before merge (<15 minutes total workflow time)
+4. ✅ Merge to Main triggers approval gate → production deployment → production validation after approval
 5. ✅ Preview environments auto-delete on PR closure (via cleanup workflow)
-6. ✅ Health checks validate deployments (HTTP 200, Content-Type: text/html)
+6. ✅ Health checks validate preview before merge and validate production after deploy (HTTP 200, Content-Type: text/html)
 7. ✅ Zero manual `swa deploy` commands required for any scenario
 8. ✅ Documentation updated (infrastructure README, quickstart, runbooks/deployment.md)
 9. ✅ All tests observed failing before trusting (Principle 5 compliance: act for workflows, Pester for Terraform)
