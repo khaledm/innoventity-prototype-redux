@@ -55,6 +55,6 @@ export class InnovationDetailComponent implements OnInit {
   }
 
   goBack(): void {
-    this.router.navigate(['/']);
+    this.router.navigate(['/innovations']);
   }
 }

@@ -1,0 +1,83 @@
+<div class="innovations-list-container">
+  <h1 class="page-title">Published Innovations</h1>
+
+  @if (loading()) {
+    <div class="loading-spinner">
+      <mat-spinner diameter="50"></mat-spinner>
+      <p>Loading innovations...</p>
+    </div>
+  }
+
+  @if (error() && !loading()) {
+    <mat-card class="error-card">
+      <mat-card-content>
+        <div class="error-message">
+          <mat-icon>error</mat-icon>
+          <h2>Failed to Load Innovations</h2>
+          <p>{{ error() }}</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (!loading() && !error()) {
+    @if (innovations().length === 0) {
+      <mat-card class="empty-card">
+        <mat-card-content>
+          <div class="empty-message">
+            <mat-icon>lightbulb</mat-icon>
+            <h2>No Innovations Found</h2>
+            <p>There are no published innovations yet.</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    } @else {
+      <p class="result-count">{{ totalCount() }} innovation{{ totalCount() !== 1 ? 's' : '' }} found</p>
+      <div class="innovations-grid">
+        @for (innovation of innovations(); track innovation.innovationId) {
+          <mat-card class="innovation-card">
+            <mat-card-header>
+              <mat-card-title>{{ innovation.title }}</mat-card-title>
+              <mat-card-subtitle>
+                <mat-chip-set>
+                  <mat-chip>{{ innovation.productType }}</mat-chip>
+                  <mat-chip highlighted>{{ innovation.researchCategory }}</mat-chip>
+                </mat-chip-set>
+              </mat-card-subtitle>
+            </mat-card-header>
+
+            <mat-card-content>
+              <div class="innovation-meta">
+                <span class="owner">
+                  <mat-icon>person</mat-icon>
+                  {{ innovation.owner.displayName }}
+                </span>
+                @if (innovation.targetIndustries.length > 0) {
+                  <div class="industries">
+                    <mat-chip-set>
+                      @for (industry of innovation.targetIndustries; track industry) {
+                        <mat-chip>{{ industry }}</mat-chip>
+                      }
+                    </mat-chip-set>
+                  </div>
+                }
+                @if (innovation.submittedAt) {
+                  <span class="submitted-date">
+                    Submitted: {{ innovation.submittedAt | date:'mediumDate' }}
+                  </span>
+                }
+              </div>
+            </mat-card-content>
+
+            <mat-card-actions>
+              <button mat-raised-button color="primary" (click)="viewDetail(innovation.innovationId)">
+                <mat-icon>visibility</mat-icon>
+                View Details
+              </button>
+            </mat-card-actions>
+          </mat-card>
+        }
+      </div>
+    }
+  }
+</div>
