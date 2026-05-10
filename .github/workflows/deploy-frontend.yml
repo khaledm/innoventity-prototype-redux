@@ -2,7 +2,8 @@
 #
 # Frontend CI/CD pipeline — builds, tests, and deploys Angular 19 app to Azure Static Web Apps.
 #
-# Job chain: build → test → deploy-preview
+# Job chain: build → test → deploy-preview → validate-deployment
+#                         → deploy-production → validate-production (Main only)
 #
 # Trigger:
 #   push to any branch      — build/test validation when frontend code changes
@@ -301,6 +302,66 @@ jobs:
           skip_app_build: true
           output_location: ''
           production_branch: Main
+
+  # ─────────────────────────────────────────────────────────────────
+  # 4b. Validate Production — post-deployment health check for production
+  #     Mirrors validate-deployment but targets the production URL.
+  #     Fails the workflow (and surfaces evidence in Actions UI) when any
+  #     Pester assertion fails — operators must investigate before the next
+  #     Main merge (FR-SC-007, T062–T064).
+  # ─────────────────────────────────────────────────────────────────
+  validate-production:
+    name: Validate Production
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: github.event_name == 'push' && github.ref == 'refs/heads/Main'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Pester
+        shell: pwsh
+        run: |
+          Write-Host "Installing Pester v5..."
+          Install-Module -Name Pester -Force -SkipPublisherCheck -MaximumVersion 5.99.99
+          Import-Module Pester -PassThru | Select-Object Name, Version
+
+      - name: Run deployment validation tests
+        shell: pwsh
+        env:
+          SWA_URL: ${{ needs.deploy-production.outputs.production-url }}
+        run: |
+          Write-Host "Validating production deployment at: $env:SWA_URL"
+
+          $config = New-PesterConfiguration
+          $config.Run.Path                = './infrastructure/tests/pester/DeploymentValidation.Tests.ps1'
+          $config.Output.CIFormat         = 'GithubActions'
+          $config.TestResult.Enabled      = $true
+          $config.TestResult.OutputPath   = 'production-validation-results.xml'
+          $config.TestResult.OutputFormat = 'NUnit3'
+          $config.Run.Exit                = $true
+          $config.Output.Verbosity        = 'Detailed'
+
+          Invoke-Pester -Configuration $config
+
+      - name: Upload validation results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: production-validation-results-${{ github.run_id }}
+          path: production-validation-results.xml
+          retention-days: 90
+
+      - name: Publish validation results to GitHub Actions Summary
+        uses: dorny/test-reporter@v3
+        if: always()
+        with:
+          name: Production Validation Tests
+          path: production-validation-results.xml
+          reporter: dotnet-nunit
+          fail-on-error: true   # Production failures must be loud — block follow-on runs
+          fail-on-empty: true
+          list-tests: all
 
   # ─────────────────────────────────────────────────────────────────
   # 5. Cleanup Preview — delete SWA preview environment on PR close/merge
