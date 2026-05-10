@@ -11,18 +11,17 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<int>(
-                name: "FailedLoginAttempts",
-                table: "Actors",
-                type: "int",
-                nullable: false,
-                defaultValue: 0);
+            migrationBuilder.Sql(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'Actors') AND name = 'FailedLoginAttempts')
+                BEGIN
+                    ALTER TABLE [Actors] ADD [FailedLoginAttempts] int NOT NULL DEFAULT 0;
+                END");
 
-            migrationBuilder.AddColumn<DateTimeOffset>(
-                name: "LockoutUntil",
-                table: "Actors",
-                type: "datetimeoffset",
-                nullable: true);
+            migrationBuilder.Sql(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'Actors') AND name = 'LockoutUntil')
+                BEGIN
+                    ALTER TABLE [Actors] ADD [LockoutUntil] datetimeoffset NULL;
+                END");
         }
 
         /// <inheritdoc />
