@@ -9,11 +9,11 @@
 #   pull_request            — preview deploy on open/sync/reopen; cleanup on close
 #   workflow_dispatch       — manual build/test (bypasses path filter)
 #
-# Phase 1 behavior:
-#   - Tests run with continue-on-error: true (enforcement begins Phase 2)
-#   - deploy-preview runs on pull_request events only (SWA Free tier: PR previews only;
-#     named branch environments require Standard tier — not available in Phase 1)
-#   - Production deployment with approval gate: Phase 3 (speckit.implement Phase 5-8)
+# Current behavior:
+#   - Tests block deployment on failure (FR-009 Phase 2 enforcement)
+#   - deploy-preview runs on pull_request events to SWA preview slots
+#   - deploy-production runs on Main branch push with manual approval gate (1440 min timeout)
+#   - Production deployment requires GitHub Environment approval (Phase 6 complete)
 #
 # Required secrets:
 #   AZURE_STATIC_WEB_APPS_API_TOKEN  — from: terraform output -raw static_web_app_api_key
@@ -118,19 +118,16 @@ jobs:
 
       - name: Run Jest unit tests
         working-directory: ${{ env.WORKING_DIR }}
-        # Phase 1: continue-on-error allows deployment even with test failures.
-        # Remove continue-on-error in Phase 2 to enforce blocking (FR-009).
-        continue-on-error: true
+        # Phase 2+: Test failures now block deployment (FR-009 enforcement).
+        # All tests must pass before deploy jobs can proceed.
         run: npm run test:coverage -- --ci
 
       - name: Install Playwright browsers
         working-directory: ${{ env.WORKING_DIR }}
-        continue-on-error: true
         run: npx playwright install --with-deps chromium
 
       - name: Run Playwright E2E tests
         working-directory: ${{ env.WORKING_DIR }}
-        continue-on-error: true
         run: npm run e2e
 
       - name: Upload test results
