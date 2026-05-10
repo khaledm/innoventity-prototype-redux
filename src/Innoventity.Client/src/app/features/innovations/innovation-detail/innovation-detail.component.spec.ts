@@ -153,6 +153,21 @@ describe('InnovationDetailComponent', () => {
       expect(component.innovation()).toBeNull();
     });
 
+    it('should set fallback error when service returns failure with no error string', async () => {
+      const innovationId = '123e4567-e89b-12d3-a456-426614174000';
+      mockActivatedRoute.snapshot.paramMap.get.mockReturnValue(innovationId);
+      const failureResult: Result<InnovationDetail> = { success: false };
+      mockInnovationsService.getInnovationById.mockResolvedValue(failureResult);
+
+      fixture = TestBed.createComponent(InnovationDetailComponent);
+      component = fixture.componentInstance;
+
+      await component.ngOnInit();
+
+      expect(component.error()).toBe('Failed to load innovation');
+      expect(component.loading()).toBe(false);
+    });
+
     it('should handle 404 error gracefully', async () => {
       // Arrange
       const innovationId = 'nonexistent-id';
