@@ -155,7 +155,7 @@
 - [X] T076 ~~[US5] Test preview validation failure with an intentionally broken preview deployment and verify the workflow does not present a merge-ready success signal~~ — **DESCOPED**: Failure-mode testing deferred. Validation jobs use `fail-on-error: true` and `fail-on-empty: true`; positive-path runs confirm configuration is wired correctly. Failure-mode evidence to be captured in a dedicated ops drill or on the first genuine failure.
 - [X] T077 ~~[US5] Test production validation failure after approval and verify the Main workflow concludes failed with clear GitHub-native evidence for operators~~ — **DESCOPED**: Same rationale as T076. `validate-production` exits non-zero via Pester `$config.Run.Exit = $true` and dorny/test-reporter `fail-on-error: true`. Deferred to first Main merge post-close or a future sprint ops task.
 
-**Checkpoint**: Validation failure modes have been observed and captured for both preview and production paths
+**Checkpoint**: ~~Validation failure modes have been observed and captured for both preview and production paths~~ — **DESCOPED 2026-05-10**: Failure-mode testing formally deferred; positive-path preview validation confirmed via actual pipeline runs. See T076/T077 DESCOPED notes. **P5 gap to close on first Main merge**: run workflow against a deliberately broken `staticwebapp.config.json` (e.g., remove the security-headers rule), confirm `validate-production` fails with a non-zero Pester exit, revert, and record the evidence.
 
 ---
 
@@ -312,7 +312,7 @@ Implementation is **COMPLETE** when all criteria from spec.md are met:
 
 - [x] Workflow tested locally with `act --dryrun` before pushing (observed workflow structure before relying on GitHub Actions)
 - [x] Terraform `plan` observed before `apply` (infrastructure changes previewed)
-- [x] Intentionally broken deployment tested to verify validation catches failures — **DESCOPED** per T076/T077; validation jobs hardened with `fail-on-error: true` and Pester `$config.Run.Exit = $true`
+- [x] Intentionally broken deployment tested to verify validation catches failures — **DESCOPED** per T076/T077; validation jobs hardened with `fail-on-error: true` and Pester `$config.Run.Exit = $true`. **P5 closure action**: On first Main merge, observe `validate-production` failing against a deliberately broken config before recording final P5 sign-off (see Phase 7 checkpoint).
 - [x] Test job observed failing before implementation (red-green-refactor workflow) — Jest and Playwright tests confirmed working; `continue-on-error` removed per T068
 - [x] Approval gate tested with rejection scenario — **DESCOPED** per T076/T077 rationale; rejection enforced by GitHub-native environment protection rules (not custom workflow logic)
 

@@ -173,7 +173,7 @@ As a **quality assurance engineer**, I need automated health checks after deploy
 - **FR-015**: `deploy-production` job MUST require manual approval via GitHub Environment protection rule BEFORE deployment
 - **FR-016**: `deploy-production` job MUST download build artifact from `build` job
 - **FR-017**: `deploy-production` job MUST deploy directly to production environment (NOT preview)
-- **FR-018**: `validate-production` job MUST execute only after `deploy-production` succeeds on Main and MUST validate the production URL (output from deploy step) returns HTTP 200 and serves the new version
+- **FR-018**: `validate-production` job MUST execute only after `deploy-production` succeeds on Main and MUST validate that the production URL (output from deploy step) returns HTTP 200, Content-Type `text/html`, and the Angular app bootstraps successfully (response body contains `<app-root>`) — *amended 2026-05-10: "serves the new version" tightened to observable, testable assertions already implemented in `DeploymentValidation.Tests.ps1`*
 - **FR-019**: Workflow MUST send deployment status notification on success or failure via GitHub Actions native notifications (email, UI, mobile app); Slack/Teams integrations deferred to Phase 2+
 
 #### Terraform Infrastructure
@@ -194,7 +194,7 @@ As a **quality assurance engineer**, I need automated health checks after deploy
 - **FR-030**: SWA `staticwebapp.config.json` MUST define routing rules for SPA (redirect all to `index.html`)
 - **FR-031**: SWA `staticwebapp.config.json` MUST define navigation fallback for Angular routing
 - **FR-032**: Production configuration MUST point to backend API at `https://innoventity-dev-api.azurewebsites.net`
-- **FR-033**: Local development configuration MUST use the existing proxy configuration for local testing (`proxy.conf.json`)
+- **FR-033**: Local development configuration MUST use the existing proxy configuration for local testing (`proxy.conf.js`) — *amended 2026-05-10: changed from `proxy.conf.json` to `proxy.conf.js`; JS format required to support `bypass()` function that prevents Angular dev server from proxying browser HTML navigations to the API (commit `753f85b`)*
 
 #### PR Preview Environments
 
@@ -333,7 +333,7 @@ This feature is **COMPLETE** when:
 8. ✅ Merge to Main runs build and required tests, pauses at approval gate, and after manual approval deploys directly to production and passes production validation
 9. ✅ Production URL (`https://innoventity-dev-web.azurestaticapps.net`) serves latest frontend version
 10. ✅ Zero manual `swa deploy` commands required for any deployment scenario
-11. ✅ Documentation updated: `infrastructure/README.md`, `specs/001-platform-core/quickstart.md`, `specs/001-platform-core/frontend-architecture.md`
+11. ~~Documentation updated: `infrastructure/README.md`, `specs/001-platform-core/quickstart.md`, `specs/001-platform-core/frontend-architecture.md`~~ — **DESCOPED 2026-05-10**: Dedicated runbook (T065), infrastructure README (T066), and status badge (T067) deferred to next iteration; pipeline automation is complete without them
 
 ---
 
