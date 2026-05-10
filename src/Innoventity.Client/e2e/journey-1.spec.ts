@@ -62,14 +62,29 @@ interface LoginResponse {
 }
 
 interface CreateInnovationRequest {
+  // Required fields
   title: string;
   productType: string;
   researchCategory: string;
   researchBackground: string;
   hasIPR: boolean;
   hasRightToUse: boolean;
+  // Optional fields (drafts do not require completeness - Spec §US2)
   productDescription?: string;
   technologyDescription?: string;
+  productAdvantages?: string;
+  developmentPhase?: string;
+  developmentProcess?: string;
+  targetBeneficiaries?: string;
+  relevantMarketSize?: number;
+  potentialMarketSize?: number;
+  targetMarket?: string;
+  targetCustomerBase?: string;
+  targetCustomerType?: string;
+  productKeywords?: string;
+  advantageKeywords?: string;
+  targetIndustryIds?: string[];
+  partnersNeeded?: string[];
 }
 
 interface CreateInnovationResponse {
@@ -162,22 +177,13 @@ async function loginAccount(request: APIRequestContext, email: string, password:
 }
 
 /**
- * Login via UI (fills login form and submits)
+ * Login via UI (fills login form and submits), then waits until the token is confirmed in
+ * localStorage.
  *
- * KNOWN LIMITATION: While this function successfully completes the login flow and stores
- * tokens in localStorage, subsequent page navigations may still receive 401 errors.
- *
- * Root Cause: Angular's AuthService initializes its signal once at app startup by reading
- * localStorage. When tests navigate to a different page after login, there appears to be
- * a timing/initialization issue where the HTTP interceptor doesn't consistently pick up
- * the token from the AuthService signal.
- *
- * Token Storage: ✅ Works correctly (verified: token, refreshToken, user all stored)
- * Login Flow: ✅ Works correctly (redirects to innovation page after login)
- * HTTP Interceptor: ❌ Inconsistent (sometimes doesn't add Authorization header)
- *
- * This affects tests that need to navigate to different pages after UI login.
- * For now, use API-based login for tests that require authenticated HTTP requests.
+ * Important: Playwright's page.goto() always triggers a full HTTP navigation, causing Angular
+ * to re-bootstrap from scratch. To guarantee the auth token is available when Angular reads
+ * localStorage in AuthService's constructor, call page.addInitScript() with the stored token
+ * immediately after this function before any subsequent page.goto() call.
  */
 async function loginViaUI(
   page: any,
@@ -264,25 +270,6 @@ test.describe('Journey 1: User Registration and Innovation View', () => {
     testPassword = 'Test123!@#E2E';
   });
 
-  /**
-   * KNOWN ISSUE: This test has a known limitation with browser-based authentication.
-   *
-   * Status: PARTIAL PASS
-   * - ✅ Registration via API works
-   * - ✅ Activation via API works
-   * - ✅ Login via API works (token obtained)
-   * - ✅ Innovation creation via API works (data persisted)
-   * - ✅ UI login works (form fills, submits, redirects, stores token)
-   * - ❌ Innovation viewing fails with 401 Unauthorized
-   *
-   * The test successfully demonstrates that all API endpoints work correctly and that
-   * the UI login flow functions properly. However, subsequent navigation after UI login
-   * results in 401 errors despite valid tokens being stored in localStorage.
-   *
-   * This appears to be a test infrastructure issue with Angular signal initialization
-   * timing, not a functional issue with the application (manual testing confirms the
-   * full flow works correctly).
-   */
   test('should complete full journey: Register → Activate → Login → Create Innovation → View Innovation', async ({ page, request }) => {
     let innovationId: string;
     let accessToken: string;
@@ -337,21 +324,27 @@ test.describe('Journey 1: User Registration and Innovation View', () => {
     // ==========================================
     await test.step('Login via UI', async () => {
       await loginViaUI(page, testEmail, testPassword, 'IdeaGenerator');
+
+      // After UI login the token is in localStorage. Register an addInitScript so it is
+      // guaranteed to be set *before* Angular bootstraps on the next full-page navigation.
+      // page.goto() always performs a full HTTP navigation: Angular re-bootstraps fresh and
+      // reads localStorage in AuthService's constructor. addInitScript runs before any page
+      // scripts, ensuring the signal is populated before the first HTTP request fires.
+      const storedToken = await page.evaluate(() => localStorage.getItem('accessToken'));
+      await page.addInitScript(
+        (token: string) => { localStorage.setItem('accessToken', token); },
+        storedToken!,
+      );
     });
 
     // ==========================================
     // STEP 6: View Innovation Detail via UI
     // ==========================================
     await test.step('View innovation detail', async () => {
-      // Listen for console messages and errors
       page.on('console', msg => console.log('BROWSER CONSOLE:', msg.type(), msg.text()));
       page.on('pageerror', err => console.error('PAGE ERROR:', err.message));
 
-      // Navigate directly to the innovation detail page
-      // No need to set localStorage - UI login already handled authentication
       await page.goto(`http://localhost:4200/innovations/${innovationId}`);
-
-      // Wait for page to load
       await page.waitForLoadState('networkidle');
 
       // Verify innovation title is displayed
@@ -372,12 +365,8 @@ test.describe('Journey 1: User Registration and Innovation View', () => {
     // STEP 6: Verify Navigation Works
     // ==========================================
     await test.step('Test navigation back', async () => {
-      // Click back button
       await page.getByRole('button', { name: /back/i }).click();
-
-      // Should navigate to root (which redirects to login since we're testing routing)
-      // In a real app with a home/dashboard, this would go there
-      await expect(page).toHaveURL('/');
+      await expect(page).toHaveURL('/innovations');
     });
   });
 
@@ -407,10 +396,6 @@ test.describe('Journey 1: User Registration and Innovation View', () => {
     });
   });
 
-  /**
-   * KNOWN ISSUE: This test has the same browser authentication limitation as the full journey test.
-   * See the full journey test comments for details.
-   */
   test('should show loading state during innovation fetch', async ({ page, request }) => {
     let innovationId: string;
     let accessToken: string;
@@ -447,19 +432,17 @@ test.describe('Journey 1: User Registration and Innovation View', () => {
     // Login via UI to establish browser auth state
     await test.step('Login via UI', async () => {
       await loginViaUI(page, testEmail, testPassword, 'IdeaGenerator');
+
+      const storedToken = await page.evaluate(() => localStorage.getItem('accessToken'));
+      await page.addInitScript(
+        (token: string) => { localStorage.setItem('accessToken', token); },
+        storedToken!,
+      );
     });
 
     await test.step('Navigate to innovation and observe loading state', async () => {
-      // Navigate directly to innovation detail page
-      // No need to set localStorage - UI login already handled authentication
       await page.goto(`http://localhost:4200/innovations/${innovationId}`);
-
-      // Wait for page to load
       await page.waitForLoadState('networkidle');
-
-      // Should briefly show loading spinner (may be too fast to catch in local tests)
-      // This assertion is best-effort - if the API is fast, it may pass the spinner phase
-      const loadingSpinner = page.locator('.loading-spinner');
 
       // Eventually, content should be visible (loading complete)
       await expect(page.getByRole('heading', { name: /loading state test innovation/i })).toBeVisible({ timeout: 10000 });
