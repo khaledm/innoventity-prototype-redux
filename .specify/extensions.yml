@@ -114,6 +114,13 @@ hooks:
     prompt: Commit task changes?
     description: Auto-commit after task generation
     condition: null
+  - extension: blueprint
+    command: speckit.blueprint.generate
+    enabled: true
+    optional: true
+    prompt: Generate blueprint from tasks?
+    description: Auto-generate blueprint.md after task generation
+    condition: null
   after_implement:
   - extension: git
     command: speckit.git.commit

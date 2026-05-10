@@ -174,6 +174,12 @@ public class AppDbContext : DbContext
                   .IsRequired()
                   .HasMaxLength(100);
 
+            entity.Property(i => i.RelevantMarketSize)
+                  .HasPrecision(28, 2);
+
+            entity.Property(i => i.PotentialMarketSize)
+                  .HasPrecision(28, 2);
+
             entity.Property(i => i.ProductKeywords)
                   .IsRequired()
                   .HasMaxLength(500);

@@ -52,9 +52,9 @@ jobs:
       run:
         working-directory: infrastructure/environments/${{ inputs.environment || 'dev' }}/data
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "~1.6"
           terraform_wrapper: false
@@ -67,7 +67,7 @@ jobs:
         env:
           TF_VAR_sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: tfplan-data-${{ github.run_id }}
           path: infrastructure/environments/${{ inputs.environment || 'dev' }}/data/tfplan-data
@@ -102,9 +102,9 @@ jobs:
       run:
         working-directory: infrastructure/environments/${{ inputs.environment || 'dev' }}/data
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "~1.6"
           terraform_wrapper: false   # required — wrapper prevents capturing terraform output
@@ -112,7 +112,7 @@ jobs:
       - name: terraform init
         run: terraform init -input=false
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: tfplan-data-${{ github.run_id }}
           path: infrastructure/environments/${{ inputs.environment || 'dev' }}/data
@@ -143,9 +143,9 @@ jobs:
       run:
         working-directory: infrastructure/environments/${{ inputs.environment || 'dev' }}/core
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "~1.6"
           terraform_wrapper: false
@@ -157,6 +157,26 @@ jobs:
       - name: terraform init
         run: terraform init -input=false
 
+      - name: Import pre-existing resources (idempotent)
+        run: |
+          set -euo pipefail
+          DATA_JSON=$(terraform -chdir=../data output -json 2>/dev/null)
+          CONN=$(echo "$DATA_JSON" | jq -re '.connection_string.value')
+          SQL_ID=$(echo "$DATA_JSON" | jq -re '.sql_server_id.value')
+          ENV="${{ inputs.environment || 'dev' }}"
+          DIAG_ID="${SQL_ID}|innoventity-${ENV}-sql-diag"
+          # Import only if not already tracked in state; safe to re-run.
+          if terraform state show 'azurerm_monitor_diagnostic_setting.sql_server[0]' > /dev/null 2>&1; then
+            echo "azurerm_monitor_diagnostic_setting.sql_server[0] already in state — skipping import"
+          else
+            terraform import \
+              -var "connection_string=$CONN" \
+              -var "jwt_secret_key=${{ secrets.JWT_SECRET_KEY }}" \
+              -var "sql_server_id=$SQL_ID" \
+              'azurerm_monitor_diagnostic_setting.sql_server[0]' \
+              "$DIAG_ID"
+          fi
+
       - name: terraform plan
         run: |
           DATA_JSON=$(terraform -chdir=../data output -json 2>/dev/null)
@@ -167,7 +187,7 @@ jobs:
             -var "jwt_secret_key=${{ secrets.JWT_SECRET_KEY }}" \
             -var "sql_server_id=$SQL_ID"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: tfplan-core-${{ github.run_id }}
           path: infrastructure/environments/${{ inputs.environment || 'dev' }}/core/tfplan-core
@@ -191,9 +211,9 @@ jobs:
       run:
         working-directory: infrastructure/environments/${{ inputs.environment || 'dev' }}/core
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "~1.6"
           terraform_wrapper: false
@@ -201,7 +221,7 @@ jobs:
       - name: terraform init
         run: terraform init -input=false
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: tfplan-core-${{ github.run_id }}
           path: infrastructure/environments/${{ inputs.environment || 'dev' }}/core
@@ -228,7 +248,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() && needs.terraform-apply-core.result == 'success' && needs.terraform-apply-data.result == 'success' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Azure CLI login
         run: |
@@ -244,6 +264,7 @@ jobs:
           APP_SERVICE_NAME:    ${{ needs.terraform-apply-core.outputs.app_service_name }}
           RESOURCE_GROUP_NAME: ${{ needs.terraform-apply-data.outputs.resource_group_name }}
           SQL_SERVER_NAME:     innoventity-${{ inputs.environment || 'dev' }}-sql
+          SWA_NAME:            innoventity-${{ inputs.environment || 'dev' }}-web
           ENVIRONMENT:         ${{ inputs.environment || 'dev' }}
         run: |
           Install-Module Pester -Force -SkipPublisherCheck -RequiredVersion 5.6.1
@@ -253,7 +274,8 @@ jobs:
           $config.Run.Path          = @(
               './infrastructure/tests/pester/AppService.Tests.ps1',
               './infrastructure/tests/pester/Secrets.Tests.ps1',
-              './infrastructure/tests/pester/SqlDatabase.Tests.ps1'
+              './infrastructure/tests/pester/SqlDatabase.Tests.ps1',
+              './infrastructure/tests/pester/StaticWebApp.Tests.ps1'
           )
           $config.Output.CIFormat         = 'GithubActions'  # annotates failures inline in Actions log
           $config.TestResult.Enabled      = $true
@@ -262,14 +284,14 @@ jobs:
           $config.Run.Exit                = $true
           Invoke-Pester -Configuration $config
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: pester-infra-results
           path: pester-infra-results.xml
 
       - name: Publish test results to Summary
-        uses: dorny/test-reporter@v2
+        uses: dorny/test-reporter@v3
         if: always()
         with:
           name: Pester Infrastructure Tests

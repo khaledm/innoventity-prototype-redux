@@ -1,0 +1,378 @@
+# .github/workflows/deploy-frontend.yml
+#
+# Frontend CI/CD pipeline — builds, tests, and deploys Angular 19 app to Azure Static Web Apps.
+#
+# Job chain: build → test → deploy-preview → validate-deployment
+#                         → deploy-production → validate-production (Main only)
+#
+# Trigger:
+#   push to any branch      — build/test validation when frontend code changes
+#   pull_request            — preview deploy on open/sync/reopen; cleanup on close
+#   workflow_dispatch       — manual build/test (bypasses path filter)
+#
+# Current behavior:
+#   - Tests block deployment on failure (FR-009 Phase 2 enforcement)
+#   - deploy-preview runs on pull_request events to SWA preview slots
+#   - deploy-production runs on Main branch push with manual approval gate (1440 min timeout)
+#   - Production deployment requires GitHub Environment approval (Phase 6 complete)
+#
+# Required secrets:
+#   AZURE_STATIC_WEB_APPS_API_TOKEN  — from: terraform output -raw static_web_app_api_key
+#
+# SWA Free tier limits (FR-043):
+#   - 1 production environment
+#   - 3 preview environments max; deploy-preview FAILS HARD when quota exhausted
+#     (do NOT add continue-on-error — failure is the intended signal to clean up PRs)
+
+name: Deploy Frontend
+
+permissions:
+  checks: write          # Required by dorny/test-reporter to publish test results
+  contents: read
+  pull-requests: write   # Required for GitHub bot to post preview URL as PR comment
+
+on:
+  push:
+    branches:
+      - '**'
+    paths:
+      - 'src/Innoventity.Client/**'
+      - '.github/workflows/deploy-frontend.yml'
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - Main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment (dev only in Phase 1)'
+        required: false
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+
+env:
+  NODE_VERSION: '20.x'
+  WORKING_DIR: 'src/Innoventity.Client'
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────
+  # 1. Build — compile Angular app with production configuration
+  # ─────────────────────────────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    # Skip build-test-deploy when PR is closed (only cleanup job needed)
+    if: github.event_name != 'pull_request' || github.event.action != 'closed'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIR }}
+        run: npm ci
+
+      - name: Build Angular app (production)
+        working-directory: ${{ env.WORKING_DIR }}
+        run: npm run build -- --configuration production
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-build
+          # Angular 19 outputs to dist/<name>/browser/ for compiled app,
+          # but staticwebapp.config.json lands in dist/<name>/ (parent).
+          # Upload parent directory to include both browser/ and config.
+          path: ${{ env.WORKING_DIR }}/dist/innoventity.client
+          retention-days: 90
+          if-no-files-found: error
+
+  # ─────────────────────────────────────────────────────────────────
+  # 2. Test — run unit and E2E tests (Phase 1: warnings only)
+  # ─────────────────────────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIR }}
+        run: npm ci
+
+      - name: Run Jest unit tests
+        working-directory: ${{ env.WORKING_DIR }}
+        # Phase 2+: Test failures now block deployment (FR-009 enforcement).
+        # All tests must pass before deploy jobs can proceed.
+        run: npm run test:coverage -- --ci
+
+      # E2E journey tests require a live .NET API + SQL Server — not available in CI.
+      # Tests are skipped in CI (testIgnore in playwright.config.ts). Run locally with full stack.
+      # Install and run steps kept so the Playwright report artifact is always uploaded on local reuse.
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-${{ github.run_id }}
+          path: |
+            ${{ env.WORKING_DIR }}/coverage/
+            ${{ env.WORKING_DIR }}/test-results/
+            ${{ env.WORKING_DIR }}/playwright-report/
+          retention-days: 90
+          if-no-files-found: ignore
+
+  # ─────────────────────────────────────────────────────────────────
+  # 3. Deploy Preview — deploy to SWA preview environment (feature branches)
+  #    Skipped on Main branch (production deployment is Phase 3).
+  #    SWA Free tier: max 3 preview environments. Workflow FAILS HARD when
+  #    quota is exhausted — close a stale PR to free a slot (FR-043).
+  # ─────────────────────────────────────────────────────────────────
+  deploy-preview:
+    name: Deploy Preview
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    # Run on PRs only — SWA Free tier only supports PR-based preview environments.
+    # Named branch environments (push/workflow_dispatch on non-Main) require Standard tier.
+    # Production deployment (Main branch) is Phase 3.
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    environment: development
+    outputs:
+      preview-url: ${{ steps.deploy.outputs.static_web_app_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: frontend-build
+          path: dist
+
+      - name: Ensure staticwebapp.config.json is at deployment root
+        run: |
+          # Angular may place staticwebapp.config.json in parent dir
+          # Ensure it's alongside index.html for SWA to read headers config
+          if [ ! -f dist/browser/staticwebapp.config.json ] && [ -f dist/staticwebapp.config.json ]; then
+            echo "Moving staticwebapp.config.json into browser/ folder"
+            mv dist/staticwebapp.config.json dist/browser/
+          fi
+
+      - name: Deploy to Azure Static Web Apps preview
+        id: deploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          # Artifact is dist/innoventity.client/ (parent) which contains:
+          #   - browser/ (compiled app)
+          #   - staticwebapp.config.json (security headers)
+          # Point to browser/ subfolder where index.html lives
+          app_location: dist/browser
+          skip_app_build: true
+          output_location: ''
+          # production_branch tells SWA which branch maps to the production environment.
+          # All other branches (including this one) are routed to preview environments.
+          production_branch: Main
+
+  # ─────────────────────────────────────────────────────────────────
+  # 3b. Validate Deployment — post-deployment validation for preview
+  #     Tests application-level concerns (security headers, SPA routing)
+  #     after successful deployment. Runs ONLY on preview deployments.
+  # ─────────────────────────────────────────────────────────────────
+  validate-deployment:
+    name: Validate Deployment
+    runs-on: ubuntu-latest
+    needs: deploy-preview
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Pester
+        shell: pwsh
+        run: |
+          Write-Host "Installing Pester v5..."
+          Install-Module -Name Pester -Force -SkipPublisherCheck -MaximumVersion 5.99.99
+          Import-Module Pester -PassThru | Select-Object Name, Version
+
+      - name: Run deployment validation tests
+        shell: pwsh
+        env:
+          SWA_URL: ${{ needs.deploy-preview.outputs.preview-url }}
+        run: |
+          Write-Host "Validating deployment at: $env:SWA_URL"
+
+          # Run Pester tests with CI output (fails workflow on test failure)
+          $config = New-PesterConfiguration
+          $config.Run.Path = './infrastructure/tests/pester/DeploymentValidation.Tests.ps1'
+          $config.Output.CIFormat         = 'GithubActions'  # annotates failures inline in Actions log
+          $config.TestResult.Enabled      = $true
+          $config.TestResult.OutputPath   = 'deployment-validation-results.xml'
+          $config.TestResult.OutputFormat = 'NUnit3'  # NUnit 3.x — required by dorny/test-reporter dotnet-nunit parser
+          $config.Run.Exit                = $true
+          $config.Output.Verbosity        = 'Detailed'
+
+          Invoke-Pester -Configuration $config
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: deployment-validation-results
+          path: deployment-validation-results.xml
+          retention-days: 90
+
+      - name: Publish test results to Summary
+        uses: dorny/test-reporter@v3
+        if: always()
+        with:
+          name: Deployment Validation Tests
+          path: deployment-validation-results.xml
+          reporter: dotnet-nunit
+          fail-on-error: false
+          fail-on-empty: true
+          list-tests: all
+
+  # ─────────────────────────────────────────────────────────────────
+  # 4. Deploy Production — deploy directly to production environment
+  #    Main branch push (including PR merge) only. Requires manual approval
+  #    via GitHub Environment "production" protection rule (FR-015, FR-041).
+  #    24-hour approval timeout — auto-fails if not approved (FR-041).
+  #    Uses event_name == 'push' to avoid triggering on pull_request events
+  #    targeting Main (open/sync/reopen emit pull_request, not push).
+  # ─────────────────────────────────────────────────────────────────
+  deploy-production:
+    name: Deploy Production
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/Main'
+    environment: production
+    outputs:
+      production-url: ${{ steps.deploy.outputs.static_web_app_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: frontend-build
+          path: dist
+
+      - name: Ensure staticwebapp.config.json is at deployment root
+        run: |
+          # Angular may place staticwebapp.config.json in parent dir
+          # Ensure it's alongside index.html for SWA to read headers config
+          if [ ! -f dist/browser/staticwebapp.config.json ] && [ -f dist/staticwebapp.config.json ]; then
+            echo "Moving staticwebapp.config.json into browser/ folder"
+            mv dist/staticwebapp.config.json dist/browser/
+          fi
+
+      - name: Deploy to Azure Static Web Apps production
+        id: deploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: dist/browser
+          skip_app_build: true
+          output_location: ''
+          production_branch: Main
+
+  # ─────────────────────────────────────────────────────────────────
+  # 4b. Validate Production — post-deployment health check for production
+  #     Mirrors validate-deployment but targets the production URL.
+  #     Fails the workflow (and surfaces evidence in Actions UI) when any
+  #     Pester assertion fails — operators must investigate before the next
+  #     Main merge (FR-SC-007, T062–T064).
+  # ─────────────────────────────────────────────────────────────────
+  validate-production:
+    name: Validate Production
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: github.event_name == 'push' && github.ref == 'refs/heads/Main'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Pester
+        shell: pwsh
+        run: |
+          Write-Host "Installing Pester v5..."
+          Install-Module -Name Pester -Force -SkipPublisherCheck -MaximumVersion 5.99.99
+          Import-Module Pester -PassThru | Select-Object Name, Version
+
+      - name: Run deployment validation tests
+        shell: pwsh
+        env:
+          SWA_URL: ${{ needs.deploy-production.outputs.production-url }}
+        run: |
+          Write-Host "Validating production deployment at: $env:SWA_URL"
+
+          $config = New-PesterConfiguration
+          $config.Run.Path                = './infrastructure/tests/pester/DeploymentValidation.Tests.ps1'
+          $config.Output.CIFormat         = 'GithubActions'
+          $config.TestResult.Enabled      = $true
+          $config.TestResult.OutputPath   = 'production-validation-results.xml'
+          $config.TestResult.OutputFormat = 'NUnit3'
+          $config.Run.Exit                = $true
+          $config.Output.Verbosity        = 'Detailed'
+
+          Invoke-Pester -Configuration $config
+
+      - name: Upload validation results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: production-validation-results-${{ github.run_id }}
+          path: production-validation-results.xml
+          retention-days: 90
+
+      - name: Publish validation results to GitHub Actions Summary
+        uses: dorny/test-reporter@v3
+        if: always()
+        with:
+          name: Production Validation Tests
+          path: production-validation-results.xml
+          reporter: dotnet-nunit
+          fail-on-error: true   # Production failures must be loud — block follow-on runs
+          fail-on-empty: true
+          list-tests: all
+
+  # ─────────────────────────────────────────────────────────────────
+  # 5. Cleanup Preview — delete SWA preview environment on PR close/merge
+  #    Triggered by pull_request: [closed] to prevent quota exhaustion.
+  #    Immediate deletion aligns with FR-037 (Q1 decision: delete on close).
+  # ─────────────────────────────────────────────────────────────────
+  cleanup-preview:
+    name: Cleanup Preview
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Delete Azure Static Web Apps preview environment
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: close

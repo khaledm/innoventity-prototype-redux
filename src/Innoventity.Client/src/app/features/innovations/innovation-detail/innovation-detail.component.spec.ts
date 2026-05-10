@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { InnovationDetailComponent } from './innovation-detail.component';
 import { InnovationsService } from '../../../core/services/innovations.service';
-import { InnovationDetail, ResearchCategory } from '../../../core/models/innovation.model';
+import { InnovationDetail } from '../../../core/models/innovation.model';
 import { Result } from '../../../core/models/result.model';
 
 describe('InnovationDetailComponent', () => {
@@ -15,12 +15,34 @@ describe('InnovationDetailComponent', () => {
 
   const mockInnovation: InnovationDetail = {
     id: '123e4567-e89b-12d3-a456-426614174000',
+    ideaToken: 'INN-2024-001',
+    ownerId: '456e7890-e89b-12d3-a456-426614174000',
+    owner: {
+      id: '456e7890-e89b-12d3-a456-426614174000',
+      firstName: 'Jane',
+      lastName: 'Doe',
+      displayName: 'Jane Doe',
+      email: 'jane@example.com',
+      actorType: 'IdeaGenerator'
+    },
     title: 'Advanced AI System',
     productType: 'Software',
     researchBackground: 'This innovation represents a breakthrough in artificial intelligence...',
-    researchCategory: ResearchCategory.Engineering,
-    hasIPR: true,
-    iprDetails: 'Patent pending: US20230001234'
+    researchCategory: 'Engineering',
+    iprStatus: 'Patent Pending',
+    productDescription: 'An advanced AI system for automated problem solving.',
+    productAdvantages: 'Faster processing, lower cost, higher accuracy.',
+    developmentPhase: 'Prototype',
+    developmentProcess: 'Agile',
+    targetMarket: 'Enterprise software market.',
+    targetCustomerBase: 'Large corporations',
+    targetCustomerType: 'B2B',
+    productKeywords: 'AI, machine learning, automation',
+    advantageKeywords: 'speed, accuracy, cost',
+    status: 'Published',
+    createdAt: '2024-01-01T00:00:00Z',
+    submittedAt: '2024-01-15T00:00:00Z',
+    targetIndustries: [{ industryId: 'TECH-001', name: 'Technology' }]
   };
 
   beforeEach(async () => {
@@ -131,6 +153,21 @@ describe('InnovationDetailComponent', () => {
       expect(component.innovation()).toBeNull();
     });
 
+    it('should set fallback error when service returns failure with no error string', async () => {
+      const innovationId = '123e4567-e89b-12d3-a456-426614174000';
+      mockActivatedRoute.snapshot.paramMap.get.mockReturnValue(innovationId);
+      const failureResult: Result<InnovationDetail> = { success: false };
+      mockInnovationsService.getInnovationById.mockResolvedValue(failureResult);
+
+      fixture = TestBed.createComponent(InnovationDetailComponent);
+      component = fixture.componentInstance;
+
+      await component.ngOnInit();
+
+      expect(component.error()).toBe('Failed to load innovation');
+      expect(component.loading()).toBe(false);
+    });
+
     it('should handle 404 error gracefully', async () => {
       // Arrange
       const innovationId = 'nonexistent-id';
@@ -227,7 +264,7 @@ describe('InnovationDetailComponent', () => {
       expect(component.innovation()).toEqual(mockInnovation);
     });
 
-    it('should display IPR badge when innovation has IPR', async () => {
+    it('should display IPR chip when iprStatus is not None', async () => {
       // Arrange
       mockActivatedRoute.snapshot.paramMap.get.mockReturnValue('test-id');
       mockInnovationsService.getInnovationById.mockResolvedValue({
@@ -248,11 +285,11 @@ describe('InnovationDetailComponent', () => {
       const content = fixture.nativeElement.textContent;
 
       // Assert
-      expect(content).toContain('IPR Protected');
-      expect(component.innovation()?.hasIPR).toBe(true);
+      expect(content).toContain(mockInnovation.iprStatus); // 'Patent Pending'
+      expect(component.innovation()?.iprStatus).toBe('Patent Pending');
     });
 
-    it('should display IPR details section when iprDetails is present', async () => {
+    it('should display iprStatus value in details', async () => {
       // Arrange
       mockActivatedRoute.snapshot.paramMap.get.mockReturnValue('test-id');
       mockInnovationsService.getInnovationById.mockResolvedValue({
@@ -273,16 +310,15 @@ describe('InnovationDetailComponent', () => {
       const content = fixture.nativeElement.textContent;
 
       // Assert
-      expect(content).toContain(mockInnovation.iprDetails!);
-      expect(component.innovation()?.iprDetails).toBeTruthy();
+      expect(content).toContain('Patent Pending');
+      expect(component.innovation()?.iprStatus).toBeTruthy();
     });
 
-    it('should not display IPR details section when iprDetails is null', async () => {
+    it('should not display IPR section when iprStatus is None', async () => {
       // Arrange
       const innovationWithoutIPR: InnovationDetail = {
         ...mockInnovation,
-        hasIPR: false,
-        iprDetails: null
+        iprStatus: 'None'
       };
       mockActivatedRoute.snapshot.paramMap.get.mockReturnValue('test-id');
       mockInnovationsService.getInnovationById.mockResolvedValue({
@@ -300,16 +336,16 @@ describe('InnovationDetailComponent', () => {
       fixture.detectChanges();
       await fixture.whenStable();
 
-      const iprSection = fixture.nativeElement.querySelector('.ipr-details');
+      const iprSection = fixture.nativeElement.querySelector('.ipr-status');
 
       // Assert
       expect(iprSection).toBeNull();
-      expect(component.innovation()?.iprDetails).toBeNull();
+      expect(component.innovation()?.iprStatus).toBe('None');
     });
   });
 
   describe('goBack', () => {
-    it('should navigate to root when goBack is called', () => {
+    it('should navigate to innovations list when goBack is called', () => {
       // Arrange
       mockActivatedRoute.snapshot.paramMap.get.mockReturnValue('test-id');
       fixture = TestBed.createComponent(InnovationDetailComponent);
@@ -319,7 +355,7 @@ describe('InnovationDetailComponent', () => {
       component.goBack();
 
       // Assert
-      expect(mockRouter.navigate).toHaveBeenCalledWith(['/']);
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/innovations']);
     });
 
     it('should navigate when back button is clicked', async () => {
@@ -349,7 +385,7 @@ describe('InnovationDetailComponent', () => {
       (backButton as HTMLButtonElement).click();
 
       // Assert
-      expect(mockRouter.navigate).toHaveBeenCalledWith(['/']);
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/innovations']);
     });
   });
 });

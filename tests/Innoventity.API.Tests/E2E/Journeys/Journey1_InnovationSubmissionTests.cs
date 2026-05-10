@@ -241,9 +241,14 @@ public class Journey1_InnovationSubmissionTests : IDisposable
     {
         var queryParams = new List<string>();
         if (!string.IsNullOrEmpty(industryId))
+        {
             queryParams.Add($"industryId={industryId}");
+        }
+
         if (!string.IsNullOrEmpty(researchCategory))
+        {
             queryParams.Add($"researchCategory={researchCategory}");
+        }
 
         var query = queryParams.Any() ? "?" + string.Join("&", queryParams) : "";
         return await _client.GetWithAuthAsync($"/innovations{query}", token);

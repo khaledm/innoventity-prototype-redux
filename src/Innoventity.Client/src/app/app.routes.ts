@@ -9,9 +9,13 @@ export const routes: Routes = [
     path: 'login',
     loadComponent: () => import('./features/auth/login/login.component').then(m => m.LoginComponent)
   },
-  // TODO: Add register route when implemented in future task
 
   // Innovation routes (protected with AuthGuard)
+  {
+    path: 'innovations',
+    loadComponent: () => import('./features/innovations/innovations-list/innovations-list.component').then(m => m.InnovationsListComponent),
+    canActivate: [AuthGuard]
+  },
   {
     path: 'innovations/:id',
     loadComponent: () => import('./features/innovations/innovation-detail/innovation-detail.component').then(m => m.InnovationDetailComponent),

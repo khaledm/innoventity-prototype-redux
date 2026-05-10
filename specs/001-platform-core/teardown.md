@@ -105,14 +105,21 @@ Complete all items before executing any destroy commands.
 ### 3. Confirm Terraform State is Clean
 
 ```bash
-cd infrastructure/environments/dev
-
-# Confirm state is accessible (foundational infra intact)
+# Check CORE layer state (App Service + App Insights)
+cd infrastructure/environments/dev/core
+terraform init  # Required to connect to remote backend
 terraform state list
+# Expected: module.app_service.azurerm_linux_web_app.main,
+#           module.monitoring.azurerm_application_insights.main, etc.
 
-# Expected: list of resource addresses like azurerm_resource_group.main,
-# module.app_service.azurerm_linux_web_app.main, etc.
-# If this command errors, the state backend may already be missing — STOP and investigate.
+# Check DATA layer state (Resource Group + SQL)
+cd ../data
+terraform init  # Required to connect to remote backend
+terraform state list
+# Expected: azurerm_resource_group.main,
+#           azurerm_mssql_server.main, azurerm_mssql_database.main, etc.
+
+# If either command errors, the state backend may be missing — STOP and investigate.
 ```
 
 ### 4. Verify GitHub Actions are Not Running
@@ -126,46 +133,82 @@ terraform state list
 ## Option A: Terraform Teardown (Recommended)
 
 **Use when**: The DEV environment was provisioned with Terraform (Tasks T068–T069).
-**Duration**: ~3–5 minutes
+**Duration**: ~5–8 minutes (two-phase destruction)
 **Preserves**: Terraform state backend in `innoventity-tfstate-rg`/`innoventitytfstate`
 
-```bash
-# 1. Navigate to the dev environment directory
-cd infrastructure/environments/dev
+**⚠️ CRITICAL**: DEV uses split-state architecture. You must destroy BOTH layers in order:
 
-# 2. Ensure you are authenticated (service principal or user account)
+1. **CORE layer first** (`core/` - App Service + App Insights) - no dependencies on data
+2. **DATA layer second** (`data/` - Resource Group + SQL) - contains the resource group
+
+```bash
+# ═══════════════════════════════════════════════════════════════════
+# PHASE 1: Destroy CORE Layer (Stateless Resources)
+# ═══════════════════════════════════════════════════════════════════
+
+# 1. Authenticate to Azure
 az login
 # OR using service principal (recommended for CI/CD):
 # az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID
 az account set --subscription "<your-subscription-id>"
 
-# 3. Pull latest state from remote backend (avoids stale plan)
-terraform refresh
+# 2. Navigate to CORE subdirectory
+cd infrastructure/environments/dev/core
 
-# 4. Generate a destruction plan (dry-run — NO resources are deleted yet)
-terraform plan -destroy -out=tfplan-destroy
+# 3. Initialize backend connection (REQUIRED on fresh clone or after cleanup)
+terraform init
+
+# 4. Generate destruction plan for CORE layer
+# (terraform plan -destroy automatically refreshes state, so no separate refresh step needed)
+terraform plan -destroy -out=tfplan-destroy-core
 
 # 5. REVIEW the plan output carefully
-# Verify the list of resources to be destroyed matches the DEV resources listed above.
-# CONFIRM you do NOT see innoventity-tfstate-rg or innoventitytfstate in the plan.
-# If those appear, ABORT immediately — something is wrong with your configuration.
+# Expected resources: App Service, App Service Plan, App Insights only
+# CONFIRM you do NOT see:
+#   - azurerm_resource_group (owned by data layer)
+#   - azurerm_mssql_server (owned by data layer)
+#   - innoventity-tfstate-rg or innoventitytfstate (foundational infra)
+# If any appear, ABORT immediately — something is wrong.
 
-# 6. Execute the destruction (this deletes all DEV resources)
-terraform apply tfplan-destroy
+# 6. Execute CORE destruction
+terraform apply tfplan-destroy-core
+# Expected output: "Destroy complete! Resources: 3-5 destroyed."
+# ✅ App Service and App Insights deleted
 
-# 7. Confirm success
-# Expected output: "Destroy complete! Resources: N destroyed."
-# Typical N = 8–12 resources depending on what was provisioned
+# ═══════════════════════════════════════════════════════════════════
+# PHASE 2: Destroy DATA Layer (Stateful Resources)
+# ═══════════════════════════════════════════════════════════════════
 
-# ✅ STOP HERE — do NOT proceed with step 8 unless explicitly decommissioning
-# the DEV environment permanently and you understand the consequences.
+# 7. Navigate to DATA subdirectory
+cd ../data
 
-# 8. ⚠️ OPTIONAL — Only if permanently decommissioning (NOT for routine teardown):
-# Delete local Terraform cache (safe — can be re-initialised with terraform init)
-# rm -rf .terraform
+# 8. Initialize backend connection
+terraform init
+
+# 9. Generate destruction plan for DATA layer
+terraform plan -destroy -out=tfplan-destroy-data
+
+# 10. REVIEW the plan output carefully
+# Expected resources: Resource Group, SQL Server, SQL Database
+# CONFIRM you do NOT see innoventity-tfstate-rg or innoventitytfstate
+
+# 11. Execute DATA destruction
+terraform apply tfplan-destroy-data
+# Expected output: "Destroy complete! Resources: 3-4 destroyed."
+# ✅ All DEV resources deleted
+
+# ═══════════════════════════════════════════════════════════════════
+# Cleanup (Optional)
+# ═══════════════════════════════════════════════════════════════════
+
+# ⚠️ OPTIONAL — Only if permanently decommissioning (NOT for routine teardown):
+# Delete local Terraform cache (safe — regenerated by terraform init)
+# cd ../core && rm -rf .terraform
+# cd ../data && rm -rf .terraform
 
 # ❌ DO NOT run these commands during routine teardown:
-# az storage blob delete --account-name innoventitytfstate --container-name tfstate-dev --name platform-core.tfstate
+# az storage blob delete --account-name innoventitytfstate --container-name tfstate-dev-core --name platform-core.tfstate
+# az storage blob delete --account-name innoventitytfstate --container-name tfstate-dev-data --name platform-core.tfstate
 # az group delete --name innoventity-tfstate-rg
 ```
 
@@ -195,7 +238,8 @@ azd down
 ```
 
 **Expected output**:
-```
+
+``` text
 Deleting all resources and deployed code on Azure (azd down)
 
   (✓) Done: Deleting service innoventity-api
@@ -239,14 +283,30 @@ az group show --name "$DEV_RG" --query "properties.provisioningState" -o tsv
 # Keep running until it shows "Deleting" then disappears entirely (404).
 
 # 3. ⚠️ IMPORTANT: Sync Terraform state after manual deletion
-# Since we bypassed Terraform, the state file still references the deleted resources.
-# The next terraform plan will detect the drift. To clean up the state manually:
-cd infrastructure/environments/dev
+# Since we bypassed Terraform, the state files still reference the deleted resources.
+# Clean up BOTH state files (core and data):
+
+# Clean CORE layer state
+cd infrastructure/environments/dev/core
+terraform init
+terraform state list
+# Should show resources, but they're already deleted in Azure
+
+# Remove all resources from state
 terraform state list | while IFS= read -r resource; do
   terraform state rm "$resource"
 done
-# OR simply run: terraform plan -destroy (it will show "to add" resources and you can
-# re-apply to re-create, or leave the state as-is if not re-provisioning)
+
+# Clean DATA layer state
+cd ../data
+terraform init
+terraform state list
+# Should show resources, but they're already deleted in Azure
+
+# Remove all resources from state
+terraform state list | while IFS= read -r resource; do
+  terraform state rm "$resource"
+done
 ```
 
 > **Prefer Option A** (Terraform) over this whenever possible. Manual deletion creates state drift and requires additional cleanup.
@@ -296,10 +356,16 @@ az storage blob show \
 # Note: `--auth-mode login` uses your Azure AD identity from `az login` (user or service principal).
 # Ensure that identity has Storage Blob Data Reader (or higher) on the state storage account.
 
-# Terraform state list must return an empty list (not an error)
-cd infrastructure/environments/dev
+# Terraform state lists must return empty (not an error)
+cd infrastructure/environments/dev/core
+terraform init
 terraform state list
-# Expected: empty output (no resources in state after successful destroy)
+# Expected: empty output (no CORE resources in state after successful destroy)
+
+cd ../data
+terraform init
+terraform state list
+# Expected: empty output (no DATA resources in state after successful destroy)
 ```
 
 ### 4. Verify SQL Server is Gone
@@ -328,9 +394,13 @@ After the Azure resources are destroyed, clean up local development artefacts.
 
 ```bash
 # 1. Remove local Terraform cache (safe to delete — re-created with terraform init)
-cd infrastructure/environments/dev
+cd infrastructure/environments/dev/core
 rm -rf .terraform
-rm -f tfplan-destroy
+rm -f tfplan-destroy-core
+
+cd ../data
+rm -rf .terraform
+rm -f tfplan-destroy-data
 
 # 2. Keep local terraform.tfvars by default; it contains values needed for re-provisioning.
 # Only delete it if you have already archived required values in a secure secret store,
@@ -350,12 +420,17 @@ dotnet ef database drop --force --project src/Innoventity.API
 
 | File/Directory | Keep? | Reason |
 | -------------- | ----- | ------ |
-| `infrastructure/environments/dev/.terraform/` | ❌ Delete | Regenerated by `terraform init` |
-| `infrastructure/environments/dev/terraform.tfvars` | ⚠️ Secure | Contains secrets — store in password manager |
-| `infrastructure/environments/dev/tfplan-destroy` | ❌ Delete | Stale plan after successful destroy |
+| `infrastructure/environments/dev/core/.terraform/` | ❌ Delete | Regenerated by `terraform init` |
+| `infrastructure/environments/dev/data/.terraform/` | ❌ Delete | Regenerated by `terraform init` |
+| `infrastructure/environments/dev/core/terraform.tfvars` | ⚠️ Secure | Contains secrets — store in password manager |
+| `infrastructure/environments/dev/data/terraform.tfvars` | ⚠️ Secure | Contains secrets — store in password manager |
+| `infrastructure/environments/dev/core/tfplan-destroy-core` | ❌ Delete | Stale plan after successful destroy |
+| `infrastructure/environments/dev/data/tfplan-destroy-data` | ❌ Delete | Stale plan after successful destroy |
 | `infrastructure/modules/` | ✅ Keep | Module source — committed to git |
-| `infrastructure/environments/dev/main.tf` | ✅ Keep | Environment definition — committed to git |
-| `infrastructure/environments/dev/backend.tf` | ✅ Keep | State backend config — committed to git |
+| `infrastructure/environments/dev/core/main.tf` | ✅ Keep | Environment definition — committed to git |
+| `infrastructure/environments/dev/core/backend.tf` | ✅ Keep | State backend config — committed to git |
+| `infrastructure/environments/dev/data/main.tf` | ✅ Keep | Environment definition — committed to git |
+| `infrastructure/environments/dev/data/backend.tf` | ✅ Keep | State backend config — committed to git |
 
 ---
 
@@ -366,9 +441,14 @@ These are drawn from implementation experience across all three feature phases.
 ### P1: State Isolation Prevents Cross-Environment Accidents
 
 **From**: infrastructure.md §Terraform State Management
-Each environment (dev, test, prod) has a **separate state file** in a separate container. Running `terraform destroy` in `infrastructure/environments/dev` can ONLY destroy DEV resources — it cannot accidentally touch prod because there is no overlap in state.
+Each environment (dev, test, prod) has **separate state files** in separate containers:
 
-**Lesson**: Always `cd` into the correct environment directory before running any Terraform command.
+- `tfstate-dev-core` for core layer (App Service + App Insights)
+- `tfstate-dev-data` for data layer (Resource Group + SQL)
+
+Running `terraform destroy` in `infrastructure/environments/dev/core` can ONLY destroy CORE resources — it cannot touch DATA layer or other environments because there is no overlap in state.
+
+**Lesson**: Always `cd` into the correct subdirectory (`core/` or `data/`) before running any Terraform command. Running commands at `infrastructure/environments/dev/` will fail with "empty directory" error.
 
 ### P2: HasData() Seeding Does Not Need Rollback on Teardown
 
@@ -388,11 +468,13 @@ The DEV App Service does NOT use deployment slots (staging slot is production-on
 
 **From**: infrastructure.md §Security Considerations | implementation-lessons.md L7
 The `.gitignore` should include:
-```
+
+``` text
 infrastructure/**/*.tfvars
 infrastructure/**/.terraform/
 infrastructure/**/terraform.tfstate*
 ```
+
 These entries prevent accidentally committing secrets or local state files. Verify `.gitignore` is correct before pushing any infrastructure-related changes.
 
 ### P5: Application Insights Telemetry Survives Environment Destruction
@@ -436,8 +518,8 @@ az lock delete --name <lock-name> --resource-group innoventity-dev-rg
 Once the DEV environment is torn down, re-provisioning from scratch takes ~10 minutes:
 
 ```bash
-# 1. Navigate to the dev environment directory
-cd infrastructure/environments/dev
+# 1. Navigate to DATA layer (create resource group + SQL first)
+cd infrastructure/environments/dev/data
 
 # 2. Re-initialise Terraform (downloads providers, re-connects to state backend)
 terraform init
@@ -453,10 +535,20 @@ sql_admin_password   = "$(python3 -c 'import secrets, string; chars = string.asc
 jwt_secret_key       = "$(openssl rand -base64 32)"
 EOF
 
-# 4. Apply infrastructure (creates all DEV resources from scratch)
+# 4. Apply DATA layer (creates Resource Group + SQL)
 terraform apply
 
-# 5. Deploy application code
+# 5. Capture SQL connection string
+CONNECTION_STRING=$(terraform output -raw connection_string)
+
+# 6. Navigate to CORE layer
+cd ../core
+terraform init
+
+# 7. Apply CORE layer (creates App Service + App Insights)
+terraform apply -var="connection_string=$CONNECTION_STRING"
+
+# 8. Deploy application code
 PUBLISH_DIR=/tmp/publish
 ZIP_PATH=/tmp/publish.zip
 
@@ -496,6 +588,7 @@ curl https://$(terraform output -raw app_service_hostname)/health
 ---
 
 *This runbook was synthesised from:*
+
 - *[infrastructure.md](infrastructure.md) — Terraform modules, lifecycle workflows, security considerations*
 - *[quickstart.md](quickstart.md) — Azure Developer CLI deployment, Azure CLI manual deployment*
 - *[implementation-lessons.md](../003-api-completion/implementation-lessons.md) — EF Core seeding patterns, gitignore pitfalls*

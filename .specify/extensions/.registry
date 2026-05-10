@@ -18,6 +18,21 @@
       },
       "registered_skills": [],
       "installed_at": "2026-04-12T20:08:23.873387+00:00"
+    },
+    "blueprint": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:c0c5bf7b0ac6236d660693ff792a3658f5cc0b1742a7cf3cb69e1675e1811ada",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "copilot": [
+          "speckit.blueprint.generate",
+          "speckit.blueprint.validate"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-05-04T09:37:33.023845+00:00"
     }
   }
 }

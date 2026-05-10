@@ -93,7 +93,7 @@ describe('LoginComponent', () => {
   });
 
   it('should disable submit button when form is invalid', () => {
-    expect(component.isFormValid()).toBeFalsy();
+    expect(component.loginForm.valid).toBeFalsy();
   });
 
   it('should enable submit button when form is valid', () => {
@@ -140,7 +140,7 @@ describe('LoginComponent', () => {
 
     await component.onSubmit();
 
-    expect(router.navigate).toHaveBeenCalledWith(['/innovations', '3fa85f64-5717-4562-b3fc-2c963f66afa6']);
+    expect(router.navigate).toHaveBeenCalledWith(['/innovations']);
   });
 
   it('should display error message on failed login', async () => {
@@ -192,6 +192,72 @@ describe('LoginComponent', () => {
     await component.onSubmit();
 
     expect(mockAuthService.login).not.toHaveBeenCalled();
+  });
+
+  it('should use fallback error message when login result has no error string', async () => {
+    mockAuthService.login.mockResolvedValue({ success: false });
+
+    component.loginForm.patchValue({
+      email: 'test@example.com',
+      password: 'password123',
+      actorType: ActorType.IdeaGenerator
+    });
+
+    await component.onSubmit();
+
+    expect(component.errorMessage()).toBe('Login failed. Please try again.');
+  });
+
+  describe('computed error signals', () => {
+    // Each test creates a fresh component instance so the computed signal
+    // is evaluated for the first time in the desired form state.
+
+    it('emailError returns null when email control is untouched', () => {
+      const c = TestBed.createComponent(LoginComponent).componentInstance;
+      expect(c.emailError()).toBeNull();
+    });
+
+    it('emailError returns "Email is required" when email is touched and empty', () => {
+      const c = TestBed.createComponent(LoginComponent).componentInstance;
+      c.loginForm.get('email')!.markAsTouched();
+      expect(c.emailError()).toBe('Email is required');
+    });
+
+    it('emailError returns "Invalid email format" when email is touched with invalid value', () => {
+      const c = TestBed.createComponent(LoginComponent).componentInstance;
+      c.loginForm.get('email')!.setValue('not-an-email');
+      c.loginForm.get('email')!.markAsTouched();
+      expect(c.emailError()).toBe('Invalid email format');
+    });
+
+    it('passwordError returns null when password control is untouched', () => {
+      const c = TestBed.createComponent(LoginComponent).componentInstance;
+      expect(c.passwordError()).toBeNull();
+    });
+
+    it('passwordError returns "Password is required" when password is touched and empty', () => {
+      const c = TestBed.createComponent(LoginComponent).componentInstance;
+      c.loginForm.get('password')!.markAsTouched();
+      expect(c.passwordError()).toBe('Password is required');
+    });
+
+    it('passwordError returns minlength message when password is touched and too short', () => {
+      const c = TestBed.createComponent(LoginComponent).componentInstance;
+      c.loginForm.get('password')!.setValue('short');
+      c.loginForm.get('password')!.markAsTouched();
+      expect(c.passwordError()).toBe('Password must be at least 8 characters');
+    });
+
+    it('actorTypeError returns null when actorType control is untouched', () => {
+      const c = TestBed.createComponent(LoginComponent).componentInstance;
+      expect(c.actorTypeError()).toBeNull();
+    });
+
+    it('actorTypeError returns "Please select your actor type" when touched and empty', () => {
+      const c = TestBed.createComponent(LoginComponent).componentInstance;
+      c.loginForm.get('actorType')!.markAsTouched();
+      expect(c.actorTypeError()).toBe('Please select your actor type');
+    });
   });
 });
 

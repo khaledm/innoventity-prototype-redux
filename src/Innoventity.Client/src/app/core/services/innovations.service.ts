@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { InnovationDetail } from '../models/innovation.model';
+import { InnovationDetail, InnovationListResponse } from '../models/innovation.model';
 import { Result } from '../models/result.model';
 import { environment } from '../../../environments/environment';
 
@@ -18,6 +18,32 @@ export class InnovationsService {
   error = this.errorSignal.asReadonly();
 
   constructor(private http: HttpClient) {}
+
+  async listInnovations(params?: {
+    industryId?: string;
+    researchCategory?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<Result<InnovationListResponse>> {
+    let httpParams = new HttpParams();
+    if (params?.industryId) httpParams = httpParams.set('industryId', params.industryId);
+    if (params?.researchCategory) httpParams = httpParams.set('researchCategory', params.researchCategory);
+    if (params?.page) httpParams = httpParams.set('page', params.page.toString());
+    if (params?.pageSize) httpParams = httpParams.set('pageSize', params.pageSize.toString());
+
+    try {
+      const response = await firstValueFrom(
+        this.http.get<InnovationListResponse>(`${environment.apiBaseUrl}/innovations`, { params: httpParams })
+      );
+      return { success: true, data: response };
+    } catch (error) {
+      let errorMessage = 'Failed to load innovations.';
+      if (error instanceof HttpErrorResponse && error.status === 401) {
+        errorMessage = 'Please log in to view innovations.';
+      }
+      return { success: false, error: errorMessage };
+    }
+  }
 
   async getInnovationById(id: string): Promise<Result<InnovationDetail>> {
     this.loadingSignal.set(true);

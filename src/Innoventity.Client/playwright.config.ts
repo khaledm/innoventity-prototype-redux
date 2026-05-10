@@ -9,6 +9,10 @@ import { defineConfig, devices } from '@playwright/test';
  * - Tests critical UI flows with real browser interactions
  * - Auto-waits for elements and assertions
  * - Captures traces and screenshots on failure
+ *
+ * CI note: Journey tests (e2e/**) require a running .NET API + SQL Server backend.
+ * They are not run in CI (the Playwright steps are skipped in deploy-frontend.yml).
+ * Run locally with the full stack: npm start + dotnet run (Innoventity.API).
  */
 export default defineConfig({
   testDir: './e2e',

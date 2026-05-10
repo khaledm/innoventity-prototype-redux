@@ -79,6 +79,10 @@ resource "azurerm_mssql_server" "main" {
   # cascades and removes the database regardless of the database guard.
   lifecycle {
     prevent_destroy = true
+    # Ignore password changes — Azure SQL password is write-only (can't be read back).
+    # Terraform always detects drift even when password hasn't changed.
+    # Safe because: password is managed via secrets (SQL_ADMIN_PASSWORD), not state.
+    ignore_changes = [administrator_login_password]
   }
 }
 

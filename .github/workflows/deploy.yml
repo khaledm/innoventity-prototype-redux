@@ -21,7 +21,7 @@ permissions:
 
 on:
   push:
-    branches: [001-platform-core, Main]
+    branches: [Main]
     paths: [src/**]
   workflow_dispatch:
 
@@ -43,9 +43,9 @@ jobs:
       app_service_name:    ${{ steps.tf-outputs.outputs.app_service_name }}
       resource_group_name: ${{ steps.tf-outputs.outputs.resource_group_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "~1.6"
           terraform_wrapper: false
@@ -97,9 +97,9 @@ jobs:
     needs: preflight
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -117,7 +117,7 @@ jobs:
             --logger "trx;LogFileName=unit-integration.trx" \
             --results-directory TestResults
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: test-results-unit-integration
@@ -125,7 +125,7 @@ jobs:
           if-no-files-found: error
 
       - name: Publish test results to Summary
-        uses: dorny/test-reporter@v2
+        uses: dorny/test-reporter@v3
         if: always()
         with:
           name: Unit + Integration Tests
@@ -141,7 +141,7 @@ jobs:
       - name: Create deployment zip
         run: cd publish && zip -r ../api.zip .
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: api-package-${{ github.run_id }}
           path: api.zip
@@ -155,43 +155,156 @@ jobs:
     needs: [preflight, build-test]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Install dotnet-ef tool
         run: dotnet tool install --global dotnet-ef
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "~1.6"
           terraform_wrapper: false
 
-      - name: Restore API project for EF tooling
-        run: dotnet restore src/Innoventity.API/Innoventity.API.csproj
+      - name: Install SQL command-line tools
+        run: |
+          set -euo pipefail
+          curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc >/dev/null
+          curl -sSL https://packages.microsoft.com/config/ubuntu/24.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list >/dev/null
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive ACCEPT_EULA=Y apt-get install -y -qq mssql-tools18 unixodbc-dev
+          echo "/opt/mssql-tools18/bin" >> $GITHUB_PATH
 
-      - name: Build API project for EF tooling
-        run: dotnet build src/Innoventity.API/Innoventity.API.csproj --no-restore -c Release
+      - name: Detect and remediate schema drift
+        working-directory: infrastructure/environments/dev/data
+        run: |
+          set -euo pipefail
+          terraform init -input=false
+          CONN=$(terraform output -json | jq -re '.connection_string.value')
+          echo "::add-mask::$CONN"
+
+          # Parse connection string components
+          SERVER=$(echo "$CONN" | sed -n 's/.*Server=\([^;]*\).*/\1/p')
+          DATABASE=$(echo "$CONN" | sed -n 's/.*Database=\([^;]*\).*/\1/p')
+          USER=$(echo "$CONN" | sed -n 's/.*User ID=\([^;]*\).*/\1/p')
+          PASSWORD=$(echo "$CONN" | sed -n 's/.*Password=\([^;]*\).*/\1/p')
+
+          echo "Checking for schema drift..."
+          echo "Database: $DATABASE on $SERVER"
+
+          # Check migration history table existence and row count
+          HISTORY_EXISTS=$(sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
+            SET NOCOUNT ON;
+            SELECT CASE WHEN OBJECT_ID('__EFMigrationsHistory', 'U') IS NOT NULL THEN 1 ELSE 0 END
+          " | tr -d '[:space:]')
+
+          if [ "$HISTORY_EXISTS" = "0" ]; then
+            echo "⚠️ __EFMigrationsHistory table does not exist - creating and triggering full migration"
+            # EF Core will create it and apply all migrations
+          else
+            MIGRATION_COUNT=$(sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
+              SET NOCOUNT ON;
+              SELECT COUNT(*) FROM __EFMigrationsHistory
+            " | tr -d '[:space:]')
+            echo "Migration history contains $MIGRATION_COUNT records"
+
+            # Check if critical tables are missing
+            DRIFT_CHECK=$(sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
+              SET NOCOUNT ON;
+              SELECT CASE
+                WHEN OBJECT_ID('Actors', 'U') IS NULL
+                  OR OBJECT_ID('Innovations', 'U') IS NULL
+                  OR OBJECT_ID('Industries', 'U') IS NULL
+                  OR OBJECT_ID('Bids', 'U') IS NULL
+                THEN 1
+                ELSE 0
+              END AS DriftDetected
+            " | tr -d '[:space:]')
+
+            if [ "$DRIFT_CHECK" = "1" ]; then
+              echo "⚠️ Schema drift detected - tables missing despite $MIGRATION_COUNT migrations"
+              sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C \
+                -i "$GITHUB_WORKSPACE/infrastructure/scripts/fix-schema-drift.sql"
+              echo "✓ Remediation complete - all migrations will be re-applied"
+            else
+              echo "✓ No drift - $MIGRATION_COUNT migrations applied, all tables present"
+            fi
+          fi
 
       - name: Apply migrations
         working-directory: infrastructure/environments/dev/data
         run: |
           set -euo pipefail
-          terraform init -input=false
-          # Read connection_string directly from state and pass it to dotnet-ef in the same
-          # shell process. Never write it to $GITHUB_OUTPUT — GitHub secret scanning blocks
-          # any output value that contains SQL_ADMIN_PASSWORD.
+          # Read connection_string directly from state and pass to dotnet-ef via --connection.
+          # Never write it to $GITHUB_OUTPUT — GitHub secret scanning blocks any output value
+          # that contains SQL_ADMIN_PASSWORD.
           CONN=$(terraform output -json | jq -re '.connection_string.value')
           echo "::add-mask::$CONN"
+
+          SERVER=$(echo "$CONN" | sed -n 's/.*Server=\([^;]*\).*/\1/p')
+          DATABASE=$(echo "$CONN" | sed -n 's/.*Database=\([^;]*\).*/\1/p')
+          echo "Applying migrations to: $DATABASE on $SERVER"
+
           cd "$GITHUB_WORKSPACE"
+
+          # --connection overrides the connection string at migration runtime, bypassing
+          # appsettings config file lookup (which fails because EF Core 8 sets the working
+          # directory to the repo root, not the project source directory).
           dotnet ef database update \
+            --connection "$CONN" \
             --project src/Innoventity.API/Innoventity.API.csproj \
             --startup-project src/Innoventity.API/Innoventity.API.csproj \
+            --context AppDbContext \
             --configuration Release \
-            --no-build \
-            --connection "$CONN"
+            --verbose
+
+      - name: Validate schema integrity
+        working-directory: infrastructure/environments/dev/data
+        run: |
+          set -euo pipefail
+          CONN=$(terraform output -json | jq -re '.connection_string.value')
+
+          # Parse connection string
+          SERVER=$(echo "$CONN" | sed -n 's/.*Server=\([^;]*\).*/\1/p')
+          DATABASE=$(echo "$CONN" | sed -n 's/.*Database=\([^;]*\).*/\1/p')
+          USER=$(echo "$CONN" | sed -n 's/.*User ID=\([^;]*\).*/\1/p')
+          PASSWORD=$(echo "$CONN" | sed -n 's/.*Password=\([^;]*\).*/\1/p')
+
+          echo "Validating database schema..."
+
+          # Verify critical tables exist
+          MISSING_TABLES=$(sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
+            SET NOCOUNT ON;
+            SELECT
+              CASE WHEN OBJECT_ID('Actors', 'U') IS NULL THEN 'Actors,' ELSE '' END +
+              CASE WHEN OBJECT_ID('Innovations', 'U') IS NULL THEN 'Innovations,' ELSE '' END +
+              CASE WHEN OBJECT_ID('Industries', 'U') IS NULL THEN 'Industries,' ELSE '' END +
+              CASE WHEN OBJECT_ID('Bids', 'U') IS NULL THEN 'Bids,' ELSE '' END AS MissingTables
+          " | tr -d '[:space:]')
+
+          if [ -n "$MISSING_TABLES" ]; then
+            echo "❌ Validation FAILED - Missing tables: $MISSING_TABLES"
+            exit 1
+          fi
+
+          echo "✓ All critical tables present"
+
+          # Verify migration history is complete
+          MIGRATION_COUNT=$(sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
+            SET NOCOUNT ON;
+            SELECT COUNT(*) FROM __EFMigrationsHistory
+          " | tr -d '[:space:]')
+
+          echo "✓ Migration history contains $MIGRATION_COUNT migrations"
+
+          if [ "$MIGRATION_COUNT" -lt "8" ]; then
+            echo "⚠️  Warning: Expected at least 8 migrations, found $MIGRATION_COUNT"
+          fi
+
+          echo "✓ Schema validation passed"
 
   # ─────────────────────────────────────────────────────────────────
   # 4. Deploy — zip-deploy API package to App Service
@@ -201,7 +314,7 @@ jobs:
     needs: [preflight, build-test, migrate]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: api-package-${{ github.run_id }}
           path: .
@@ -216,12 +329,30 @@ jobs:
 
       - name: Deploy to App Service (zip deploy)
         run: |
+          # On Main branch, deploy to staging slot (if it exists) so it can be
+          # validated before swap. Staging slots require Standard (S1+) plan and
+          # are only provisioned for prod in Terraform — guard with existence check.
+          # On feature branches, or when no staging slot exists, deploy directly
+          # to the production slot.
+          SLOT_ARG=""
+          if [[ "$GITHUB_REF" == "refs/heads/Main" ]]; then
+            SLOT_EXISTS=$(az webapp deployment slot list \
+              --name "${{ needs.preflight.outputs.app_service_name }}" \
+              --resource-group "${{ needs.preflight.outputs.resource_group_name }}" \
+              --query "[?name=='staging'] | length(@)" --output tsv 2>/dev/null || echo 0)
+            if [[ "$SLOT_EXISTS" != "0" ]]; then
+              SLOT_ARG="--slot staging"
+            else
+              echo "::warning::No staging slot found — deploying directly to production slot. Upgrade App Service plan to Standard (S1+) to enable blue-green deployments."
+            fi
+          fi
           az webapp deploy \
             --name "${{ needs.preflight.outputs.app_service_name }}" \
             --resource-group "${{ needs.preflight.outputs.resource_group_name }}" \
             --src-path api.zip \
             --type zip \
-            --async false
+            --async false \
+            $SLOT_ARG
 
   # ─────────────────────────────────────────────────────────────────
   # 5. Pester health check — validates GET /health returns 200 + Healthy
@@ -232,7 +363,7 @@ jobs:
     needs: [preflight, deploy]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Run HealthCheck.Tests.ps1
         shell: pwsh
@@ -248,7 +379,7 @@ jobs:
           $config.TestResult.OutputFormat = 'NUnitXml'
           Invoke-Pester -Configuration $config
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: pester-health-results
@@ -257,6 +388,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────
   # 6. Slot swap — promote staging → production (Main branch only)
   #    Requires 'production' GitHub environment with required reviewers configured.
+  #    Requires Standard (S1+) App Service plan — staging slot not available on Basic.
   # ─────────────────────────────────────────────────────────────────
   slot-swap:
     name: Swap staging → production slot
@@ -273,7 +405,20 @@ jobs:
             --tenant "$ARM_TENANT_ID"
           az account set --subscription "$ARM_SUBSCRIPTION_ID"
 
+      - name: Check staging slot exists
+        id: check-slot
+        run: |
+          SLOT_EXISTS=$(az webapp deployment slot list \
+            --name "${{ needs.preflight.outputs.app_service_name }}" \
+            --resource-group "${{ needs.preflight.outputs.resource_group_name }}" \
+            --query "[?name=='staging'] | length(@)" --output tsv 2>/dev/null || echo 0)
+          echo "exists=$SLOT_EXISTS" >> "$GITHUB_OUTPUT"
+          if [[ "$SLOT_EXISTS" == "0" ]]; then
+            echo "::warning::No staging slot found — slot-swap skipped. Upgrade App Service plan to Standard (S1+) to enable blue-green deployments."
+          fi
+
       - name: Swap slots
+        if: steps.check-slot.outputs.exists != '0'
         run: |
           az webapp deployment slot swap \
             --name "${{ needs.preflight.outputs.app_service_name }}" \

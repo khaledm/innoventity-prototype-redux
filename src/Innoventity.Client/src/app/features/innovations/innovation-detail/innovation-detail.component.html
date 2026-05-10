@@ -15,7 +15,7 @@
           <p>{{ error() }}</p>
           <button mat-raised-button color="primary" (click)="goBack()">
             <mat-icon>arrow_back</mat-icon>
-            Go Back
+            Back to Innovations
           </button>
         </div>
       </mat-card-content>
@@ -30,10 +30,11 @@
           <mat-chip-set>
             <mat-chip>{{ innovation()!.productType }}</mat-chip>
             <mat-chip highlighted>{{ innovation()!.researchCategory }}</mat-chip>
-            @if (innovation()!.hasIPR) {
+            <mat-chip color="primary">{{ innovation()!.status }}</mat-chip>
+            @if (innovation()!.iprStatus !== 'None') {
               <mat-chip color="accent">
                 <mat-icon>verified</mat-icon>
-                IPR Protected
+                {{ innovation()!.iprStatus }}
               </mat-chip>
             }
           </mat-chip-set>
@@ -42,40 +43,142 @@
 
       <mat-card-content>
         <article class="innovation-details">
+
+          @if (innovation()!.owner) {
+            <section class="owner-info">
+              <h3>Innovation Owner</h3>
+              <div class="owner-card">
+                <mat-icon>person</mat-icon>
+                <div>
+                  <strong>{{ innovation()!.owner!.displayName }}</strong>
+                  <span class="actor-type">{{ innovation()!.owner!.actorType }}</span>
+                </div>
+              </div>
+            </section>
+          }
+
+          @if (innovation()!.targetIndustries.length > 0) {
+            <section class="target-industries">
+              <h3>Target Industries</h3>
+              <mat-chip-set>
+                @for (industry of innovation()!.targetIndustries; track industry.industryId) {
+                  <mat-chip>{{ industry.name }}</mat-chip>
+                }
+              </mat-chip-set>
+            </section>
+          }
+
+          <section class="product-description">
+            <h3>Product Description</h3>
+            <p>{{ innovation()!.productDescription }}</p>
+          </section>
+
           <section class="research-background">
             <h3>Research Background</h3>
             <p>{{ innovation()!.researchBackground }}</p>
           </section>
 
-          @if (innovation()!.iprDetails) {
-            <section class="ipr-details">
-              <h3>Intellectual Property Details</h3>
-              <p>{{ innovation()!.iprDetails }}</p>
+          @if (innovation()!.productAdvantages) {
+            <section class="product-advantages">
+              <h3>Product Advantages</h3>
+              <p>{{ innovation()!.productAdvantages }}</p>
+            </section>
+          }
+
+          <section class="development">
+            <h3>Development</h3>
+            <dl>
+              @if (innovation()!.developmentPhase) {
+                <dt>Phase</dt>
+                <dd>{{ innovation()!.developmentPhase }}</dd>
+              }
+              @if (innovation()!.developmentProcess) {
+                <dt>Process</dt>
+                <dd>{{ innovation()!.developmentProcess }}</dd>
+              }
+            </dl>
+          </section>
+
+          <section class="market-info">
+            <h3>Market Information</h3>
+            <dl>
+              @if (innovation()!.targetMarket) {
+                <dt>Target Market</dt>
+                <dd>{{ innovation()!.targetMarket }}</dd>
+              }
+              @if (innovation()!.targetCustomerBase) {
+                <dt>Customer Base</dt>
+                <dd>{{ innovation()!.targetCustomerBase }}</dd>
+              }
+              @if (innovation()!.targetCustomerType) {
+                <dt>Customer Type</dt>
+                <dd>{{ innovation()!.targetCustomerType }}</dd>
+              }
+            </dl>
+          </section>
+
+          @if (innovation()!.iprStatus !== 'None') {
+            <section class="ipr-status">
+              <h3>Intellectual Property</h3>
+              <p>{{ innovation()!.iprStatus }}</p>
+            </section>
+          }
+
+          @if (innovation()!.productKeywords || innovation()!.advantageKeywords) {
+            <section class="keywords">
+              <h3>Keywords</h3>
+              @if (innovation()!.productKeywords) {
+                <div class="keyword-group">
+                  <span class="keyword-label">Product:</span>
+                  <mat-chip-set>
+                    @for (kw of innovation()!.productKeywords.split(','); track $index) {
+                      <mat-chip>{{ kw.trim() }}</mat-chip>
+                    }
+                  </mat-chip-set>
+                </div>
+              }
+              @if (innovation()!.advantageKeywords) {
+                <div class="keyword-group">
+                  <span class="keyword-label">Advantages:</span>
+                  <mat-chip-set>
+                    @for (kw of innovation()!.advantageKeywords.split(','); track $index) {
+                      <mat-chip>{{ kw.trim() }}</mat-chip>
+                    }
+                  </mat-chip-set>
+                </div>
+              }
             </section>
           }
 
           <section class="metadata">
+            <h3>Details</h3>
             <dl>
               <dt>Innovation ID</dt>
               <dd>{{ innovation()!.id }}</dd>
 
-              <dt>Product Type</dt>
-              <dd>{{ innovation()!.productType }}</dd>
-
-              <dt>Research Category</dt>
-              <dd>{{ innovation()!.researchCategory }}</dd>
+              <dt>Idea Token</dt>
+              <dd>{{ innovation()!.ideaToken }}</dd>
 
               <dt>IPR Status</dt>
-              <dd>{{ innovation()!.hasIPR ? 'Protected' : 'Not Protected' }}</dd>
+              <dd>{{ innovation()!.iprStatus }}</dd>
+
+              @if (innovation()!.submittedAt) {
+                <dt>Submitted</dt>
+                <dd>{{ innovation()!.submittedAt | date:'medium' }}</dd>
+              }
+
+              <dt>Created</dt>
+              <dd>{{ innovation()!.createdAt | date:'medium' }}</dd>
             </dl>
           </section>
+
         </article>
       </mat-card-content>
 
       <mat-card-actions>
         <button mat-button (click)="goBack()">
           <mat-icon>arrow_back</mat-icon>
-          Back
+          Back to Innovations
         </button>
       </mat-card-actions>
     </mat-card>
