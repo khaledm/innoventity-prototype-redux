@@ -11,15 +11,11 @@ import { defineConfig, devices } from '@playwright/test';
  * - Captures traces and screenshots on failure
  *
  * CI note: Journey tests (e2e/**) require a running .NET API + SQL Server backend.
- * They are excluded in CI (CI env var is set by GitHub Actions) and must be run locally
- * against a full stack (`npm start` + `dotnet run` in Innoventity.API).
+ * They are not run in CI (the Playwright steps are skipped in deploy-frontend.yml).
+ * Run locally with the full stack: npm start + dotnet run (Innoventity.API).
  */
 export default defineConfig({
   testDir: './e2e',
-
-  /* Skip all e2e tests in CI — they require a live .NET API (localhost:5073) which is
-     not available in the standard GitHub Actions runner. Run locally with full stack. */
-  testIgnore: process.env.CI ? ['**/*.spec.ts'] : [],
 
   /* Run tests in files in parallel */
   fullyParallel: true,
