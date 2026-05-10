@@ -62,14 +62,12 @@ interface LoginResponse {
 }
 
 interface CreateInnovationRequest {
-  // Required fields
   title: string;
   productType: string;
   researchCategory: string;
   researchBackground: string;
   hasIPR: boolean;
   hasRightToUse: boolean;
-  // Optional fields (drafts do not require completeness - Spec §US2)
   productDescription?: string;
   technologyDescription?: string;
   productAdvantages?: string;
@@ -108,7 +106,7 @@ async function registerAccount(request: APIRequestContext, email: string, passwo
         address1: '123 Test Street',
         city: 'Test City',
         postCode: 'TC123',
-        countryCode: 'US',
+        countryCode: 'GB',
       },
       actorType: 'IdeaGenerator',
       password,
@@ -177,13 +175,12 @@ async function loginAccount(request: APIRequestContext, email: string, password:
 }
 
 /**
- * Login via UI (fills login form and submits), then waits until the token is confirmed in
- * localStorage.
+ * Login via UI (fills login form and submits).
  *
- * Important: Playwright's page.goto() always triggers a full HTTP navigation, causing Angular
- * to re-bootstrap from scratch. To guarantee the auth token is available when Angular reads
- * localStorage in AuthService's constructor, call page.addInitScript() with the stored token
- * immediately after this function before any subsequent page.goto() call.
+ * Completes the full UI login flow and verifies the token is stored in localStorage.
+ * Subsequent page navigations will correctly include the Authorization header because
+ * the Angular dev server proxy serves HTML navigations via historyApiFallback (index.html)
+ * and the AuthService signal is initialised synchronously from localStorage on app startup.
  */
 async function loginViaUI(
   page: any,
@@ -312,11 +309,14 @@ test.describe('Journey 1: User Registration and Innovation View', () => {
         hasRightToUse: true,
         productDescription: 'Test product description',
         technologyDescription: 'Test technology description',
+        targetIndustryIds: ["HLTH-001"], // Add industry IDs if needed
       };
 
       const createResponse = await createInnovation(request, accessToken, innovationData);
       innovationId = createResponse.innovationId;
-      expect(innovationId).toBeDefined();
+      expect(innovationId).toBeTruthy();
+      expect(createResponse.status).toBe('Draft');
+      expect(createResponse.ideaToken).toBeDefined();
     });
 
     // ==========================================
@@ -324,49 +324,41 @@ test.describe('Journey 1: User Registration and Innovation View', () => {
     // ==========================================
     await test.step('Login via UI', async () => {
       await loginViaUI(page, testEmail, testPassword, 'IdeaGenerator');
-
-      // After UI login the token is in localStorage. Register an addInitScript so it is
-      // guaranteed to be set *before* Angular bootstraps on the next full-page navigation.
-      // page.goto() always performs a full HTTP navigation: Angular re-bootstraps fresh and
-      // reads localStorage in AuthService's constructor. addInitScript runs before any page
-      // scripts, ensuring the signal is populated before the first HTTP request fires.
-      const storedToken = await page.evaluate(() => localStorage.getItem('accessToken'));
-      await page.addInitScript(
-        (token: string) => { localStorage.setItem('accessToken', token); },
-        storedToken!,
-      );
     });
 
     // ==========================================
     // STEP 6: View Innovation Detail via UI
     // ==========================================
     await test.step('View innovation detail', async () => {
-      page.on('console', msg => console.log('BROWSER CONSOLE:', msg.type(), msg.text()));
-      page.on('pageerror', err => console.error('PAGE ERROR:', err.message));
+      // Seed localStorage before Angular initialises so the auth interceptor
+      // picks up the token on the first XHR after the page reload.
+      await page.addInitScript((token) => {
+        localStorage.setItem('accessToken', token);
+      }, accessToken);
 
       await page.goto(`http://localhost:4200/innovations/${innovationId}`);
       await page.waitForLoadState('networkidle');
 
-      // Verify innovation title is displayed
-      await expect(page.getByRole('heading', { name: /e2e test innovation/i })).toBeVisible();
+      // Verify innovation title is displayed in the card header
+      await expect(page.locator('mat-card-title')).toContainText(/e2e test innovation/i);
 
       // Verify innovation details are visible
       await expect(page.getByText(/test product description/i)).toBeVisible();
-      await expect(page.getByText(/test technology description/i)).toBeVisible();
+      await expect(page.getByText(/test research background for e2e testing/i)).toBeVisible();
 
       // Verify research category chip
       await expect(page.getByText(/engineering/i)).toBeVisible();
 
       // Verify back button is present
-      await expect(page.getByRole('button', { name: /back/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: /back to innovations/i })).toBeVisible();
     });
 
     // ==========================================
-    // STEP 6: Verify Navigation Works
+    // STEP 7: Verify Navigation Works
     // ==========================================
     await test.step('Test navigation back', async () => {
-      await page.getByRole('button', { name: /back/i }).click();
-      await expect(page).toHaveURL('/innovations');
+      await page.getByRole('button', { name: /back to innovations/i }).click();
+      await expect(page).toHaveURL(/\/innovations$/);
     });
   });
 
@@ -432,20 +424,20 @@ test.describe('Journey 1: User Registration and Innovation View', () => {
     // Login via UI to establish browser auth state
     await test.step('Login via UI', async () => {
       await loginViaUI(page, testEmail, testPassword, 'IdeaGenerator');
-
-      const storedToken = await page.evaluate(() => localStorage.getItem('accessToken'));
-      await page.addInitScript(
-        (token: string) => { localStorage.setItem('accessToken', token); },
-        storedToken!,
-      );
     });
 
     await test.step('Navigate to innovation and observe loading state', async () => {
+      // Seed localStorage before Angular initialises so the auth interceptor
+      // picks up the token on the first XHR after the page reload.
+      await page.addInitScript((token) => {
+        localStorage.setItem('accessToken', token);
+      }, accessToken);
+
       await page.goto(`http://localhost:4200/innovations/${innovationId}`);
       await page.waitForLoadState('networkidle');
 
       // Eventually, content should be visible (loading complete)
-      await expect(page.getByRole('heading', { name: /loading state test innovation/i })).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('mat-card-title')).toContainText(/loading state test innovation/i, { timeout: 10000 });
     });
   });
 });
