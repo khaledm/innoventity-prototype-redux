@@ -270,7 +270,8 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<decimal?>("PotentialMarketSize")
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(28, 2)
+                        .HasColumnType("decimal(28,2)");
 
                     b.Property<string>("ProductAdvantages")
                         .IsRequired()
@@ -293,7 +294,8 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<decimal?>("RelevantMarketSize")
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(28, 2)
+                        .HasColumnType("decimal(28,2)");
 
                     b.Property<string>("ResearchBackground")
                         .IsRequired()
