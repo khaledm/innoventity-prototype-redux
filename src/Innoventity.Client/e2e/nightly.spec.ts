@@ -140,8 +140,8 @@ test.describe('Nightly Smoke: Production Journey Validation', () => {
   // Test 1 — Critical journey: Login → Create Innovation → View Detail → Navigate back
   // -------------------------------------------------------------------------
   test('should login and view an innovation detail page', async ({ page, request }) => {
-    let accessToken: string;
-    let innovationId: string;
+    let accessToken!: string;
+    let innovationId!: string;
     const innovationTitle = `Nightly Smoke ${new Date().toISOString().slice(0, 16)}`;
 
     // Step 1: Login via API
@@ -193,13 +193,19 @@ test.describe('Nightly Smoke: Production Journey Validation', () => {
 
   // -------------------------------------------------------------------------
   // Test 2 — Auth gate: invalid credentials are rejected (API-only, no UI)
+  //
+  // Uses a guaranteed-nonexistent email (RFC 2606 / RFC 6761 .invalid TLD)
+  // rather than the real nightly account email with a wrong password.
+  // Using the real email would increment FailedLoginAttempts on the production
+  // account and risk triggering the 5-attempt lockout (15-minute cooldown),
+  // creating operational noise and potentially breaking Test 1 in a retry run.
   // -------------------------------------------------------------------------
   test('should reject invalid credentials with 401', async ({ request }) => {
     const response = await request.post(`${API_BASE_URL}/auth/login`, {
       data: {
-        email: NIGHTLY_EMAIL,
+        email: 'nightly-nonexistent@no-such-domain.invalid',
         actorType: 'IdeaGenerator',
-        password: 'deliberatelyWrongPassword!Nightly',
+        password: 'irrelevantPassword!Nightly',
       },
     });
 
