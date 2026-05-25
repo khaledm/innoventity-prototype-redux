@@ -13,6 +13,7 @@
     "e2e": "cross-env NODE_OPTIONS=--max-old-space-size=4096 playwright test",
     "e2e:ui": "cross-env NODE_OPTIONS=--max-old-space-size=4096 playwright test --ui",
     "e2e:headed": "cross-env NODE_OPTIONS=--max-old-space-size=4096 playwright test --headed",
+    "e2e:nightly": "cross-env NODE_OPTIONS=--max-old-space-size=4096 playwright test --config playwright.config.nightly.ts",
     "api:generate": "openapi-generator-cli generate"
   },
   "private": true,

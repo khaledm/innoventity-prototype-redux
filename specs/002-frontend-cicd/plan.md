@@ -28,7 +28,7 @@ Automate Angular 19 frontend deployment to Azure Static Web Apps via GitHub Acti
 **Constraints**:
   - Free tier Azure SWA: 1 production + 3 preview environments (PR preview quota)
   - GitHub Actions free tier: 2000 minutes/month (optimize build caching)
-  - Test enforcement: Failed required tests block preview and production deployment paths in Phase 1 and later
+  - Test enforcement: Failed required **Jest unit** tests block preview and production deployment paths in Phase 1 and later — **Pattern D (permanent, 2026-05-25)**: Playwright E2E tests run nightly via `e2e-nightly.yml` and do not block the CI pipeline
   - Approval timeout: 24 hours (workflow auto-fails if not approved)
   - Zero breaking changes to existing Angular app or backend API
 **Scale/Scope**: Single-environment deployment (dev), ~10 deployments/week, 3-5 developers, Angular SPA (~500kB initial bundle size)
@@ -41,7 +41,7 @@ Automate Angular 19 frontend deployment to Azure Static Web Apps via GitHub Acti
 
 **✅ Principle 1 — User Experience First**: CI/CD automation directly serves developer users by eliminating manual deployment friction (main pain point from Phase 0 deferred item). Preview environments enable reviewers to test changes interactively. Approval gates provide control. Solution is user-centric.
 
-**✅ Principle 2 — Quality is Non-Negotiable**: Required unit and E2E tests block all deployment paths in Phase 1 and later. Preview validation happens before merge, and production validation happens after production deployment, preventing broken releases from advancing unnoticed. Terraform modules ensure infrastructure reproducibility, and GitHub-native notifications surface failures without adding extra delivery channels.
+**⚠️ Principle 2 — Quality is Non-Negotiable**: Required Jest unit tests block all CI deployment paths in Phase 1 and later. Pester HTTP health checks validate every production deployment (Layer 1). Playwright E2E journey tests run nightly against the production deployment via Pattern D (`e2e-nightly.yml`) and trigger GitHub native notifications on failure (Layer 2). **Pattern D trade-off acknowledged**: a regression breaking the user journey can reach production and remain undetected for up to ~23 hours (next nightly run). This is a conscious trade-off accepted per Constraint 1 (Solo Project Realities) — the cost of adding service containers or deployment slots to enable pre-production E2E is not justified at current team scale. The production approval gate + Pester Layer 1 checks guard against infrastructure-level failures within the approval window.
 
 **✅ Principle 3 — Simplicity Over Cleverness**: Uses Azure SWA's native preview environment feature (no custom infrastructure). GitHub Actions follows standard branch-appropriate patterns (build→test→deploy→validate, with approval only on Main). No complex orchestration or custom tooling. Leverages platform capabilities as intended. Boring, reliable automation.
 
@@ -183,6 +183,7 @@ No abstraction layers or architectural complexity added—leverages platform cap
 |----------|-----------|----------------------|
 | **Direct production deployment** (no slot swap) | SWA uses preview/production environments, not slots. Approval gate provides safety. | Staging → swap pattern (not supported by SWA Free tier) |
 | **Required tests block all deployments** | Aligns with spec and constitutional quality gates; failed required tests must stop preview and production paths immediately in Phase 1+ | Warning-only enforcement (conflicts with required blocking behavior) |
+| **Pattern D: E2E tests run nightly (not in CI)** | Playwright journey tests require live .NET API + SQL Server — unavailable on GitHub Actions hosted runners without service containers. Nightly run against production (`e2e-nightly.yml`) provides journey validation within ~23h. Accepted per Constraint 1 (Solo Project Realities). | Pattern A (service containers, adds ~5min + SQL setup), Pattern B (post-deploy slots, ~$50/mo App Service Standard), Pattern C (smoke+journey split) |
 | **GitHub native notifications** | Built-in email/UI/mobile notifications sufficient for Phase 1 | Slack/Teams integration (adds complexity, deferred to Phase 2+) |
 | **24-hour approval timeout** | Maximum flexibility for small team availability | Shorter timeout (may cause delays if team unavailable) |
 | **Free tier SWA** | 1 production + 3 previews sufficient for dev environment | Standard tier (unnecessary cost for dev) |
@@ -203,7 +204,8 @@ No abstraction layers or architectural complexity added—leverages platform cap
     │
     ├─► [Build Job]  → Compile Angular → Upload artifact
     │
-    ├─► [Test Job]   → Jest unit + Playwright E2E (required failures stop workflow)
+    ├─► [Test Job]   → Jest unit tests (required failures stop workflow)
+    │                  Playwright E2E: NOT in CI — Pattern D (nightly, see e2e-nightly.yml)
     │
     ├─► [Deploy-Preview Job] (if branch != Main)
     │   └─► Azure Static Web Apps (Preview Environment)

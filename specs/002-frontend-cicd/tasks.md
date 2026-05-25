@@ -2,7 +2,7 @@
 
 **Feature**: Frontend CI/CD Automation
 **Branch**: `002-frontend-cicd`
-**Last Synced**: May 9, 2026
+**Last Synced**: May 25, 2026
 **Input**: Design documents from `/specs/002-frontend-cicd/` (plan.md, spec.md, data-model.md, research.md, contracts/, quickstart.md)
 
 **Tests**: Test-related tasks are included where needed for implementation validation (including Jest/Playwright workflow steps, artifact uploads, and end-to-end coverage)
@@ -80,7 +80,7 @@
 - [X] T075 [P] [US1] Verify `src/Innoventity.Client/staticwebapp.config.json` satisfies FR-030 (SPA routing to `index.html`) and FR-031 (navigation fallback); confirm file is included in `ng build` output and deployed artifact
 - [X] T024 [P] [US1] Define `test` job with dependencies on build job
 - [X] T025 [US1] Implement test job steps: download build artifact, `npm test -- --ci --coverage`, `npx playwright install --with-deps`, `npm run test:e2e`
-- [X] T026 [US1] Configure required Jest and Playwright tests to fail the workflow and block both preview and production deployments on failure
+- [X] T026 [US1] Configure required Jest and Playwright tests to fail the workflow and block both preview and production deployments on failure — **Pattern D (permanent, 2026-05-25)**: Jest unit tests remain hard-blocking in `deploy-frontend.yml`; Playwright E2E tests are excluded from the CI workflow and run nightly via `e2e-nightly.yml` (see Phase D tasks T078–T085)
 - [X] T027 [US1] Upload test results as artifacts (coverage reports, Playwright traces)
 - [X] T028 [P] [US1] Define `deploy-preview` job with conditional execution (`if: github.ref != 'refs/heads/Main'`)
 - [X] T029 [US1] Implement deploy-preview job: download build artifact, use `Azure/static-web-apps-deploy@v1` with `skip_app_build: true`
@@ -169,9 +169,33 @@
 - [X] T068 Verify required-test enforcement remains hard-blocking for preview and production deployments (FR-009; no warning-only mode)
 - [X] T070 ~~[P] Validate quickstart.md steps end-to-end with fresh clone~~ — **DESCOPED**: Full E2E application flow verified manually on 2026-05-10 (UI login → innovation creation → innovation detail page); all Playwright E2E tests pass locally. Fresh-clone quickstart-specific validation deferred.
 - [X] T071 Run constitution checklist validation — `specs/002-frontend-cicd/CONSTITUTION-VALIDATION.md` confirmed current; all constitution principles maintained throughout implementation. Failure-evidence requirements descoped per T076/T077 rationale.
-- [ ] T072 Verify all success criteria met (SC-001 through SC-010 from spec.md) — pending: SC-003 and SC-007 require an actual Main merge to exercise `validate-production`
+- [ ] T072 Verify all success criteria met (SC-001 through SC-010 from spec.md) — pending: SC-003 requires T052–T056 (approval live-fire); SC-007 is now complemented by Pattern D nightly (T078–T085) in addition to `validate-production` Pester checks
 - [X] T073 ~~[P] Add and verify descriptive SWA preview quota exhaustion failure handling in `.github/workflows/deploy-frontend.yml` and `specs/002-frontend-cicd/runbooks/deployment.md` (FR-043)~~ — Quota exhaustion causes a hard `azure/static-web-apps-deploy@v1` failure with visible error output; workflow does not use `continue-on-error`. Runbook entry deferred (T065 descoped).
 - [ ] T074 Final commit following Conventional Commits format: `feat(ci): complete frontend CI/CD automation`
+
+---
+
+## Phase D: Pattern D — Nightly E2E Production Validation (2026-05-25)
+
+**Purpose**: Implement nightly Playwright journey tests against the live production deployment (Pattern D). Addresses findings I2 (FR-008 CI skip) and U1 (T076/T077 descoped failure-mode obligation). Runs on branch `004-pattern-d-nightly-e2e`.
+
+**Relationship to User Story 3 (Production Approval Gate)**:
+- Adds a **second validation layer** on top of the existing `validate-production` Pester health checks
+- `validate-production` (Layer 1): Runs immediately after `deploy-production` — proves HTTP 200, security headers, SPA routing (fast, ~30s, blocking)
+- `e2e-nightly.yml` (Layer 2): Runs nightly at 03:00 UTC — proves the full user journey works in production (slower, ~3 min, non-blocking)
+- **T052–T056 are NOT replaced** — they test the approval gate *mechanism* itself and must still be completed
+- `workflow_dispatch` on `e2e-nightly.yml` can be used to immediately re-validate production after T054 approval test completes
+
+- [X] T078 [P] Create `src/Innoventity.Client/playwright.config.nightly.ts` — nightly Playwright config (no `webServer`, `testMatch: nightly.spec.ts`, dual reporter: `github` + JUnit, `retries: 2`, URLs from env vars) — **IMPLEMENTED 2026-05-25**
+- [X] T079 [P] Create `src/Innoventity.Client/e2e/nightly.spec.ts` — 3 tests: (1) login via API + create Draft innovation + view detail page via UI, (2) invalid credentials rejected with 401, (3) `/health` endpoint reachable — uses `E2E_NIGHTLY_EMAIL` / `E2E_NIGHTLY_PASSWORD` env vars, no registration — **IMPLEMENTED 2026-05-25**
+- [X] T080 [P] Add `e2e:nightly` script to `src/Innoventity.Client/package.json`: `playwright test --config playwright.config.nightly.ts` — **IMPLEMENTED 2026-05-25**
+- [X] T081 Create `.github/workflows/e2e-nightly.yml` — scheduled `0 3 * * *` + `workflow_dispatch` with `base_url`/`api_url` overrides; publishes JUnit results via `dorny/test-reporter@v3` with `fail-on-error: true` — **IMPLEMENTED 2026-05-25**
+- [ ] T082 Create GitHub repository secrets `E2E_NIGHTLY_EMAIL` and `E2E_NIGHTLY_PASSWORD` via `gh secret set` using credentials from T083
+- [ ] T083 Provision pre-seeded test account in production: register via `POST /auth/register`, activate via `POST /auth/activate` (activationToken is in response in dev — use dev environment for initial registration, ensure account is replicated to prod OR register directly against production API via email activation workflow)
+- [ ] T084 Trigger `e2e-nightly.yml` via `workflow_dispatch` and verify all 3 tests pass; confirm Playwright HTML report artifact is uploaded
+- [ ] T085 Verify GitHub native failure notification is received when a test is deliberately broken (rename a locator text, push, re-run, confirm notification, revert)
+
+**Checkpoint**: Nightly E2E workflow operational — T076/T077 descoped obligation formally closed; observable failure evidence captured on next genuine regression
 
 ---
 
