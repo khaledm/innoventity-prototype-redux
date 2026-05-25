@@ -43,6 +43,12 @@ on:
         required: false
         default: 'https://innoventity-dev-api.azurewebsites.net'
 
+# dorny/test-reporter requires checks:write to publish results to the
+# GitHub Checks API. contents:read is the minimum for checkout.
+permissions:
+  checks: write
+  contents: read
+
 env:
   WORKING_DIR: src/Innoventity.Client
   NODE_VERSION: '20.x'

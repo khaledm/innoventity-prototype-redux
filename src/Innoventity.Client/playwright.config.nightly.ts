@@ -40,11 +40,14 @@ export default defineConfig({
 
   workers: 1,
 
-  /* Dual reporters in CI: GitHub annotations + JUnit XML for dorny/test-reporter */
+  /* Dual reporters in CI: GitHub annotations + JUnit XML for dorny/test-reporter.
+     The html reporter is included with open:'never' so Playwright writes the
+     playwright-report/ folder that the upload-artifact step depends on. */
   reporter: process.env.CI
     ? [
         ['github'],
         ['junit', { outputFile: 'test-results/nightly-results.xml' }],
+        ['html', { open: 'never' }],
       ]
     : 'html',
 

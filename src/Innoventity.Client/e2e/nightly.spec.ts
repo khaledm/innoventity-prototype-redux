@@ -214,8 +214,8 @@ test.describe('Nightly Smoke: Production Journey Validation', () => {
   // -------------------------------------------------------------------------
   test('should reach the backend API health endpoint', async ({ request }) => {
     // The .NET health endpoint exposed at /health returns 200 when the app is
-    // healthy (see Program.cs — MapHealthChecks). This is a lightweight liveness
-    // check independent of authentication.
+    // healthy (see Features/Health/HealthCheck.cs — MapGet("/health", ...)).
+    // This is a lightweight liveness check independent of authentication.
     const response = await request.get(`${API_BASE_URL}/health`);
 
     expect(response.status()).toBe(200);
