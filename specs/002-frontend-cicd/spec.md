@@ -60,8 +60,8 @@ As a **developer**, I need frontend changes automatically built, tested, and dep
 
 1. **Given** a feature branch with frontend changes, **When** developer pushes commit, **Then** GitHub Actions workflow triggers automatically
 2. **Given** workflow triggered, **When** build job executes, **Then** Angular app builds successfully with production configuration
-3. **Given** build succeeds, **When** test job executes, **Then** all required Jest unit tests and Playwright E2E tests pass before any deployment begins
-4. **Given** any required test fails, **When** the test job concludes, **Then** the workflow fails and no deploy job executes
+3. **Given** build succeeds, **When** test job executes, **Then** all required Jest unit tests pass before any deployment begins — **Pattern D (permanent, 2026-05-25)**: Playwright E2E tests are excluded from the `deploy-frontend.yml` CI test job; they run nightly against the production deployment via `e2e-nightly.yml` instead
+4. **Given** any required **unit test** fails, **When** the test job concludes, **Then** the `deploy-frontend.yml` workflow fails and no deploy job executes — E2E test failures detected by `e2e-nightly.yml` do not block in-flight CI deployments
 5. **Given** required tests pass, **When** the deploy job executes, **Then** the artifact is uploaded to the Azure Static Web Apps preview environment
 6. **Given** deployment complete, **When** the validate job executes, **Then** the preview URL returns HTTP 200 and serves the Angular app
 
@@ -143,7 +143,7 @@ As a **quality assurance engineer**, I need automated health checks after deploy
 
 - **What happens when Azure Static Web Apps deployment quota exhausted?** Workflow MUST fail with a clear error message (e.g., "SWA preview quota reached: 3/3 environments in use"). Developer must manually close a stale PR or run the cleanup workflow (`action: 'close'`) to free a slot. No automatic SKU upgrade or silent skip permitted.
 - **What happens when GitHub Actions workflow fails mid-deployment?** Preview environment may have partial deployment. Workflow retry will overwrite with fresh deployment. Production environment remains unchanged.
-- **What happens when Playwright E2E tests fail during test job?** Workflow fails and neither preview nor production deployment proceeds in Phase 1 and later. Developer must fix tests and push new commit to retry.
+- **What happens when Playwright E2E tests fail?** ~~Workflow fails and neither preview nor production deployment proceeds in Phase 1 and later.~~ — **Pattern D (permanent, 2026-05-25)**: Playwright E2E tests do not run in the `deploy-frontend.yml` CI test job. Failures are detected nightly by `e2e-nightly.yml` (03:00 UTC) and trigger GitHub native failure notifications. In-flight CI deployments are not blocked. Developer should fix the failing test on the next iteration and confirm the nightly workflow returns to green.
 - **What happens when two developers push to Main simultaneously?** GitHub Actions queues workflows sequentially. Second workflow waits for the first to complete approval, production deployment, and production validation.
 - **What happens when deployment token expires or is rotated?** Workflow fails with authentication error. Operator must update `AZURE_STATIC_WEB_APPS_API_TOKEN` secret with new token from Azure Portal.
 - **What happens when approval gate times out (24 hours)?** Workflow automatically fails before production deployment. Production environment unchanged. Operator must re-run workflow to retry.
@@ -240,7 +240,7 @@ As a **quality assurance engineer**, I need automated health checks after deploy
 - **SC-003**: Production deployments require manual approval, then deploy and pass production validation within 5 minutes after approval is granted
 - **SC-004**: Zero manual `swa deploy` commands required for any deployment (complete automation)
 - **SC-005**: Infrastructure provisioning via Terraform completes in under 3 minutes and is idempotent
-- **SC-006**: Frontend test results are visible in workflow logs, and failed required tests prevent deployment 100% of the time in Phase 1 and later
+- **SC-006**: Frontend test results are visible in workflow logs, and failed required **Jest unit** tests prevent CI deployment 100% of the time — **Pattern D (permanent, 2026-05-25)**: Playwright E2E tests run nightly via `e2e-nightly.yml`; E2E failures trigger GitHub native notifications but do not block CI deployments. The original "Phase 2+: E2E blocking" escalation path is retired in favour of Pattern D.
 - **SC-007**: PR preview validation detects critical failures (HTTP 404/500) before merge, and production validation detects them after Main deployment, 100% of the time
 - **SC-008**: All in-scope frontend environment configurations (local development, preview, production) correctly route to backend API endpoints
 - **SC-009**: Preview environments for PRs automatically clean up within 1 hour of PR closure

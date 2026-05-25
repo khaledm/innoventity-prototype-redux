@@ -80,7 +80,7 @@
 - [X] T075 [P] [US1] Verify `src/Innoventity.Client/staticwebapp.config.json` satisfies FR-030 (SPA routing to `index.html`) and FR-031 (navigation fallback); confirm file is included in `ng build` output and deployed artifact
 - [X] T024 [P] [US1] Define `test` job with dependencies on build job
 - [X] T025 [US1] Implement test job steps: download build artifact, `npm test -- --ci --coverage`, `npx playwright install --with-deps`, `npm run test:e2e`
-- [X] T026 [US1] Configure required Jest and Playwright tests to fail the workflow and block both preview and production deployments on failure
+- [X] T026 [US1] Configure required Jest and Playwright tests to fail the workflow and block both preview and production deployments on failure — **Pattern D (permanent, 2026-05-25)**: Jest unit tests remain hard-blocking in `deploy-frontend.yml`; Playwright E2E tests are excluded from the CI workflow and run nightly via `e2e-nightly.yml` (see Phase D tasks T078–T085)
 - [X] T027 [US1] Upload test results as artifacts (coverage reports, Playwright traces)
 - [X] T028 [P] [US1] Define `deploy-preview` job with conditional execution (`if: github.ref != 'refs/heads/Main'`)
 - [X] T029 [US1] Implement deploy-preview job: download build artifact, use `Azure/static-web-apps-deploy@v1` with `skip_app_build: true`
@@ -186,10 +186,10 @@
 - **T052–T056 are NOT replaced** — they test the approval gate *mechanism* itself and must still be completed
 - `workflow_dispatch` on `e2e-nightly.yml` can be used to immediately re-validate production after T054 approval test completes
 
-- [ ] T078 [P] Create `src/Innoventity.Client/playwright.config.nightly.ts` — nightly Playwright config (no `webServer`, `testMatch: nightly.spec.ts`, dual reporter: `github` + JUnit, `retries: 2`, URLs from env vars) — **IMPLEMENTED 2026-05-25**
-- [ ] T079 [P] Create `src/Innoventity.Client/e2e/nightly.spec.ts` — 3 tests: (1) login via API + create Draft innovation + view detail page via UI, (2) invalid credentials rejected with 401, (3) `/health` endpoint reachable — uses `E2E_NIGHTLY_EMAIL` / `E2E_NIGHTLY_PASSWORD` env vars, no registration — **IMPLEMENTED 2026-05-25**
-- [ ] T080 [P] Add `e2e:nightly` script to `src/Innoventity.Client/package.json`: `playwright test --config playwright.config.nightly.ts` — **IMPLEMENTED 2026-05-25**
-- [ ] T081 Create `.github/workflows/e2e-nightly.yml` — scheduled `0 3 * * *` + `workflow_dispatch` with `base_url`/`api_url` overrides; publishes JUnit results via `dorny/test-reporter@v3` with `fail-on-error: true` — **IMPLEMENTED 2026-05-25**
+- [X] T078 [P] Create `src/Innoventity.Client/playwright.config.nightly.ts` — nightly Playwright config (no `webServer`, `testMatch: nightly.spec.ts`, dual reporter: `github` + JUnit, `retries: 2`, URLs from env vars) — **IMPLEMENTED 2026-05-25**
+- [X] T079 [P] Create `src/Innoventity.Client/e2e/nightly.spec.ts` — 3 tests: (1) login via API + create Draft innovation + view detail page via UI, (2) invalid credentials rejected with 401, (3) `/health` endpoint reachable — uses `E2E_NIGHTLY_EMAIL` / `E2E_NIGHTLY_PASSWORD` env vars, no registration — **IMPLEMENTED 2026-05-25**
+- [X] T080 [P] Add `e2e:nightly` script to `src/Innoventity.Client/package.json`: `playwright test --config playwright.config.nightly.ts` — **IMPLEMENTED 2026-05-25**
+- [X] T081 Create `.github/workflows/e2e-nightly.yml` — scheduled `0 3 * * *` + `workflow_dispatch` with `base_url`/`api_url` overrides; publishes JUnit results via `dorny/test-reporter@v3` with `fail-on-error: true` — **IMPLEMENTED 2026-05-25**
 - [ ] T082 Create GitHub repository secrets `E2E_NIGHTLY_EMAIL` and `E2E_NIGHTLY_PASSWORD` via `gh secret set` using credentials from T083
 - [ ] T083 Provision pre-seeded test account in production: register via `POST /auth/register`, activate via `POST /auth/activate` (activationToken is in response in dev — use dev environment for initial registration, ensure account is replicated to prod OR register directly against production API via email activation workflow)
 - [ ] T084 Trigger `e2e-nightly.yml` via `workflow_dispatch` and verify all 3 tests pass; confirm Playwright HTML report artifact is uploaded
