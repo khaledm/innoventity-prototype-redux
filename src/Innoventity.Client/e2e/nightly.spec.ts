@@ -140,8 +140,8 @@ test.describe('Nightly Smoke: Production Journey Validation', () => {
   // Test 1 — Critical journey: Login → Create Innovation → View Detail → Navigate back
   // -------------------------------------------------------------------------
   test('should login and view an innovation detail page', async ({ page, request }) => {
-    let accessToken: string;
-    let innovationId: string;
+    let accessToken!: string;
+    let innovationId!: string;
     const innovationTitle = `Nightly Smoke ${new Date().toISOString().slice(0, 16)}`;
 
     // Step 1: Login via API
