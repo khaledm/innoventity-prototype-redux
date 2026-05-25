@@ -1,0 +1,131 @@
+# .github/workflows/e2e-nightly.yml
+#
+# Pattern D: Nightly Production E2E — Post-Deploy Journey Validation
+#
+# Runs Playwright journey tests against the live production deployment.
+# Complements the immediate Pester health checks in deploy-frontend.yml by
+# proving the full user journey works after each production release.
+#
+# Layers of production validation (User Story 3 context):
+#   Layer 1 — deploy-frontend.yml:validate-production  (Pester HTTP health checks, blocking, ~30s)
+#   Layer 2 — e2e-nightly.yml                          (Playwright journey tests, non-blocking, ~3min)
+#
+# Trigger strategy:
+#   schedule  — 03:00 UTC nightly (runs after any previous-day production deployment settles)
+#   workflow_dispatch — manual trigger for on-demand runs (e.g., after T052–T056 approval test)
+#                       accepts an optional base_url to target non-production environments
+#
+# Required GitHub Secrets:
+#   E2E_NIGHTLY_EMAIL     — email of pre-seeded production test account
+#   E2E_NIGHTLY_PASSWORD  — password of pre-seeded production test account
+#
+# Setup prerequisites (one-time, see T083):
+#   1. Register a test account via POST /auth/register (dev environment OK)
+#   2. Activate via POST /auth/activate (use activationToken from response — dev only)
+#   3. Store credentials as GitHub secrets E2E_NIGHTLY_EMAIL / E2E_NIGHTLY_PASSWORD
+#   4. Run workflow_dispatch to verify first successful run
+
+name: E2E Nightly — Production Journey Tests
+
+on:
+  schedule:
+    # 03:00 UTC — runs after overnight deployments have settled
+    - cron: '0 3 * * *'
+
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Angular SPA URL to test (default: production)'
+        required: false
+        default: 'https://innoventity-dev-web.azurestaticapps.net'
+      api_url:
+        description: 'Backend API URL to test (default: production)'
+        required: false
+        default: 'https://innoventity-dev-api.azurewebsites.net'
+
+env:
+  WORKING_DIR: src/Innoventity.Client
+  NODE_VERSION: '20.x'
+
+jobs:
+  e2e-nightly:
+    name: Playwright Nightly Smoke
+    runs-on: ubuntu-latest
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Checkout — need playwright.config.nightly.ts and e2e/nightly.spec.ts
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # -----------------------------------------------------------------------
+      # 2. Node.js setup with npm cache
+      # -----------------------------------------------------------------------
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIR }}/package-lock.json
+
+      # -----------------------------------------------------------------------
+      # 3. Install npm dependencies (includes @playwright/test)
+      # -----------------------------------------------------------------------
+      - name: Install npm dependencies
+        run: npm ci
+        working-directory: ${{ env.WORKING_DIR }}
+
+      # -----------------------------------------------------------------------
+      # 4. Install Playwright browser (Chromium only — matches nightly config)
+      # -----------------------------------------------------------------------
+      - name: Install Playwright browser
+        run: npx playwright install chromium --with-deps
+        working-directory: ${{ env.WORKING_DIR }}
+
+      # -----------------------------------------------------------------------
+      # 5. Run nightly E2E tests against production (or workflow_dispatch target)
+      #
+      #    BASE_URL  — resolved from workflow_dispatch input or default production URL
+      #    E2E_API_URL — resolved from workflow_dispatch input or default production API
+      #    E2E_NIGHTLY_EMAIL / PASSWORD — from GitHub Secrets
+      # -----------------------------------------------------------------------
+      - name: Run nightly E2E tests
+        run: npm run e2e:nightly
+        working-directory: ${{ env.WORKING_DIR }}
+        env:
+          CI: 'true'
+          BASE_URL: ${{ inputs.base_url || 'https://innoventity-dev-web.azurestaticapps.net' }}
+          E2E_API_URL: ${{ inputs.api_url || 'https://innoventity-dev-api.azurewebsites.net' }}
+          E2E_NIGHTLY_EMAIL: ${{ secrets.E2E_NIGHTLY_EMAIL }}
+          E2E_NIGHTLY_PASSWORD: ${{ secrets.E2E_NIGHTLY_PASSWORD }}
+
+      # -----------------------------------------------------------------------
+      # 6. Upload Playwright HTML report (always — captures failure traces/screenshots)
+      # -----------------------------------------------------------------------
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-nightly-report-${{ github.run_number }}
+          path: ${{ env.WORKING_DIR }}/playwright-report/
+          retention-days: 30
+
+      # -----------------------------------------------------------------------
+      # 7. Publish JUnit test results to GitHub Actions summary
+      #
+      #    fail-on-error: true  — workflow fails when tests fail (triggers GitHub
+      #                           native notifications: email, mobile, web UI)
+      #    fail-on-empty: true  — fails if no test output (guards against silent
+      #                           misconfiguration)
+      # -----------------------------------------------------------------------
+      - name: Publish test results
+        uses: dorny/test-reporter@v3
+        if: always()
+        with:
+          name: Nightly E2E Results
+          path: ${{ env.WORKING_DIR }}/test-results/nightly-results.xml
+          reporter: java-junit
+          fail-on-error: true
+          fail-on-empty: true
+          list-tests: all

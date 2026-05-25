@@ -163,8 +163,8 @@ As a **quality assurance engineer**, I need automated health checks after deploy
 - **FR-005**: `build` job MUST execute `npm run build` with production configuration
 - **FR-006**: `build` job MUST upload `dist/` folder as GitHub Actions artifact
 - **FR-007**: `test` job MUST execute Jest unit tests (`npm test -- --coverage`)
-- **FR-008**: `test` job MUST execute Playwright E2E tests (`npm run test:e2e`)
-- **FR-009**: `test` job MUST report test results and MUST fail the workflow on any required unit or E2E test failure in Phase 1 and later, blocking both preview and production deployments (target: 28/28 unit, 3/3 E2E)
+- **FR-008**: `test` job MUST execute Playwright E2E tests (`npm run test:e2e`) — **AMENDED 2026-05-25**: Playwright journey tests require a live .NET API + SQL Server and cannot run in the GitHub Actions hosted runner without service container infrastructure (see Pattern D decision). The `deploy-frontend.yml` `test` job skips Playwright steps in CI (`testIgnore` in `playwright.config.ts`). Journey tests are instead run nightly against the production deployment via `.github/workflows/e2e-nightly.yml` (`e2e:nightly` script, `playwright.config.nightly.ts`). Satisfies the intent of FR-008 without requiring a live backend in CI.
+- **FR-009**: `test` job MUST report test results and MUST fail the workflow on any required unit or E2E test failure, blocking both preview and production deployments (target: 28/28 unit) — **AMENDED 2026-05-25**: Original "Phase 1: allow failures with warnings" qualifier was superseded during implementation by T026 and T068 (2026-05-10). Hard-blocking enforcement is active from Phase 1 onward with no warning-only mode. E2E blocking applies to nightly workflow only (Pattern D); E2E steps are skipped in `deploy-frontend.yml` per FR-008 amendment.
 - **FR-010**: `deploy-preview` job MUST download build artifact from `build` job
 - **FR-011**: `deploy-preview` job MUST authenticate to Azure Static Web Apps using `AZURE_STATIC_WEB_APPS_API_TOKEN` secret
 - **FR-012**: `deploy-preview` job MUST deploy to preview environment for feature branches OR skip for Main branch
