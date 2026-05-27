@@ -1,0 +1,722 @@
+<!-- Copyright 2026 Anthropic PBC · SPDX-License-Identifier: Apache-2.0 -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Testing GitHub Actions locally with act — khaledm/innoventity-prototype-redux</title>
+<style>
+  :root {
+    --ivory:    #FAF9F5;
+    --slate:    #141413;
+    --clay:     #D97757;
+    --oat:      #E3DACC;
+    --olive:    #788C5D;
+    --gray-150: #F0EEE6;
+    --gray-300: #D1CFC5;
+    --gray-500: #87867F;
+    --gray-700: #3D3D3A;
+    --serif: ui-serif, Georgia, "Times New Roman", serif;
+    --sans:  system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono:  ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--ivory);
+    color: var(--gray-700);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    padding: 56px 24px 120px;
+  }
+  .page {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 210px minmax(0, 1fr);
+    gap: 48px;
+  }
+  @media (max-width: 920px) { .page { grid-template-columns: 1fr; } nav { display: none; } }
+
+  /* ── nav ── */
+  nav { position: sticky; top: 32px; align-self: start; font-size: 13px; }
+  nav .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gray-500);
+    margin-bottom: 12px;
+  }
+  nav a {
+    display: block;
+    padding: 5px 0 5px 12px;
+    border-left: 2px solid var(--gray-300);
+    color: var(--gray-700);
+    text-decoration: none;
+  }
+  nav a:hover { color: var(--slate); border-color: var(--slate); }
+  nav a.l2 { padding-left: 24px; font-size: 12.5px; color: var(--gray-500); }
+  nav .files { margin-top: 28px; border-top: 1px solid var(--gray-300); padding-top: 16px; }
+  nav .files code {
+    display: block;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--gray-500);
+    padding: 3px 0;
+  }
+
+  /* ── header ── */
+  header { margin-bottom: 12px; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gray-500);
+    margin-bottom: 10px;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 32px;
+    color: var(--slate);
+    letter-spacing: -0.01em;
+    margin-bottom: 14px;
+  }
+  .tldr {
+    border: 1.5px solid var(--gray-300);
+    border-left: 3px solid var(--clay);
+    border-radius: 10px;
+    background: #fff;
+    padding: 16px 18px;
+    margin-bottom: 8px;
+  }
+  .tldr b { color: var(--slate); }
+
+  h2 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 22px;
+    color: var(--slate);
+    margin: 40px 0 14px;
+    scroll-margin-top: 24px;
+  }
+  p { margin-bottom: 12px; max-width: 680px; }
+  a { color: var(--clay); }
+  code { font-family: var(--mono); font-size: 13px; }
+
+  /* ── collapsible ── */
+  details {
+    border: 1.5px solid var(--gray-300);
+    border-radius: 10px;
+    background: #fff;
+    margin: 14px 0;
+    overflow: hidden;
+  }
+  summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 14px 16px;
+    font-family: var(--serif);
+    font-size: 16px;
+    color: var(--slate);
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before {
+    content: "▸";
+    color: var(--clay);
+    font-family: var(--sans);
+    font-size: 12px;
+    transition: transform 120ms;
+  }
+  details[open] summary::before { transform: rotate(90deg); }
+  summary .where {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--gray-500);
+    margin-left: auto;
+  }
+  details .body { padding: 0 16px 16px; }
+  details .body p { font-size: 14px; }
+  details .body pre {
+    background: var(--gray-150);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.6;
+    overflow-x: auto;
+    margin: 8px 0 10px;
+  }
+
+  /* ── tabs ── */
+  .tabs {
+    border: 1.5px solid var(--gray-300);
+    border-radius: 10px;
+    background: #fff;
+    margin: 16px 0 8px;
+    overflow: hidden;
+  }
+  .tabbar {
+    display: flex;
+    border-bottom: 1px solid var(--gray-300);
+    background: var(--gray-150);
+    flex-wrap: wrap;
+  }
+  .tabbar button {
+    appearance: none;
+    border: none;
+    background: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--gray-500);
+    padding: 10px 16px;
+    cursor: pointer;
+    border-right: 1px solid var(--gray-300);
+  }
+  .tabbar button.on {
+    background: #fff;
+    color: var(--slate);
+    border-bottom: 2px solid var(--clay);
+    margin-bottom: -1px;
+  }
+  .tabs pre {
+    display: none;
+    margin: 0;
+    padding: 16px 18px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--slate);
+    overflow-x: auto;
+  }
+  .tabs pre.on { display: block; }
+  .hl { color: var(--clay); }
+  .cm { color: var(--gray-500); }
+
+  /* ── callout ── */
+  .callout {
+    display: flex;
+    gap: 12px;
+    border: 1.5px solid var(--oat);
+    background: rgba(227,218,204,0.35);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin: 18px 0;
+    font-size: 14px;
+    max-width: 680px;
+  }
+  .callout .ico { color: var(--clay); font-weight: 600; flex-shrink: 0; }
+
+  /* ── table ── */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    max-width: 800px;
+    margin: 16px 0 24px;
+    font-size: 13.5px;
+  }
+  th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--gray-500);
+    padding: 8px 12px;
+    border-bottom: 1.5px solid var(--gray-300);
+  }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--gray-150); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td:nth-child(3) { white-space: nowrap; }
+
+  /* ── badge ── */
+  .badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .badge.yes  { background: #D4EDDA; color: #1A5C30; }
+  .badge.part { background: #FFF3CD; color: #856404; }
+  .badge.no   { background: #F8D7DA; color: #721C24; }
+
+  /* ── faq ── */
+  dl.faq { margin-top: 8px; }
+  dl.faq dt { font-family: var(--serif); font-size: 16px; color: var(--slate); margin-top: 18px; }
+  dl.faq dd { font-size: 14px; margin: 4px 0 0; max-width: 640px; }
+  dl.faq pre {
+    background: var(--gray-150);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    margin-top: 6px;
+    overflow-x: auto;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ── side nav ── -->
+  <nav>
+    <div class="label">On this page</div>
+    <a href="#tldr">TL;DR</a>
+    <a href="#what">What &amp; why</a>
+    <a href="#what" class="l2">Why not just push?</a>
+    <a href="#what" class="l2">What act can/can't do</a>
+    <a href="#setup">Setup</a>
+    <a href="#prereqs" class="l2">Prerequisites</a>
+    <a href="#actrc" class="l2">.actrc</a>
+    <a href="#secrets" class="l2">.secrets</a>
+    <a href="#running">Running workflows</a>
+    <a href="#running" class="l2">Repo root rule</a>
+    <a href="#running" class="l2">Command examples</a>
+    <a href="#workflows">Workflows in this repo</a>
+    <a href="#issues">Known issues &amp; fixes</a>
+    <a href="#issues" class="l2">upload-artifact@v7</a>
+    <a href="#issues" class="l2">Deploy jobs / push event</a>
+    <a href="#issues" class="l2">Windows path panic</a>
+    <a href="#issues" class="l2">Wrong working dir</a>
+    <a href="#gotchas">Gotchas</a>
+    <a href="#faq">FAQ</a>
+    <div class="files">
+      <div class="label">Config files</div>
+      <code>.actrc</code>
+      <code>.secrets</code>
+      <code>.gitignore</code>
+    </div>
+  </nav>
+
+  <!-- ── main ── -->
+  <main>
+    <header>
+      <div class="eyebrow">Developer tooling · local CI · khaledm/innoventity-prototype-redux</div>
+      <h1>Testing GitHub Actions locally with <code>act</code></h1>
+      <div class="tldr" id="tldr">
+        <b>TL;DR</b> — <code>act</code> runs GitHub Actions job steps inside Docker containers on your local machine.
+        Run from the repo root: <code>act -W '.github/workflows/deploy-frontend.yml' -j test</code>.
+        Two things are required in this repo: add <code>if:&nbsp;${{&nbsp;!env.ACT&nbsp;}}</code> to every
+        <code>upload-artifact@v7</code> step (the v4 protobuf protocol has a <code>mime_type</code> field
+        act's server doesn't understand), and avoid running deploy/validate jobs that require live Azure by
+        using <code>-j &lt;jobname&gt;</code> to target only build/test.
+        Config lives in <code>.actrc</code> (platform image pin + secret file path) and
+        <code>.secrets</code> (never commit — gitignored).
+      </div>
+    </header>
+
+    <!-- ── SECTION 1 ── -->
+    <h2 id="what">What act is and why it helps</h2>
+    <p><a href="https://github.com/nektos/act">nektos/act</a> reads your
+      <code>.github/workflows/*.yml</code> files and runs each job step inside a Docker container that
+      mirrors the GitHub-hosted runner environment. You get fast, local CI feedback without pushing
+      commits to trigger the real pipeline.</p>
+
+    <details open>
+      <summary>Why not just push and let GitHub run it? <span class="where">speed &amp; cost</span></summary>
+      <div class="body">
+        <p>Each push to Main triggers the full 6-job deploy pipeline:
+          <code>preflight → build-test → migrate → deploy → pester-health → slot-swap</code>.
+          A full green run takes 8–12 minutes. A push just to verify a YAML syntax fix or a new
+          workflow step is wasteful — in both wait time and GitHub Actions minutes.</p>
+        <p><code>act -W '.github/workflows/deploy-frontend.yml' -j test --dryrun</code> resolves
+          which steps would run in under 5 seconds without spinning up a single container.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>What act can and cannot do <span class="where">scope</span></summary>
+      <div class="body">
+        <p><b>Works fully locally:</b> shell steps, tool installs (dotnet, node, etc.), build &amp;
+          compile steps, unit tests, <code>if:</code> condition evaluation, job outputs, secrets
+          from <code>.secrets</code>, environment variables.</p>
+        <p><b>Works locally with live credentials:</b> Azure CLI login, Terraform state reads from
+          Azure Blob Storage, DB migrations via <code>dotnet ef</code> against Azure SQL, App Service
+          zip-deploy. These require all <code>ARM_*</code> and <code>DB_CONNECTION_STRING</code> secrets
+          in <code>.secrets</code>.</p>
+        <p><b>Cannot be meaningfully tested locally:</b> Azure Static Web Apps deploy
+          (<code>Azure/static-web-apps-deploy@v1</code> calls SWA's own API), slot swaps, pester
+          health checks against a live deployed URL, and E2E Playwright tests (need the full live stack).</p>
+      </div>
+    </details>
+
+    <!-- ── SECTION 2 ── -->
+    <h2 id="setup">Setup</h2>
+    <p>Three things needed: Docker Desktop running, <code>act</code> installed, and two config files
+      placed in the repo root.</p>
+
+    <details id="prereqs" open>
+      <summary>1 · Prerequisites <span class="where">once per machine</span></summary>
+      <div class="body">
+        <p>Docker Desktop must be running before any <code>act</code> command.
+          Verify with <code>docker ps</code>. Then install act:</p>
+        <pre><span class="cm"># Windows — winget (recommended)</span>
+winget install nektos.act
+
+<span class="cm"># or Chocolatey</span>
+choco install act-cli
+
+<span class="cm"># Verify installation</span>
+act --version</pre>
+        <p>Create the artifact server directory once. act panics on Windows if the path in
+          <code>.actrc</code> doesn't exist at startup:</p>
+        <pre>New-Item -ItemType Directory -Force -Path C:\tmp\act-artifacts</pre>
+      </div>
+    </details>
+
+    <details id="actrc" open>
+      <summary>2 · .actrc — persistent defaults <span class="where">.actrc (gitignored)</span></summary>
+      <div class="body">
+        <p>Place <code>.actrc</code> in the repo root. act reads it on every invocation, so you
+          never need to repeat these flags on the command line:</p>
+        <pre><span class="cm"># .actrc</span>
+<span class="hl">--platform ubuntu-latest=catthehacker/ubuntu:act-22.04</span>
+--secret-file .secrets
+--artifact-server-path C:\tmp\act-artifacts</pre>
+        <p style="margin-top:10px"><b>Why <code>catthehacker/ubuntu:act-22.04</code>?</b>
+          act's default micro image is missing <code>dotnet</code>, <code>curl</code>, <code>zip</code>,
+          and other tools used in every workflow in this repo. The "medium" image (~500 MB, pulled once
+          then cached) includes all of these. The first pull takes ~2 minutes; subsequent runs start
+          in seconds.</p>
+        <p><code>.actrc</code> is gitignored in this repo (see the <em>act</em> section in
+          <code>.gitignore</code>). Each developer keeps their own local copy — the
+          <code>C:\tmp\act-artifacts</code> path is Windows-specific.</p>
+      </div>
+    </details>
+
+    <details id="secrets" open>
+      <summary>3 · .secrets — local secret values <span class="where">.secrets (gitignored)</span></summary>
+      <div class="body">
+        <p>Create <code>.secrets</code> in the repo root. Format is <code>KEY=value</code>, one
+          per line — identical to a <code>.env</code> file. It is gitignored and must never be
+          committed.</p>
+        <pre><span class="cm"># .secrets — NEVER commit this file</span>
+DB_CONNECTION_STRING=Server=tcp:innoventity-dev-sql.database.windows.net,1433;Initial Catalog=Innoventity;...
+ARM_CLIENT_ID=&lt;value&gt;
+ARM_CLIENT_SECRET=&lt;value&gt;
+ARM_SUBSCRIPTION_ID=&lt;value&gt;
+ARM_TENANT_ID=&lt;value&gt;</pre>
+        <p style="margin-top:10px">Get <code>DB_CONNECTION_STRING</code> from Terraform state:</p>
+        <pre>cd infrastructure/environments/dev/data
+terraform output -raw connection_string</pre>
+        <p>Jobs that don't touch Azure (build, test, quality-nightly) work fine with an empty
+          <code>.secrets</code> file. Only <code>migrate</code> and the deploy jobs need live values.</p>
+      </div>
+    </details>
+
+    <!-- ── SECTION 3 ── -->
+    <h2 id="running">Running workflows locally</h2>
+    <p>Always run <code>act</code> from the <b>repo root</b>.
+      It looks for <code>.github/workflows/</code> relative to the current working directory.
+      Running from a subdirectory (e.g. <code>src/Innoventity.API</code>) causes an immediate
+      path error (see Known Issues).</p>
+
+    <div class="callout">
+      <span class="ico">⚠</span>
+      <div>If you've been working in a terminal pointed at <code>src/Innoventity.API</code> or
+        <code>src/Innoventity.Client</code>, always <code>cd</code> back to the repo root before
+        invoking act: <code>cd C:\Users\mahmu\source\repos\innoventity-prototype-redux</code></div>
+    </div>
+
+    <div class="tabs" data-tabs>
+      <div class="tabbar">
+        <button class="on" data-t="0">build + test (frontend)</button>
+        <button data-t="1">migrate job</button>
+        <button data-t="2">dry run</button>
+        <button data-t="3">quality-nightly</button>
+        <button data-t="4">full deploy (live Azure)</button>
+      </div>
+<pre class="on"><span class="cm"># Run the test job (act automatically runs build first, because test needs: build)</span>
+act -W '.github/workflows/<span class="hl">deploy-frontend.yml</span>' -j <span class="hl">test</span>
+
+<span class="cm"># Run only the build job</span>
+act -W '.github/workflows/deploy-frontend.yml' -j <span class="hl">build</span></pre>
+<pre><span class="cm"># Apply EF Core migrations to Azure SQL dev database
+# Requires DB_CONNECTION_STRING in .secrets</span>
+act -W '.github/workflows/<span class="hl">deploy.yml</span>' -j <span class="hl">migrate</span></pre>
+<pre><span class="cm"># See which steps would execute — no Docker containers started, no network calls</span>
+act -W '.github/workflows/deploy-frontend.yml' -j test <span class="hl">--dryrun</span>
+
+<span class="cm"># Dry run the full deploy pipeline</span>
+act -W '.github/workflows/deploy.yml' <span class="hl">--dryrun</span></pre>
+<pre><span class="cm"># Run mutation tests (Stryker) — fully self-contained, no Azure needed</span>
+act -W '.github/workflows/<span class="hl">quality-nightly.yml</span>'</pre>
+<pre><span class="cm"># Run the full deploy.yml chain — touches real Azure infrastructure
+# Requires all ARM_* secrets, live App Service, and DB provisioned</span>
+act -W '.github/workflows/deploy.yml'
+
+<span class="cm"># Tip: use workflow_dispatch event to avoid triggering deploy-production
+# (which has: if: github.event_name == 'push')</span>
+act <span class="hl">workflow_dispatch</span> -W '.github/workflows/deploy-frontend.yml'</pre>
+    </div>
+
+    <div class="callout">
+      <span class="ico">★</span>
+      <div><code>act</code> always resolves <code>needs:</code> dependency chains. Running
+        <code>-j test</code> automatically runs <code>build</code> first because
+        <code>test: needs: build</code>. To skip dependencies, add <code>--no-dep-jobs</code>
+        (act v0.2.52+).</div>
+    </div>
+
+    <!-- ── SECTION 4 ── -->
+    <h2 id="workflows">Workflows in this repo and their local testability</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Workflow</th>
+          <th>What it does</th>
+          <th>Locally testable?</th>
+          <th>Command / notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>deploy.yml</code></td>
+          <td>Build, test, DB migrate, deploy API to App Service, pester health check, slot swap</td>
+          <td><span class="badge part">Partial</span></td>
+          <td><code>-j migrate</code> works with <code>DB_CONNECTION_STRING</code>. Deploy jobs need live ARM secrets + provisioned infra.</td>
+        </tr>
+        <tr>
+          <td><code>deploy-frontend.yml</code></td>
+          <td>Build Angular 19, run Jest unit tests, deploy to Azure Static Web Apps</td>
+          <td><span class="badge part">Build &amp; test</span></td>
+          <td><code>-j test</code> runs build+test cleanly. Deploy/validate jobs are skipped via <code>if: ${{ !env.ACT }}</code> guard or event conditions.</td>
+        </tr>
+        <tr>
+          <td><code>infra.yml</code></td>
+          <td>Terraform plan / apply for all Azure infrastructure</td>
+          <td><span class="badge part">Plan only</span></td>
+          <td>Requires ARM_* secrets and Azure Blob tfstate backend. <code>apply</code> touches live Azure — use with care.</td>
+        </tr>
+        <tr>
+          <td><code>quality-nightly.yml</code></td>
+          <td>Stryker mutation testing, coverage threshold gate</td>
+          <td><span class="badge yes">Yes</span></td>
+          <td>Fully self-contained .NET run. No Azure dependencies. May take 10–20 min depending on mutation score.</td>
+        </tr>
+        <tr>
+          <td><code>e2e-nightly.yml</code></td>
+          <td>Playwright E2E tests against live deployed stack</td>
+          <td><span class="badge no">No</span></td>
+          <td>Requires live .NET API + Azure SQL + deployed SWA URL. Run locally by starting the full stack manually instead.</td>
+        </tr>
+        <tr>
+          <td><code>drift.yml</code></td>
+          <td>Detect schema drift between EF Core migration history and live DB tables</td>
+          <td><span class="badge part">Partial</span></td>
+          <td>Requires <code>DB_CONNECTION_STRING</code>. The previous implementation used <code>sqlcmd</code> (now removed); current version uses <code>dotnet ef</code> only.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ── SECTION 5 ── -->
+    <h2 id="issues">Known issues and fixes</h2>
+    <p>Each of these was encountered while testing this repo with act and is documented here for reference.</p>
+
+    <details open>
+      <summary>upload-artifact@v7 — mime_type protobuf error <span class="where">deploy-frontend.yml · deploy.yml</span></summary>
+      <div class="body">
+        <p><code>actions/upload-artifact@v7</code> uses the GitHub Artifact v4 API, which sends
+          protobuf-encoded payloads. act's artifact server doesn't recognise the
+          <code>mime_type</code> field in the schema — it responds with a decode error, the action
+          retries 5 times, then fails the job.</p>
+        <p><b>Error output:</b></p>
+        <pre>level=error msg="Error decode request body: proto: (line 1:142): unknown field \"mime_type\""
+Attempt 1 of 5 failed with error: Unexpected end of JSON input. Retrying in 3000 ms...
+...
+::error::Failed to CreateArtifact: Failed to make request after 5 attempts</pre>
+        <p><b>Fix:</b> add <code>if: ${{ !env.ACT }}</code> to every <code>upload-artifact</code>
+          step. act automatically sets the <code>ACT</code> environment variable to <code>true</code>,
+          so the step is skipped locally and runs normally in GitHub Actions CI.</p>
+        <pre><span class="cm"># Steps with no existing if: condition</span>
+- name: Upload build artifact
+  <span class="hl">if: ${{ !env.ACT }}</span>
+  uses: actions/upload-artifact@v7
+  with:
+    name: frontend-build
+    path: ...
+
+<span class="cm"># Steps that already have if: always()</span>
+- name: Upload test results
+  <span class="hl">if: ${{ always() && !env.ACT }}</span>
+  uses: actions/upload-artifact@v7
+  with:
+    name: test-results-${{ github.run_id }}
+    ...</pre>
+        <p style="margin-top:4px">Apply the same guard to any <code>download-artifact</code> step
+          in jobs that depend on the artifact — or skip those jobs entirely (see next issue).</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Deploy jobs run unexpectedly — act defaults to push event <span class="where">deploy-frontend.yml</span></summary>
+      <div class="body">
+        <p>When you run <code>act -W 'deploy-frontend.yml'</code> without specifying an event, act
+          defaults to the <code>push</code> event with <code>github.ref = refs/heads/Main</code>.
+          Jobs guarded by <code>if: github.event_name == 'push' &amp;&amp; github.ref == 'refs/heads/Main'</code>
+          then evaluate to <code>true</code> and try to run — including a
+          <code>download-artifact</code> step that panics because nothing was uploaded.</p>
+        <p><b>Option A — target only the jobs you need (recommended for daily use):</b></p>
+        <pre>act -W '.github/workflows/deploy-frontend.yml' <span class="hl">-j test</span></pre>
+        <p><b>Option B — use the workflow_dispatch event, which doesn't match the push condition:</b></p>
+        <pre>act <span class="hl">workflow_dispatch</span> -W '.github/workflows/deploy-frontend.yml'</pre>
+        <p><b>Option C — add <code>!env.ACT</code> to the deploy job's if condition</b> (permanent guard
+          that works regardless of how act is invoked):</p>
+        <pre>deploy-production:
+  if: <span class="hl">${{ !env.ACT &&</span> github.event_name == 'push' && github.ref == 'refs/heads/Main' <span class="hl">}}</span></pre>
+      </div>
+    </details>
+
+    <details>
+      <summary>Windows path panic — artifact server directory must exist <span class="where">.actrc</span></summary>
+      <div class="body">
+        <p>act's artifact server opens the <code>--artifact-server-path</code> directory at startup.
+          On Windows, if <code>C:\tmp\act-artifacts</code> doesn't exist, the Go server goroutine
+          panics immediately:</p>
+        <pre>panic: open C:\tmp\act-artifacts\1: The system cannot find the path specified.
+goroutine 6946 [running]:
+net/http.(*conn).serve.func1() ...</pre>
+        <p>Create the directory once and it persists across all future runs:</p>
+        <pre>New-Item -ItemType Directory -Force -Path C:\tmp\act-artifacts</pre>
+      </div>
+    </details>
+
+    <details>
+      <summary>Wrong working directory — act run from a subdirectory <span class="where">repo root</span></summary>
+      <div class="body">
+        <p>Running act from inside <code>src/Innoventity.API</code> (e.g. after a
+          <code>dotnet ef</code> session) causes:</p>
+        <pre>Error: GetFileAttributesEx C:\...\src\Innoventity.API\.github\workflows:
+The system cannot find the path specified.</pre>
+        <p>act looks for <code>.github/workflows/</code> relative to the current directory.
+          Always <code>cd</code> to the repo root first:</p>
+        <pre>cd C:\Users\mahmu\source\repos\innoventity-prototype-redux
+act -W '.github/workflows/deploy-frontend.yml' -j test</pre>
+      </div>
+    </details>
+
+    <!-- ── SECTION 6 ── -->
+    <h2 id="gotchas">Gotchas worth knowing</h2>
+    <ul style="padding-left:20px; max-width:680px;">
+      <li style="margin-bottom:10px">
+        <b>First image pull is slow.</b> <code>catthehacker/ubuntu:act-22.04</code> is ~500 MB and
+        downloaded once. Docker caches it; subsequent runs start the container in 2–4 seconds.
+      </li>
+      <li style="margin-bottom:10px">
+        <b><code>ACT=true</code> is always set inside act containers.</b> Any step that should
+        behave differently locally can test <code>if: ${{ !env.ACT }}</code>. This is the standard
+        act compatibility pattern and is recognised by the community.
+      </li>
+      <li style="margin-bottom:10px">
+        <b>Non-terminating git clone warnings are harmless.</b> act clones marketplace actions into
+        its local cache (<code>~/.cache/act/</code>). The message
+        <em>"Non-terminating error while running 'git clone': some refs were not updated"</em>
+        appears on shallow-clone ref mismatches — the cached action still loads and runs correctly.
+      </li>
+      <li style="margin-bottom:10px">
+        <b>Node version discrepancy in output.</b> The act image has Node 24.x pre-installed, but
+        <code>setup-node@v6</code> with <code>node-version: 20.x</code> resolves to v20 from the
+        tool cache. Both coexist; the right one is activated. This is expected.
+      </li>
+      <li style="margin-bottom:10px">
+        <b>Angular bundle budget warning is not a failure.</b> The build emits
+        <em>"innovation-detail.component.scss exceeded maximum budget (5.01 kB vs 4 kB limit)"</em>.
+        This is configured as a warning in <code>angular.json</code>, not an error — the job exits 0.
+        Address it by raising the budget or trimming the SCSS.
+      </li>
+      <li style="margin-bottom:10px">
+        <b><code>.actrc</code> and <code>.secrets</code> are gitignored.</b> If you clone to a new
+        machine, both files must be recreated manually. The canonical content for this repo is in
+        the Setup section above.
+      </li>
+      <li>
+        <b>act vs real CI parity isn't 100%.</b> act doesn't emulate GitHub-specific context
+        variables like <code>GITHUB_TOKEN</code> permissions, Environments with required reviewers,
+        or the GitHub Actions cache service (<code>actions/cache</code>). For parity testing of
+        those features, a real push is still required.
+      </li>
+    </ul>
+
+    <!-- ── SECTION 7 ── -->
+    <h2 id="faq">FAQ</h2>
+    <dl class="faq">
+
+      <dt>How do I run a job without running its dependencies?</dt>
+      <dd>Use <code>--no-dep-jobs</code> (act v0.2.52+):
+        <pre>act -W '.github/workflows/deploy.yml' -j migrate --no-dep-jobs</pre>
+        Without this flag, act always runs <code>needs:</code> dependency chains first.
+      </dd>
+
+      <dt>Can I pass a secret inline instead of using .secrets?</dt>
+      <dd>Yes — the <code>-s</code> flag takes precedence over <code>.secrets</code>:
+        <pre>act -j migrate -s DB_CONNECTION_STRING="Server=tcp:..."</pre>
+        Avoid this in shared terminals where shell history may capture the value.
+      </dd>
+
+      <dt>The migrate job says "No migrations were applied. Database is already up to date." — is that a problem?</dt>
+      <dd>No. EF Core queries <code>__EFMigrationsHistory</code>, finds all 9 migration rows already
+        present (from the April 2026 deployment), and exits 0 with that message. The database schema
+        is current. This is the expected idempotent behaviour of <code>dotnet ef database update</code>.
+      </dd>
+
+      <dt>Why did the old migrate job keep failing even after fixing dotnet-ef version?</dt>
+      <dd>The original 9-step migrate job included schema drift detection using <code>sqlcmd</code>.
+        On Ubuntu 24.04, <code>mssql-tools18</code> emits informational messages (e.g.
+        <em>"Changed database context to 'Innoventity'."</em>) to <b>stdout</b>, not stderr. After
+        <code>| tr -d '[:space:]'</code>, the captured variable was never empty — causing every
+        validation check to report a false positive. The fix was to remove all three custom layers
+        (Terraform, sqlcmd, drift detection) and let EF Core handle everything natively.
+      </dd>
+
+      <dt>How do I update act?</dt>
+      <dd>
+        <pre>winget upgrade nektos.act    <span class="cm"># or: choco upgrade act-cli</span>
+act --version</pre>
+        The artifact server's v4 support improves in each release, which may eventually remove the
+        need for <code>!env.ACT</code> guards on <code>upload-artifact</code> steps.
+      </dd>
+
+      <dt>Why is .actrc gitignored?</dt>
+      <dd><code>.actrc</code> contains <code>--artifact-server-path C:\tmp\act-artifacts</code> —
+        a Windows-specific path. Team members on macOS or Linux would use a different path
+        (e.g. <code>/tmp/act-artifacts</code>). Gitignoring it lets each developer maintain their
+        own local config without conflicts.
+      </dd>
+
+      <dt>Can I test the SWA deploy job locally?</dt>
+      <dd><code>Azure/static-web-apps-deploy@v1</code> calls the SWA service API directly using
+        <code>AZURE_STATIC_WEB_APPS_API_TOKEN</code>. Technically the token can be placed in
+        <code>.secrets</code> and the step will execute — but it will attempt a real deployment to
+        your dev SWA resource. There is no SWA emulator. Treat the deploy and validate jobs as
+        CI-only; use <code>-j test</code> for local iteration.
+      </dd>
+
+    </dl>
+  </main>
+
+</div>
+
+<script>
+document.querySelectorAll("[data-tabs]").forEach(box => {
+  const btns = box.querySelectorAll("button");
+  const panes = box.querySelectorAll("pre");
+  btns.forEach(b => b.addEventListener("click", () => {
+    btns.forEach(x => x.classList.remove("on"));
+    panes.forEach(x => x.classList.remove("on"));
+    b.classList.add("on");
+    panes[+b.dataset.t].classList.add("on");
+  }));
+});
+</script>
+</body>
+</html>
