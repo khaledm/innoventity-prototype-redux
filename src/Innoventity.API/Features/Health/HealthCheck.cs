@@ -7,8 +7,9 @@ public static class HealthCheck
 {
     public static void MapHealthEndpoint(this WebApplication app)
     {
-        app.MapGet("/health", async (AppDbContext dbContext, IConfiguration configuration) =>
+        app.MapGet("/health", async (AppDbContext dbContext, IConfiguration configuration, ILoggerFactory loggerFactory) =>
         {
+            var logger = loggerFactory.CreateLogger(nameof(HealthCheck));
             var health = new
             {
                 status = "Healthy",
@@ -21,9 +22,9 @@ public static class HealthCheck
             {
                 canConnect = await dbContext.Database.CanConnectAsync();
             }
-            catch
+            catch (Exception ex)
             {
-                // Connection attempt threw exception
+                logger.LogError(ex, "Database connectivity check failed");
                 canConnect = false;
             }
 
@@ -38,6 +39,7 @@ public static class HealthCheck
             var jwtSigningKey = configuration["Jwt:SigningKey"];
             if (string.IsNullOrEmpty(jwtSigningKey))
             {
+                logger.LogError($"JWT configuration check failed. nameof(Jwt:SigningKey) is not set in configuration.");
                 health.checks["jwt_config"] = "Unhealthy";
                 return Results.Json(new { status = "Unhealthy", checks = health.checks }, statusCode: 503);
             }
