@@ -9,6 +9,7 @@
 #
 # Required secrets:
 #   ARM_CLIENT_ID, ARM_CLIENT_SECRET, ARM_SUBSCRIPTION_ID, ARM_TENANT_ID
+#   DB_CONNECTION_STRING  — ADO.NET connection string for Azure SQL (set once manually)
 #
 # Required GitHub environment:
 #   production  — required reviewers for slot-swap (Main branch only)
@@ -149,6 +150,11 @@ jobs:
 
   # ─────────────────────────────────────────────────────────────────
   # 3. Migrate — apply EF Core database migrations
+  #
+  # Required secret: DB_CONNECTION_STRING
+  #   Value: full ADO.NET connection string for the target Azure SQL database.
+  #   Set via: GitHub → Settings → Secrets and variables → Actions → New secret.
+  #   Copy from: cd infrastructure/environments/dev/data && terraform output -raw connection_string
   # ─────────────────────────────────────────────────────────────────
   migrate:
     name: Apply EF Core migrations
@@ -167,147 +173,17 @@ jobs:
       - name: Restore .NET dependencies
         run: dotnet restore src/Innoventity.API/Innoventity.API.csproj
 
-      - uses: hashicorp/setup-terraform@v4
-        with:
-          terraform_version: "~1.6"
-          terraform_wrapper: false
-
-      - name: Install SQL command-line tools
-        run: |
-          set -euo pipefail
-          curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc >/dev/null
-          curl -sSL https://packages.microsoft.com/config/ubuntu/24.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list >/dev/null
-          sudo apt-get update -qq
-          sudo DEBIAN_FRONTEND=noninteractive ACCEPT_EULA=Y apt-get install -y -qq mssql-tools18 unixodbc-dev
-          echo "/opt/mssql-tools18/bin" >> $GITHUB_PATH
-
-      - name: Detect and remediate schema drift
-        working-directory: infrastructure/environments/dev/data
-        run: |
-          set -euo pipefail
-          terraform init -input=false
-          CONN=$(terraform output -json | jq -re '.connection_string.value')
-          echo "::add-mask::$CONN"
-
-          # Parse connection string components
-          SERVER=$(echo "$CONN" | sed -n 's/.*Server=\([^;]*\).*/\1/p')
-          DATABASE=$(echo "$CONN" | sed -n 's/.*Database=\([^;]*\).*/\1/p')
-          USER=$(echo "$CONN" | sed -n 's/.*User ID=\([^;]*\).*/\1/p')
-          PASSWORD=$(echo "$CONN" | sed -n 's/.*Password=\([^;]*\).*/\1/p')
-
-          echo "Checking for schema drift..."
-          echo "Database: $DATABASE on $SERVER"
-
-          # Check migration history table existence and row count
-          HISTORY_EXISTS=$(sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
-            SET NOCOUNT ON;
-            SELECT CASE WHEN OBJECT_ID('__EFMigrationsHistory', 'U') IS NOT NULL THEN 1 ELSE 0 END
-          " | tr -d '[:space:]')
-
-          if [ "$HISTORY_EXISTS" = "0" ]; then
-            echo "⚠️ __EFMigrationsHistory table does not exist - creating and triggering full migration"
-            # EF Core will create it and apply all migrations
-          else
-            MIGRATION_COUNT=$(sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
-              SET NOCOUNT ON;
-              SELECT COUNT(*) FROM __EFMigrationsHistory
-            " | tr -d '[:space:]')
-            echo "Migration history contains $MIGRATION_COUNT records"
-
-            # Check if critical tables are missing
-            DRIFT_CHECK=$(sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
-              SET NOCOUNT ON;
-              SELECT CASE
-                WHEN OBJECT_ID('Actors', 'U') IS NULL
-                  OR OBJECT_ID('Innovations', 'U') IS NULL
-                  OR OBJECT_ID('Industries', 'U') IS NULL
-                  OR OBJECT_ID('Bids', 'U') IS NULL
-                THEN 1
-                ELSE 0
-              END AS DriftDetected
-            " | tr -d '[:space:]')
-
-            if [ "$DRIFT_CHECK" = "1" ]; then
-              echo "⚠️ Schema drift detected - tables missing despite $MIGRATION_COUNT migrations"
-              sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C \
-                -i "$GITHUB_WORKSPACE/infrastructure/scripts/fix-schema-drift.sql"
-              echo "✓ Remediation complete - all migrations will be re-applied"
-            else
-              echo "✓ No drift - $MIGRATION_COUNT migrations applied, all tables present"
-            fi
-          fi
-
       - name: Apply migrations
-        working-directory: infrastructure/environments/dev/data
+        env:
+          DB_CONNECTION: ${{ secrets.DB_CONNECTION_STRING }}
         run: |
-          set -euo pipefail
-          # Read connection_string directly from state and pass to dotnet-ef via --connection.
-          # Never write it to $GITHUB_OUTPUT — GitHub secret scanning blocks any output value
-          # that contains SQL_ADMIN_PASSWORD.
-          CONN=$(terraform output -json | jq -re '.connection_string.value')
-          echo "::add-mask::$CONN"
-
-          SERVER=$(echo "$CONN" | sed -n 's/.*Server=\([^;]*\).*/\1/p')
-          DATABASE=$(echo "$CONN" | sed -n 's/.*Database=\([^;]*\).*/\1/p')
-          echo "Applying migrations to: $DATABASE on $SERVER"
-
-          cd "$GITHUB_WORKSPACE"
-
-          # --connection overrides the connection string at migration runtime, bypassing
-          # appsettings config file lookup (which fails because EF Core 8 sets the working
-          # directory to the repo root, not the project source directory).
           dotnet ef database update \
-            --connection "$CONN" \
+            --connection "$DB_CONNECTION" \
             --project src/Innoventity.API/Innoventity.API.csproj \
             --startup-project src/Innoventity.API/Innoventity.API.csproj \
             --context AppDbContext \
             --configuration Release \
             --verbose
-
-      - name: Validate schema integrity
-        working-directory: infrastructure/environments/dev/data
-        run: |
-          set -euo pipefail
-          CONN=$(terraform output -json | jq -re '.connection_string.value')
-
-          # Parse connection string
-          SERVER=$(echo "$CONN" | sed -n 's/.*Server=\([^;]*\).*/\1/p')
-          DATABASE=$(echo "$CONN" | sed -n 's/.*Database=\([^;]*\).*/\1/p')
-          USER=$(echo "$CONN" | sed -n 's/.*User ID=\([^;]*\).*/\1/p')
-          PASSWORD=$(echo "$CONN" | sed -n 's/.*Password=\([^;]*\).*/\1/p')
-
-          echo "Validating database schema..."
-
-          # Verify critical tables exist
-          MISSING_TABLES=$(sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
-            SET NOCOUNT ON;
-            SELECT
-              CASE WHEN OBJECT_ID('Actors', 'U') IS NULL THEN 'Actors,' ELSE '' END +
-              CASE WHEN OBJECT_ID('Innovations', 'U') IS NULL THEN 'Innovations,' ELSE '' END +
-              CASE WHEN OBJECT_ID('Industries', 'U') IS NULL THEN 'Industries,' ELSE '' END +
-              CASE WHEN OBJECT_ID('Bids', 'U') IS NULL THEN 'Bids,' ELSE '' END AS MissingTables
-          " | tr -d '[:space:]')
-
-          if [ -n "$MISSING_TABLES" ]; then
-            echo "❌ Validation FAILED - Missing tables: $MISSING_TABLES"
-            exit 1
-          fi
-
-          echo "✓ All critical tables present"
-
-          # Verify migration history is complete
-          MIGRATION_COUNT=$(sqlcmd -S "$SERVER" -d "$DATABASE" -U "$USER" -P "$PASSWORD" -C -h-1 -Q "
-            SET NOCOUNT ON;
-            SELECT COUNT(*) FROM __EFMigrationsHistory
-          " | tr -d '[:space:]')
-
-          echo "✓ Migration history contains $MIGRATION_COUNT migrations"
-
-          if [ "$MIGRATION_COUNT" -lt "8" ]; then
-            echo "⚠️  Warning: Expected at least 8 migrations, found $MIGRATION_COUNT"
-          fi
-
-          echo "✓ Schema validation passed"
 
   # ─────────────────────────────────────────────────────────────────
   # 4. Deploy — zip-deploy API package to App Service

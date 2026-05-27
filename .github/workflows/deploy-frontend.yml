@@ -85,6 +85,7 @@ jobs:
         run: npm run build -- --configuration production
 
       - name: Upload build artifact
+        if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v7
         with:
           name: frontend-build
@@ -127,7 +128,7 @@ jobs:
       # Tests are skipped in CI (testIgnore in playwright.config.ts). Run locally with full stack.
       # Install and run steps kept so the Playwright report artifact is always uploaded on local reuse.
       - name: Upload test results
-        if: always()
+        if: ${{ always() && !env.ACT }}
         uses: actions/upload-artifact@v7
         with:
           name: test-results-${{ github.run_id }}

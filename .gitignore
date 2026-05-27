@@ -63,6 +63,10 @@ test-results/
 playwright-report/
 playwright/.cache/
 
+# act (local GitHub Actions runner)
+.secrets
+.actrc
+
 # Terraform — secrets and generated files (NEVER commit these)
 infrastructure/**/*.tfvars
 infrastructure/**/.terraform/
