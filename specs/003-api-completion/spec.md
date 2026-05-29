@@ -992,7 +992,7 @@ public class Journey1_InnovationSubmissionTests : IDisposable
 - Must follow Vertical Slice architecture (feature folders)
 - Must use manual validation (no FluentValidation library)
 - Must use BCrypt for password hashing (existing pattern)
-- Database provider: In-memory for tests, LocalDB/SQLite for dev, SQL Server/PostgreSQL for prod
+- Database provider: In-memory for tests, LocalDB/SQLite for dev, Azure SQL Database (SQL Server engine) for prod
 
 ### Timeline Constraints
 - Week 1: Fix failing tests (T001-T004)

@@ -2,7 +2,7 @@
 
 **Feature**: 003-api-completion
 **Parent Branch**: 001-platform-core
-**Target**: 100% passing tests (67/67), complete Journey 1-2 API coverage
+**Target**: Zero test failures (94/97 passing, 3 Phase 1 domain tests intentionally skipped), complete Journey 1-2 API coverage
 **Estimated Effort**: 40-50 hours over 3-4 weeks
 
 ---
@@ -544,7 +544,7 @@ dotnet test --filter "FullyQualifiedName~UpdateInnovationTests" --verbosity norm
 **Phase**: Phase 2 - Innovation CRUD
 **Priority**: P0 - CRITICAL (Journey 1 blocker)
 **Complexity**: 🔴 Complex (13 validation rules, status transition logic)
-**Execution Strategy**: ⚠️ Consider executing AFTER T008-T009 to build momentum (see implementation-lessons.md L5)
+**Execution Strategy**: Complete after core CRUD readiness checks (see implementation-lessons.md L5)
 **Estimated Effort**: 4 hours (may extend to 5-6 hours)
 **Dependencies**: T005, T006 (CRUD operations complete)
 
@@ -662,7 +662,7 @@ dotnet test --filter "FullyQualifiedName~SubmitInnovationTests" --verbosity norm
 **Complexity**: 🟢 Simple (read-only endpoint with basic filtering)
 **Momentum Builder**: ✅ Good task to complete before T007 (builds confidence)
 **Estimated Effort**: 3 hours
-**Dependencies**: T005, T007 (innovations can be created and published)
+**Dependencies**: T005 (innovations can be created)
 
 **Objective**: Enable actors to discover published innovations with industry and category filtering.
 
@@ -1312,44 +1312,60 @@ dotnet test --filter "FullyQualifiedName~Journey2_BiddingTests" --verbosity norm
 
 ---
 
-### T015: Validate Complete Test Suite (100% Pass Rate)
+### T015: Validate Complete Test Suite (Zero-Failure Baseline)
 **Phase**: Phase 4 - Journey Tests
 **Priority**: P0 - CRITICAL (quality gate)
 **Complexity**: 🟢 Simple (verification only, troubleshooting if needed)
 **Estimated Effort**: 1 hour
 **Dependencies**: T013, T014 (journey tests complete)
 
-**Objective**: Achieve 100% test pass rate (67/67 tests, excluding 3 Phase 1 domain tests).
+**Objective**: Validate zero-failure baseline (94/97 passing with 3 Phase 1 domain tests intentionally skipped).
 
 **Actions**:
 1. Run full test suite with detailed verbosity
    - Execute: `dotnet test --verbosity normal`
    - Capture full output to file for analysis
-2. Generate test coverage report (optional)
+2. Generate test coverage report (required)
    - Install coverlet: `dotnet tool install --global coverlet.console`
    - Run with coverage: `dotnet test /p:CollectCoverage=true /p:CoverageOutput=coverage.json`
    - Analyze line coverage for new endpoints
-3. Verify all subcutaneous tests pass
+3. Capture red→green evidence (Constitution Principle 2)
+   - Save one failing test run proving defect reproduction (red)
+   - Save subsequent passing run after fix (green)
+   - Store both artifacts under `specs/003-api-completion/evidence/test-first/`
+4. Run mutation testing and record threshold evidence (Constitution Principle 2)
+   - Execute Stryker mutation run using `src/Innoventity.API/stryker-config.json`
+   - Record mutation score and confirm score >= 70
+   - Store report artifact under `specs/003-api-completion/evidence/mutation/`
+5. Produce security review evidence (Constitution Principle 6)
+   - Run dependency vulnerability scan for API project
+   - Record findings and disposition (none accepted without rationale)
+   - Store artifact under `specs/003-api-completion/evidence/security/`
+6. Produce performance evidence for API response goal (Constitution Principle 2)
+   - Run repeatable benchmark/load check for core CRUD endpoints
+   - Record p95 latency evidence against <200ms target
+   - Store artifact under `specs/003-api-completion/evidence/performance/`
+7. Verify all subcutaneous tests pass
    - Phase0JourneyTests: 1 test ✅
    - GetInnovationTests: 3 tests ✅
    - Journey1_InnovationSubmissionTests: 4 tests ✅
    - Journey2_BiddingTests: 3 tests ✅
    - Total subcutaneous: 11 tests passing ✅
-4. Verify all integration tests pass
+8. Verify all integration tests pass
    - CreateInnovationTests: 4 tests ✅
    - UpdateInnovationTests: 4 tests ✅
    - SubmitInnovationTests: 4 tests ✅
    - ListInnovationsTests: 4 tests ✅
    - GetIndustriesTests: 1 test ✅
    - SubmitBidTests: 4 tests ✅
-   - GetBidsTests: 3 tests ✅
+   - GetBidsTests: 6 tests ✅
    - UpdateBidTests: 3 tests ✅
    - Total integration: 27 tests passing ✅
-5. Document 3 Phase 1 domain tests as expected failures
+9. Document 3 Phase 1 domain tests as expected failures
    - Add `[Fact(Skip = "Phase 1 domain validation work - deferred")]` to InnovationTests
    - Confirm these are NOT included in pass rate calculation
-6. Create comprehensive test execution report
-   - Pass rate: 67/67 (100%)
+10. Create comprehensive test execution report
+   - Pass rate: 94/97 (96.9%, 0 failures)
    - Execution time: <30 seconds
    - Coverage by category (subcutaneous, integration, unit)
 
@@ -1357,7 +1373,11 @@ dotnet test --filter "FullyQualifiedName~Journey2_BiddingTests" --verbosity norm
 - [X] Test execution report showing 94/97 passing (96.9% pass rate, 3 skipped)
 - [X] Test suite execution time documented (21.6 seconds < 30 seconds ✅)
 - [X] 3 Phase 1 tests marked as skipped (not counted in pass rate)
-- [ ] Coverage report (optional)
+- [ ] Coverage report artifact committed to evidence folder
+- [ ] Red→green evidence pair (failing then passing run) committed to evidence folder
+- [ ] Mutation testing report showing score >= 70 committed to evidence folder
+- [ ] Security review report committed to evidence folder
+- [ ] Performance evidence report (p95 latency) committed to evidence folder
 
 **Acceptance Criteria**:
 - ✅ Full test suite pass rate: 96.9% (94 passing + 3 skipped = 97 total)
@@ -1366,6 +1386,10 @@ dotnet test --filter "FullyQualifiedName~Journey2_BiddingTests" --verbosity norm
 - ✅ Unit tests: 32 passing (domain entities + infrastructure)
 - ✅ Execution time: 21.6 seconds (<30 seconds)
 - ✅ Zero test failures (3 Phase 1 tests intentionally skipped)
+- ✅ Red→green evidence exists for at least one defect-fix cycle relevant to Phase 0.6 scope
+- ✅ Mutation report exists and score is >= 70
+- ✅ Security review artifact exists with findings disposition
+- ✅ Performance artifact exists and demonstrates p95 target compliance (<200ms)
 
 **Verification**:
 ```bash
@@ -1493,7 +1517,7 @@ dotnet run --project src/Innoventity.API
    - Add Phase 0.6 section to project README
    - Document new API endpoints (8 endpoints)
    - Document Journey 1 and Journey 2 coverage
-   - Update test pass rate: 67/67 (100%)
+   - Update test pass rate: 94/97 (96.9%, 0 failures; 3 intentional skips)
 4. Update tasks.md with completion status
    - Mark all tasks T001-T017 as ✅ COMPLETE
    - Document any blockers or technical debt
@@ -1690,7 +1714,7 @@ git merge --abort  # Abort test merge
 - P1 (Important): 3 tasks (UX improvements, documentation)
 
 **Expected Outcomes**:
-- ✅ 67/67 tests passing (100% pass rate)
+- ✅ 94/97 tests passing (96.9% pass rate, 0 failures; 3 Phase 1 domain tests intentionally skipped)
 - ✅ 8 new API endpoints fully implemented and tested
 - ✅ Journey 1 (Innovation Submission) 100% validated via subcutaneous tests
 - ✅ Journey 2 (Discovery & Bidding) 100% validated via subcutaneous tests

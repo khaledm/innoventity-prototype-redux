@@ -130,7 +130,7 @@ Complete the backend API with **subcutaneous testing** (Martin Fowler pattern) t
 ### Option B: Deployment Preparation (Phase 0.8)
 - Complete remaining 55 checklist items (migration guides, staging tests)
 - Deploy to Azure App Service
-- Configure production database (Azure SQL/PostgreSQL)
+- Configure production database (Azure SQL Database)
 
 ### Option C: Domain Evolution (Phase 1)
 - Implement Innovation Composition Pattern (IdeaSummary, Product, Market owned entities)

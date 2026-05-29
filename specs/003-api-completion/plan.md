@@ -28,7 +28,7 @@
 **Storage**:
 - Development: SQL Server LocalDB / SQLite
 - Testing: EF Core In-Memory Database Provider
-- Production: Azure SQL Database / PostgreSQL (TBD)
+- Production: Azure SQL Database (SQL Server engine)
 
 **Testing**:
 - xUnit with WebApplicationFactory<Program> for integration tests
@@ -518,16 +518,16 @@ Accepted → [IMMUTABLE] (R4.3 - accepted bids cannot be modified)
 
 ### Week 4: Journey Tests + Docs (T013-T017, 12 hours)
 
-**Goal**: Achieve 100% pass rate (67/67 tests), complete documentation
+**Goal**: Achieve zero-failure test baseline (94/97 passing, 3 Phase 1 domain tests intentionally skipped), complete documentation
 
 **Key Tasks**:
 - T013: Journey1Tests (5 hours) - 4 tests (1 complete + 3 error paths)
 - T014: Journey2Tests (4 hours) - 3 tests (1 complete + 2 error paths)
-- T015: Validate 67/67 passing (1 hour)
+- T015: Validate 94/97 passing with 0 failures (1 hour)
 - T016: Complete OpenAPI docs (2 hours) - XML comments on all endpoints
 - T017: Traceability matrix (2 hours) - user stories → endpoints → tests
 
-**Deliverables**: 67/67 tests passing, comprehensive documentation
+**Deliverables**: 94/97 tests passing (0 failures; 3 intentional skips), comprehensive documentation
 
 ### Critical Path
 
@@ -536,12 +536,12 @@ T001-T004 (Infrastructure) → BLOCKS ALL
 T005-T009 (Innovation CRUD) → BLOCKS T013 (Journey1Tests)
 T010-T012 (Bid Management) → BLOCKS T014 (Journey2Tests)
 T013-T014 (Journey Tests) → T015 (Validation)
-T015 (100% Pass Rate) → T016-T017 (Documentation)
+T015 (Zero-Failure Test Baseline) → T016-T017 (Documentation)
 ```
 
 ### Success Criteria
 
-**Phase 0.6 Complete When**: See [spec.md](spec.md#success-metrics) for detailed acceptance criteria. In summary: 67/67 tests passing (100%), 8 new endpoints implemented, Journey 1-2 validated, zero warnings, <30s test execution.
+**Phase 0.6 Complete When**: See [spec.md](spec.md#success-metrics) for detailed acceptance criteria. In summary: 94/97 tests passing (0 failures; 3 Phase 1 domain tests intentionally skipped), 8 new endpoints implemented, Journey 1-2 validated, zero warnings, <30s test execution.
 
 **Merge Criteria**: All success criteria met, code review approved, no merge conflicts, CI/CD passing.
 

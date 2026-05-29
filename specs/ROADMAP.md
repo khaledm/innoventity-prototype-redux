@@ -29,7 +29,7 @@ This roadmap ensures **all recommendations from legacy domain analysis are captu
 ## Phase Completion Status
 
 | Phase | Status | Branch | Spec | Tests | Gap Analysis Coverage |
-|-------|--------|--------|------|-------|----------------------|
+| ------- | --------  |-------- | ------ | ------- | ---------------------- |
 | **Phase 0 Backend (MVP core)** | ✅ **MERGED** | `001-platform-core` → `Main` | [spec.md](001-platform-core/spec.md) | 112/115 ✅ | Registration/auth + view innovation backend slice complete |
 | **Phase 0 Full Scope (Backend + Infra + Frontend + CI/CD)** | ✅ **MERGED** | `001-platform-core` → `Main` | [spec.md](001-platform-core/spec.md) | MVP accepted with documented frontend limitations | Full MVP includes Angular client + infra automation + CI/CD validation + browser E2E |
 | **Phase 0.5 (Foundation)** | ✅ **MERGED** | `002-domain-enhancements` → `001-platform-core` → `Main` | [spec.md](002-domain-enhancements/spec.md) | 31/31 ✅ | EntityBase, Actor name/address, and contract alignment complete |
@@ -65,7 +65,7 @@ Focus on **bid submission and viewing** (NOT partner selection, NOT financial pr
 ### Implemented (Gap Analysis Aware)
 
 | Feature | Implementation | Gap Analysis Notes |
-|---------|---------------|-------------------|
+| --------- | --------------- | ------------------- |
 | **POST /innovations/{id}/bids** | Generic Bid entity | ✅ Phase 1 will refactor to FormalResponse hierarchy ([§2.1](../.specify/analysis/innovation-bid-domain-gap-analysis.md#21-legacy-formalresponse---polymorphic-hierarchy)) |
 | **Bid eligibility rules (R4.1)** | 7 validation rules | ✅ Covers actor type, ownership, duplicate prevention |
 | **Bid content rules (R4.2)** | Manual validation (200+ char proposal) | ⚠️ Phase 1 will add structured financial projections ([§2.4](../.specify/analysis/innovation-bid-domain-gap-analysis.md#24-critical-gap---financial-projection-structure-loss)) |
