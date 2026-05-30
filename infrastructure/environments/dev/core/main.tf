@@ -92,6 +92,9 @@ module "app_service" {
   connection_string        = var.connection_string
   application_insights_key = module.monitoring.connection_string
   log_analytics_workspace_id = module.monitoring.workspace_id
+  # Pass the auto-generated SWA hostname so the App Service CORS allowed_origins
+  # list includes the actual production URL (not a predictable naming pattern).
+  swa_hostname             = module.static_web_app.default_host_name
 }
 
 module "static_web_app" {
