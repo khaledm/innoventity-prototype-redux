@@ -2,7 +2,7 @@
 
 ## Vision to Implementation Tracking
 
-**Last Updated**: April 12, 2026
+**Last Updated**: May 30, 2026
 **Constitutional Alignment**: See [constitution.md](../.specify/memory/constitution.md)
 **Gap Analysis Reference**: [innovation-bid-domain-gap-analysis.md](../.specify/analysis/innovation-bid-domain-gap-analysis.md)
 **Phase 001 Status**: ✅ **MERGED TO MAIN** (Merge commit: 5b200d5, Date: April 12, 2026)
@@ -34,6 +34,8 @@ This roadmap ensures **all recommendations from legacy domain analysis are captu
 | **Phase 0 Full Scope (Backend + Infra + Frontend + CI/CD)** | ✅ **MERGED** | `001-platform-core` → `Main` | [spec.md](001-platform-core/spec.md) | MVP accepted with documented frontend limitations | Full MVP includes Angular client + infra automation + CI/CD validation + browser E2E |
 | **Phase 0.5 (Foundation)** | ✅ **MERGED** | `002-domain-enhancements` → `001-platform-core` → `Main` | [spec.md](002-domain-enhancements/spec.md) | 31/31 ✅ | EntityBase, Actor name/address, and contract alignment complete |
 | **Phase 0.6 (API Completion)** | ✅ **MERGED** | `003-api-completion` → `001-platform-core` → `Main` | [spec.md](003-api-completion/spec.md) | 17/17 tasks ✅ | Innovation CRUD + bid management + journey testing + traceability complete |
+| **Phase 1a (Frontend CI/CD)** | ✅ **MERGED** | `002-frontend-cicd` → `Main` | [spec.md](002-frontend-cicd/spec.md) | 84/84 tasks ✅ (T082–T085 deferred to `004-pattern-d-nightly-e2e`) | Angular 19 CI/CD → Azure Static Web Apps; approval gate; Pester validation; Pattern D nightly E2E scaffold |
+| **Phase 1b (Pattern D Nightly E2E)** | 📋 PLANNED | `004-pattern-d-nightly-e2e` | TBD | T082–T085 (secrets + prod account + first run + failure notify) | Operational close of nightly Playwright journey tests against production |
 | **Phase 1 (Domain Richness)** | 📋 PLANNED | TBD | [See below](#phase-1-domain-richness--rich-behavior) | TBD | ProductIdea composition, FormalResponse polymorphism, Selection workflow |
 | **Phase 2 (Engagement)** | 📋 PLANNED | TBD | [See below](#phase-2-engagement--communication) | TBD | Messaging, interest tracking, industry hierarchy |
 | **Phase 3 (Virtual Incubator)** | 💡 VISION | TBD | Not yet specified | TBD | BusinessPlan aggregate, collaboration workspace |
@@ -87,48 +89,29 @@ Focus on **bid submission and viewing** (NOT partner selection, NOT financial pr
 
 ---
 
-## Phase 1 (Next) - Frontend CI/CD & Domain Richness
+## Phase 1a (Complete) - Frontend CI/CD Automation
 
-**Estimated Duration**: 5 weeks (Apr-May 2026)
-**Status**: 📋 PLANNED
-**Constitutional Goal**: 99/100 score (domain model maturity + operational excellence)
+**Branch**: `002-frontend-cicd` → `Main`
+**Status**: ✅ **MERGED** (2026-05-30)
+**Constitutional Goal**: 99/100 — operational excellence achieved
 
-### Priority 1: Angular Client CI/CD Automation (Week 1)
-
-**Effort**: 3-5 days | **Priority**: CRITICAL (Phase 0 deferred item) | **Branch**: TBD
-
-**Problem**: Phase 0 validated backend API production readiness, but frontend deployment requires manual `swa deploy` command. No automated build/test/deploy pipeline exists for Angular client.
-
-**What to Build**:
-1. **GitHub Actions Workflow** (`.github/workflows/deploy-frontend.yml`):
-   - Trigger: Push to `src/Innoventity.Client/**` or `workflow_dispatch`
-   - Jobs:
-     - `build-frontend`: `npm ci`, `npm run build`, upload artifacts
-     - `test-frontend`: Jest unit tests (26+ tests), Playwright E2E tests (3+ journeys)
-     - `deploy-to-swa`: Deploy `dist/` to Azure Static Web Apps (staging slot first)
-     - `validate-swa`: Run smoke tests against deployed SWA URL
-     - `swap-swa`: Swap staging → production (manual gate, Main branch only)
-2. **Azure Static Web App Resource** (Terraform module):
-   - Add `infrastructure/modules/static-web-app/main.tf`
-   - Provision SWA in `infrastructure/environments/dev/core/`
-   - Output: SWA URL, deployment token (GitHub secret)
-3. **Documentation Updates**:
-   - Update `infrastructure/README.md` with frontend deployment evidence
-   - Update `specs/001-platform-core/quickstart.md` with automated deployment steps
-   - Update `specs/001-platform-core/frontend-architecture.md` with CI/CD pipeline diagram
-
-**Success Criteria**:
-- ✅ Push to `src/Innoventity.Client/` triggers automated build/test/deploy
-- ✅ Angular app accessible at `https://<swa-name>.azurestaticapps.net`
-- ✅ E2E tests pass against deployed frontend + backend
-- ✅ PR preview environments created automatically (SWA built-in feature)
-- ✅ Manual deployment process no longer required
-
-**Phase 0 Gap Closure**: Completes operational readiness for 100-user pilot launch.
+- Angular 19 → Azure Static Web Apps via GitHub Actions (`deploy-frontend.yml`)
+- Approval gate (GitHub Environment: `production`), Pester validation, PR preview environments
+- Pattern D nightly E2E scaffold merged (T078–T081); operational close in `004-pattern-d-nightly-e2e`
+- Design: direct production deploy (no staging/swap); Playwright E2E excluded from CI (nightly only)
+- **Spec**: [spec.md](002-frontend-cicd/spec.md) | **Tasks**: [tasks.md](002-frontend-cicd/tasks.md)
 
 ---
 
-### Priority 2: Domain Richness & Rich Behavior (Weeks 2-5)
+## Phase 1b (Next) - Pattern D Nightly E2E Operational Close
+
+**Branch**: `004-pattern-d-nightly-e2e`
+**Status**: 📋 PLANNED
+**Scope**: T082–T085 only — provision secrets + prod test account + first run + failure notify
+
+---
+
+## Phase 1 (Domain Richness) - Domain Richness & Rich Behavior
 
 **Status**: 📋 PLANNED (specifications complete in 002-domain-enhancements)
 **Constitutional Goal**: 99/100 score (domain model maturity)
