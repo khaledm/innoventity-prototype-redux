@@ -1,8 +1,8 @@
 # Constitution Validation Checklist
 ## Feature: 002-frontend-cicd
 
-**Validation Date**: 2026-05-05
-**Feature Status**: 52/75 tasks complete (69%)
+**Validation Date**: 2026-05-05 (updated 2026-05-30 at feature close)
+**Feature Status**: ✅ CLOSED — all tasks complete (T001–T085), all 10 success criteria verified
 **Validator**: AI Agent + Human Review
 
 ---
@@ -337,47 +337,22 @@ All recent commits follow Conventional Commits 1.0.0. Git history is semantic an
 
 ## 🎯 RECOMMENDATIONS
 
-### Immediate Actions (User)
+### Feature Close Status (2026-05-30)
 
-1. **T032 Validation Complete** ✅
-   - act dry-run confirmed workflow structure is correct
-   - E2E test failures are legitimate (no backend API in CI)
-   - No action needed - this is expected behavior
+**All recommendations resolved.** Feature `002-frontend-cicd` is closed.
 
-### Application Architecture Decisions (Out of Scope for 002-frontend-cicd)
+- ✅ T084: First nightly run green (run #8, commit 862e500) — all 3 Playwright tests passing
+- ✅ T085: Failure notification path structurally guaranteed via `dorny/test-reporter` + `fail-on-error: true`
+- ✅ SC-003: Production approval gate live-fire verified (run #82, 4m36s approval gap observed)
+- ✅ SC-007: Production validation (`validate-production`) confirmed passing on Main
+- ✅ CORS fix: App Service `site_config.cors` wired to actual SWA hostname via `swa_hostname` variable
+- ✅ Angular build fix: `fileReplacements` added to `angular.json` production config — `environment.production.ts` now active in production builds
+- ✅ Playwright Pattern D: nightly E2E running against production at 03:00 UTC
 
-1. **Playwright E2E Tests Require Backend**
-   - Current: Tests fail with `ECONNREFUSED ::1:5073` (no backend API)
-   - Root cause: E2E tests make real HTTP calls to backend auth/innovation endpoints
-   - This is **correct behavior** - tests validate real user journeys
+### Resolved Architecture Decisions
 
-2. **Resolution Options** (for future feature work):
-   - **Option A**: Skip Playwright in CI, run only locally when backend is running
-     - Pro: Simple, no CI changes needed
-     - Con: E2E tests not validated before deployment
-   - **Option B**: Mock backend API responses in Playwright tests
-     - Pro: Tests run in CI without backend dependency
-     - Con: Not true E2E (mocks don't catch backend integration bugs)
-   - **Option C**: Start backend in CI before Playwright tests
-     - Pro: True E2E validation in CI
-     - Con: Requires Docker Compose, test database, increased CI time
-
-3. **Recommended Approach**:
-   - **Phase 1** (current): Skip Playwright in CI with `testPathIgnorePatterns` in jest.config.js
-   - **Phase 2** (after backend features complete): Implement Option C with docker-compose in CI
-   - **Reasoning**: Aligns with local-first approach, defers infrastructure complexity
-
-### Future Enhancements (When Azure Credits Renewed)
-
-1. **Complete Phase 6-8 Azure-Dependent Tasks**
-   - T052-T056: Manual approval testing (requires Main branch deployment)
-   - T057-T064: Health check validation (requires deployed URLs)
-   - T072: Success criteria validation (includes deployment verification)
-
-2. **Monitor Constitutional Compliance**
-   - Code review checklist should reference this validation
-   - New features should run similar constitution validation
-   - Update this document as implementation evolves
+- **Playwright E2E in CI**: Resolved via Pattern D — E2E tests excluded from `deploy-frontend.yml`, run nightly via `e2e-nightly.yml` against production.
+- **Azure Credits**: All Azure-dependent tasks (T052–T074) completed on live infrastructure.
 
 ### Documentation
 
