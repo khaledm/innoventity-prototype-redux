@@ -8,7 +8,7 @@
       "route": "/*",
       "headers": {
         "cache-control": "no-cache, no-store, must-revalidate",
-        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://innoventity-dev-api.azurewebsites.net;",
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://innoventity-dev-api.azurewebsites.net;",
         "X-Content-Type-Options": "nosniff",
         "X-Frame-Options": "DENY"
       }
