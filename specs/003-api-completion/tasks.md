@@ -168,9 +168,9 @@ Tests: SubmitInnovationTests (4/4 passing)"
    - Proposed solution approach
 
 **Deliverables**:
-- [ ] Diagnostic report document (Markdown) in `.specify/analysis/test-context-diagnostic.md`
-- [ ] Root cause confirmed with code references
-- [ ] Proposed solution documented
+- [X] Diagnostic report document (Markdown) in `.specify/analysis/test-context-diagnostic.md`
+- [X] Root cause confirmed with code references
+- [X] Proposed solution documented
 
 **Acceptance Criteria**:
 - ✅ Exact cause of data visibility issue identified (constructor vs method scope)
@@ -1000,11 +1000,11 @@ dotnet test --filter "FullyQualifiedName~SubmitBidTests" --verbosity normal
    - `GetBidsTests.GetBids_GroupedByActorType_CorrectCounts()` (verify bid counts by actor type per R4.4)
 
 **Deliverables**:
-- [ ] GetBids.cs endpoint file with GET /innovations/{innovationId}/bids
-- [ ] Owner authorization validation
-- [ ] Bid query with actor details
-- [ ] XML documentation complete
-- [ ] 3 integration tests passing
+- [X] GetBids.cs endpoint file with GET /innovations/{innovationId}/bids
+- [X] Owner authorization validation
+- [X] Bid query with actor details
+- [X] XML documentation complete
+- [X] 3 integration tests passing
 
 **Acceptance Criteria**:
 - ✅ Innovation owner receives all bids with full details
@@ -1095,11 +1095,11 @@ dotnet test --filter "FullyQualifiedName~GetBidsTests" --verbosity normal
    - `UpdateBidTests.UpdateBid_NotAuthor_Returns403Forbidden()`
 
 **Deliverables**:
-- [ ] UpdateBid.cs endpoint file with PUT /bids/{bidId}
-- [ ] Author authorization validation
-- [ ] Status validation (Pending only)
-- [ ] XML documentation complete
-- [ ] 3 integration tests passing
+- [X] UpdateBid.cs endpoint file with PUT /bids/{bidId}
+- [X] Author authorization validation
+- [X] Status validation (Pending only)
+- [X] XML documentation complete
+- [X] 3 integration tests passing
 
 **Acceptance Criteria**:
 - ✅ Bid author updates pending bid successfully (200 OK)
@@ -1373,11 +1373,11 @@ dotnet test --filter "FullyQualifiedName~Journey2_BiddingTests" --verbosity norm
 - [X] Test execution report showing 94/97 passing (96.9% pass rate, 3 skipped)
 - [X] Test suite execution time documented (21.6 seconds < 30 seconds ✅)
 - [X] 3 Phase 1 tests marked as skipped (not counted in pass rate)
-- [ ] Coverage report artifact committed to evidence folder
-- [ ] Red→green evidence pair (failing then passing run) committed to evidence folder
-- [ ] Mutation testing report showing score >= 70 committed to evidence folder
-- [ ] Security review report committed to evidence folder
-- [ ] Performance evidence report (p95 latency) committed to evidence folder
+- [X] Coverage report artifact committed to evidence folder
+- [X] Red→green evidence pair (failing then passing run) committed to evidence folder
+- [X] Mutation testing report showing score >= 70 committed to evidence folder
+- [X] Security review report committed to evidence folder
+- [X] Performance evidence report (p95 latency) committed to evidence folder
 
 **Acceptance Criteria**:
 - ✅ Full test suite pass rate: 96.9% (94 passing + 3 skipped = 97 total)

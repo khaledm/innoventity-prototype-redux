@@ -447,7 +447,7 @@ As a **frontend developer**, I need the industry master list via API so that use
 **Acceptance Scenarios**:
 
 1. **Given** system has seeded industry master list, **When** GET /industries, **Then** system returns all industries with hierarchy (Sector → Subsector structure if applicable)
-2. **Given** industry list includes Electronics, Healthcare, Energy, **When** GET /industries, **Then** response includes all three with their IDs
+2. **Given** industry list includes ICB top-level industries such as Health Care, Technology, Oil & Gas, and Consumer Goods, **When** GET /industries, **Then** response includes these industries with their IDs
 3. **Given** this is reference data, **When** GET /industries, **Then** authentication NOT required (public endpoint)
 
 **API Contract**:
@@ -458,24 +458,24 @@ Response 200 OK:
 {
   "industries": [
     {
-      "industryId": "ELEC-001",
-      "name": "Electronics",
-      "description": "Consumer electronics, semiconductors, electronic components"
+      "industryId": "HLTH-001",
+      "name": "Health Care",
+      "description": "Health care equipment and services"
+    },
+    {
+      "industryId": "TECH-001",
+      "name": "Technology",
+      "description": "Software, hardware, and technology services"
     },
     {
       "industryId": "ENRG-001",
-      "name": "Renewable Energy",
-      "description": "Solar, wind, battery storage, grid infrastructure"
+      "name": "Oil & Gas",
+      "description": "Oil, gas, and energy production services"
     },
     {
       "industryId": "AUTO-001",
-      "name": "Automotive",
-      "description": "Electric vehicles, autonomous driving, automotive manufacturing"
-    },
-    {
-      "industryId": "HLTH-001",
-      "name": "Healthcare",
-      "description": "Medical devices, pharmaceuticals, healthcare IT"
+      "name": "Consumer Goods",
+      "description": "Automobiles, consumer products, and manufacturing"
     }
   ]
 }
@@ -862,12 +862,12 @@ public class Journey1_InnovationSubmissionTests : IDisposable
 - **Objective**: Enable industry selection for innovation creation and actor profiles
 - **Actions**:
   1. Create `GetIndustries.cs` endpoint file
-  2. Seed industry master list in database (Electronics, Energy, Healthcare, Automotive at minimum)
+  2. Seed industry master list in database using ICB taxonomy (HLTH-001, TECH-001, ENRG-001, AUTO-001 at minimum)
   3. Return all industries (public endpoint, no auth required)
   4. Add XML documentation
   5. Write integration test: `GetIndustriesTests.GetIndustries_ReturnsAll()`
 - **Deliverable**: GET /industries endpoint with 1 integration test passing
-- **Success Criteria**: Returns ≥4 industries including ELEC-001, ENRG-001, AUTO-001, HLTH-001
+- **Success Criteria**: Returns ≥4 industries including HLTH-001, TECH-001, ENRG-001, AUTO-001
 
 ---
 
