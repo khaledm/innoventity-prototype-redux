@@ -37,7 +37,7 @@ on:
       base_url:
         description: 'Angular SPA URL to test (default: production)'
         required: false
-        default: 'https://innoventity-dev-web.azurestaticapps.net'
+        default: 'https://nice-mushroom-09b276a03.7.azurestaticapps.net'
       api_url:
         description: 'Backend API URL to test (default: production)'
         required: false
@@ -101,7 +101,7 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
         env:
           CI: 'true'
-          BASE_URL: ${{ inputs.base_url || 'https://innoventity-dev-web.azurestaticapps.net' }}
+          BASE_URL: ${{ inputs.base_url || 'https://nice-mushroom-09b276a03.7.azurestaticapps.net' }}
           E2E_API_URL: ${{ inputs.api_url || 'https://innoventity-dev-api.azurewebsites.net' }}
           E2E_NIGHTLY_EMAIL: ${{ secrets.E2E_NIGHTLY_EMAIL }}
           E2E_NIGHTLY_PASSWORD: ${{ secrets.E2E_NIGHTLY_PASSWORD }}
