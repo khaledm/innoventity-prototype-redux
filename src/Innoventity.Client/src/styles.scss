@@ -8,7 +8,7 @@ html {
       theme-type: light,
     ),
     typography: (
-      plain-family: 'Roboto, "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif',
+      plain-family: 'Roboto, "Helvetica Neue Light", sans-serif',
     ),
     density: (scale: 0),
   ));
@@ -26,11 +26,20 @@ html {
 }
 
 /* Global styles */
-html, body {
+html,
+body {
   height: 100%;
+}
+
+body {
+  font-family: Roboto, "Helvetica Neue Light", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
   margin: 0;
-  font-family: Roboto,"Helvetica Neue Light","Helvetica Neue",Helvetica,Arial,"Lucida Grande",sans-serif;
 }
-h1,h2 {
-    font-weight: 400
-}
+
+// h1,h2 {
+//     font-weight: 400
+// }
