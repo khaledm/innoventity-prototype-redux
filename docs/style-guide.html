@@ -1,0 +1,1786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Innoventity — Visual Style Guide</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <style>
+    /* ─── Reset & Base ──────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body {
+      font-family: Roboto, "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+      background: #f5f5f5;
+      color: rgba(0,0,0,0.87);
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ─── Design Tokens ─────────────────────────────────────── */
+    :root {
+      /* Brand */
+      --color-primary:         #667eea;
+      --color-primary-hover:   #5568d3;
+      --color-primary-shadow:  rgba(102,126,234,0.4);
+      --color-secondary:       #764ba2;
+      --color-gradient:        linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+      /* Semantic */
+      --color-error:           #f44336;
+      --color-error-bg:        #fee;
+      --color-error-border:    #c33;
+      --color-warning:         #ffc107;
+      --color-success:         #4caf50;
+
+      /* Text */
+      --text-high:             rgba(0,0,0,0.87);
+      --text-medium:           rgba(0,0,0,0.60);
+      --text-disabled:         rgba(0,0,0,0.54);
+      --text-dark-heading:     #1a1a1a;
+      --text-secondary-link:   #666;
+
+      /* Surface */
+      --surface-white:         #ffffff;
+      --surface-input-bg:      #f8f9fa;
+      --surface-page-bg:       #f5f5f5;
+
+      /* Border / Divider */
+      --border-default:        #e0e0e0;
+      --border-divider:        rgba(0,0,0,0.12);
+      --border-hover:          #667eea;
+
+      /* Elevation */
+      --shadow-card:           0 8px 32px rgba(0,0,0,0.20);
+      --shadow-btn:            0 2px 8px rgba(102,126,234,0.40);
+      --shadow-btn-hover:      0 4px 12px rgba(102,126,234,0.50);
+      --shadow-dropdown:       0 4px 12px rgba(0,0,0,0.15);
+
+      /* Spacing scale (4px base) */
+      --sp-1:  0.25rem;   /* 4px  */
+      --sp-2:  0.5rem;    /* 8px  */
+      --sp-3:  0.75rem;   /* 12px */
+      --sp-4:  1rem;      /* 16px */
+      --sp-5:  1.25rem;   /* 20px */
+      --sp-6:  1.5rem;    /* 24px */
+      --sp-8:  2rem;      /* 32px */
+      --sp-10: 2.5rem;    /* 40px */
+
+      /* Radius */
+      --radius-sm:   4px;
+      --radius-md:   8px;
+      --radius-lg:  12px;
+      --radius-xl:  16px;
+
+      /* Transition */
+      --transition-fast: 0.2s ease;
+    }
+
+    /* ─── Sidebar Nav ───────────────────────────────────────── */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: 240px;
+      height: 100vh;
+      background: var(--color-gradient);
+      color: #fff;
+      overflow-y: auto;
+      z-index: 100;
+      padding: var(--sp-8) 0 var(--sp-8);
+      flex-shrink: 0;
+    }
+    .sidebar-brand {
+      padding: 0 var(--sp-6) var(--sp-6);
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+      margin-bottom: var(--sp-4);
+    }
+    .sidebar-brand h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+    .sidebar-brand p {
+      font-size: 0.75rem;
+      opacity: 0.75;
+      margin-top: var(--sp-1);
+    }
+    .sidebar nav ul { list-style: none; }
+    .sidebar nav a {
+      display: block;
+      padding: var(--sp-2) var(--sp-6);
+      color: rgba(255,255,255,0.85);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 400;
+      transition: background var(--transition-fast), color var(--transition-fast);
+      border-left: 3px solid transparent;
+    }
+    .sidebar nav a:hover,
+    .sidebar nav a.active {
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+      border-left-color: rgba(255,255,255,0.8);
+    }
+    .sidebar nav .nav-section {
+      font-size: 0.6875rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: 0.55;
+      font-weight: 700;
+      padding: var(--sp-4) var(--sp-6) var(--sp-1);
+    }
+
+    /* ─── Main Content ──────────────────────────────────────── */
+    .main {
+      margin-left: 240px;
+      flex: 1;
+      padding: var(--sp-8);
+      max-width: calc(100% - 240px);
+    }
+
+    /* ─── Page Hero ─────────────────────────────────────────── */
+    .page-hero {
+      background: var(--color-gradient);
+      color: #fff;
+      border-radius: var(--radius-xl);
+      padding: var(--sp-10) var(--sp-8);
+      margin-bottom: var(--sp-8);
+    }
+    .page-hero h1 { font-size: 2.25rem; font-weight: 300; }
+    .page-hero p  { opacity: 0.85; margin-top: var(--sp-2); font-size: 1.0625rem; }
+    .page-hero .meta {
+      display: flex; gap: var(--sp-6); margin-top: var(--sp-6);
+      flex-wrap: wrap;
+    }
+    .page-hero .meta span {
+      background: rgba(255,255,255,0.15);
+      padding: var(--sp-1) var(--sp-3);
+      border-radius: var(--radius-md);
+      font-size: 0.8125rem;
+      font-weight: 500;
+    }
+
+    /* ─── Section ───────────────────────────────────────────── */
+    .section {
+      background: var(--surface-white);
+      border-radius: var(--radius-xl);
+      padding: var(--sp-8);
+      margin-bottom: var(--sp-6);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .section-header {
+      border-bottom: 2px solid var(--border-divider);
+      padding-bottom: var(--sp-4);
+      margin-bottom: var(--sp-6);
+    }
+    .section-header h2 {
+      font-size: 1.5rem;
+      font-weight: 400;
+      color: var(--text-dark-heading);
+    }
+    .section-header p {
+      color: var(--text-medium);
+      margin-top: var(--sp-1);
+      font-size: 0.9375rem;
+    }
+    .subsection { margin-bottom: var(--sp-8); }
+    .subsection h3 {
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--text-medium);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: var(--sp-4);
+      font-size: 0.8125rem;
+    }
+
+    /* ─── Demo Area ─────────────────────────────────────────── */
+    .demo {
+      background: var(--surface-page-bg);
+      border-radius: var(--radius-md);
+      padding: var(--sp-6);
+      margin-bottom: var(--sp-3);
+    }
+    .demo.dark {
+      background: var(--color-gradient);
+    }
+    .demo.white {
+      background: #fff;
+      border: 1px solid var(--border-divider);
+    }
+    code {
+      font-family: "Roboto Mono", "Consolas", monospace;
+      font-size: 0.8125rem;
+      background: rgba(102,126,234,0.08);
+      color: var(--color-primary-hover);
+      padding: 0.1em 0.4em;
+      border-radius: 3px;
+    }
+    pre {
+      background: #1e1e2e;
+      color: #cdd6f4;
+      padding: var(--sp-4);
+      border-radius: var(--radius-md);
+      font-size: 0.8125rem;
+      overflow-x: auto;
+      line-height: 1.6;
+      margin-top: var(--sp-3);
+    }
+    pre code { background: none; color: inherit; padding: 0; }
+
+    /* ─── Color Swatches ────────────────────────────────────── */
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: var(--sp-4);
+    }
+    .swatch {
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .swatch-color {
+      height: 80px;
+    }
+    .swatch-info {
+      background: #fff;
+      padding: var(--sp-3);
+    }
+    .swatch-info .name { font-size: 0.8125rem; font-weight: 500; color: var(--text-high); }
+    .swatch-info .hex  { font-size: 0.75rem; color: var(--text-medium); font-family: monospace; margin-top: 2px; }
+    .swatch-info .usage{ font-size: 0.6875rem; color: var(--text-disabled); margin-top: 2px; }
+
+    /* ─── Typography Specimens ──────────────────────────────── */
+    .type-specimen {
+      display: flex;
+      align-items: baseline;
+      gap: var(--sp-4);
+      padding: var(--sp-4) 0;
+      border-bottom: 1px solid var(--border-divider);
+    }
+    .type-specimen:last-child { border-bottom: none; }
+    .type-meta {
+      min-width: 180px;
+      flex-shrink: 0;
+    }
+    .type-meta .label { font-size: 0.75rem; font-weight: 500; color: var(--text-medium); text-transform: uppercase; letter-spacing: 0.5px; }
+    .type-meta .spec  { font-size: 0.6875rem; color: var(--text-disabled); font-family: monospace; margin-top: 2px; }
+    .type-sample { flex: 1; color: var(--text-high); }
+
+    /* ─── Spacing Scale ─────────────────────────────────────── */
+    .spacing-row {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-4);
+      padding: var(--sp-3) 0;
+      border-bottom: 1px solid var(--border-divider);
+    }
+    .spacing-row:last-child { border-bottom: none; }
+    .spacing-bar {
+      background: var(--color-primary);
+      height: 20px;
+      border-radius: 3px;
+      opacity: 0.8;
+    }
+    .spacing-label { min-width: 60px; font-size: 0.8125rem; font-weight: 500; color: var(--text-medium); }
+    .spacing-value { font-size: 0.8125rem; color: var(--text-disabled); font-family: monospace; min-width: 100px; }
+    .spacing-token { font-size: 0.75rem; color: var(--color-primary); font-family: monospace; }
+
+    /* ─── Buttons ───────────────────────────────────────────── */
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--sp-4);
+      align-items: center;
+      padding: var(--sp-4) 0;
+    }
+
+    /* Material-inspired button replicas */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--sp-2);
+      padding: 0 var(--sp-4);
+      height: 36px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: box-shadow var(--transition-fast), transform var(--transition-fast), opacity var(--transition-fast);
+      text-transform: uppercase;
+    }
+    .btn .material-icons { font-size: 18px; }
+
+    .btn-primary {
+      background: var(--color-primary);
+      color: #fff;
+      box-shadow: var(--shadow-btn);
+    }
+    .btn-primary:hover {
+      box-shadow: var(--shadow-btn-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary-lg {
+      height: 52px;
+      font-size: 1.0625rem;
+      padding: 0 var(--sp-8);
+      border-radius: var(--radius-sm);
+      background: var(--color-primary);
+      color: #fff;
+      box-shadow: var(--shadow-btn);
+      transition: all var(--transition-fast);
+    }
+    .btn-primary-lg:hover {
+      box-shadow: var(--shadow-btn-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-outlined {
+      background: transparent;
+      color: var(--color-primary);
+      border: 1px solid var(--color-primary);
+      box-shadow: none;
+    }
+    .btn-outlined:hover { background: rgba(102,126,234,0.06); }
+
+    .btn-text {
+      background: transparent;
+      color: var(--color-primary);
+      box-shadow: none;
+    }
+    .btn-text:hover { background: rgba(102,126,234,0.06); }
+
+    .btn-disabled {
+      background: var(--color-primary);
+      color: #fff;
+      opacity: 0.6;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .btn-danger {
+      background: var(--color-error);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(244,67,54,0.35);
+    }
+    .btn-danger:hover {
+      box-shadow: 0 4px 12px rgba(244,67,54,0.5);
+      transform: translateY(-1px);
+    }
+
+    /* ─── Form Fields ───────────────────────────────────────── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: var(--sp-6);
+    }
+    .field-wrap { display: flex; flex-direction: column; gap: 4px; }
+    .field-wrap label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-medium);
+    }
+    .field {
+      display: flex;
+      align-items: center;
+      background: var(--surface-input-bg);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      padding: 0 var(--sp-4);
+      height: 48px;
+      font-family: inherit;
+      font-size: 1rem;
+      color: var(--text-high);
+      transition: border-color var(--transition-fast), background var(--transition-fast);
+      width: 100%;
+    }
+    .field:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      background: #fff;
+    }
+    .field::placeholder { color: var(--text-medium); }
+    .field.error { border-color: var(--color-error-border); }
+    .field-hint  { font-size: 0.75rem; color: var(--text-medium); }
+    .field-error { font-size: 0.8125rem; color: var(--color-error-border); font-weight: 500; }
+
+    /* ─── Cards ─────────────────────────────────────────────── */
+    .card {
+      background: var(--surface-white);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+    }
+    .card-sm { max-width: 480px; }
+    .card-header {
+      padding: var(--sp-6) var(--sp-6) 0;
+    }
+    .card-title {
+      font-size: 1.75rem;
+      font-weight: 500;
+      color: var(--text-dark-heading);
+    }
+    .card-subtitle { color: var(--text-medium); font-size: 0.9375rem; margin-top: var(--sp-1); }
+    .card-content  { padding: var(--sp-6); }
+    .card-actions  {
+      padding: var(--sp-3) var(--sp-4);
+      border-top: 1px solid var(--border-divider);
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--sp-2);
+    }
+
+    /* ─── Innovation Card (List variant) ───────────────────── */
+    .innovation-card {
+      background: var(--surface-white);
+      border-radius: var(--radius-xl);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+    }
+    .innovation-card:hover {
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      transform: translateY(-2px);
+    }
+    .ic-header { padding: var(--sp-4) var(--sp-4) 0; }
+    .ic-title  { font-size: 1.25rem; font-weight: 500; color: var(--text-high); }
+    .ic-content {
+      flex: 1;
+      padding: var(--sp-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-3);
+    }
+    .ic-owner {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-1);
+      color: var(--text-medium);
+      font-size: 0.9rem;
+    }
+    .ic-owner .material-icons { font-size: 18px; }
+    .ic-date { color: var(--text-disabled); font-size: 0.85rem; }
+    .ic-actions {
+      padding: var(--sp-2) var(--sp-4);
+      display: flex;
+      justify-content: flex-end;
+      border-top: 1px solid var(--border-divider);
+    }
+
+    /* ─── Innovation Grid ───────────────────────────────────── */
+    .innovations-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: var(--sp-6);
+    }
+
+    /* ─── Chips ─────────────────────────────────────────────── */
+    .chip-set { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      height: 32px;
+      padding: 0 var(--sp-3);
+      background: rgba(0,0,0,0.08);
+      color: var(--text-high);
+      border-radius: 16px;
+      font-size: 0.875rem;
+      font-weight: 400;
+    }
+    .chip.primary {
+      background: rgba(102,126,234,0.12);
+      color: var(--color-primary-hover);
+    }
+    .chip.highlighted {
+      background: var(--color-primary);
+      color: #fff;
+    }
+    .chip.warning {
+      background: rgba(255,193,7,0.15);
+      color: #8a6900;
+    }
+    .chip.error {
+      background: rgba(244,67,54,0.1);
+      color: var(--color-error);
+    }
+    .chip .material-icons { font-size: 16px; }
+
+    /* ─── Status / Feedback ─────────────────────────────────── */
+    .error-banner {
+      background: var(--color-error-bg);
+      color: var(--color-error-border);
+      padding: var(--sp-4);
+      border-left: 4px solid var(--color-error-border);
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .info-banner {
+      background: rgba(102,126,234,0.08);
+      color: var(--color-primary-hover);
+      padding: var(--sp-4);
+      border-left: 4px solid var(--color-primary);
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+    }
+    .success-banner {
+      background: rgba(76,175,80,0.08);
+      color: #2e7d32;
+      padding: var(--sp-4);
+      border-left: 4px solid var(--color-success);
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+    }
+
+    .state-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--sp-4);
+      padding: var(--sp-8);
+      text-align: center;
+      background: var(--surface-white);
+      border-radius: var(--radius-xl);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      max-width: 400px;
+    }
+    .state-card .material-icons { font-size: 48px; width: 48px; height: 48px; }
+    .state-card h3 { font-size: 1.25rem; font-weight: 500; margin: 0; }
+    .state-card p  { margin: 0; color: var(--text-medium); }
+    .state-card .material-icons.error   { color: var(--color-error); }
+    .state-card .material-icons.warning { color: var(--color-warning); }
+    .state-card .material-icons.success { color: var(--color-success); }
+
+    /* ─── Spinner replica ───────────────────────────────────── */
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid rgba(102,126,234,0.2);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    .spinner-sm { width: 20px; height: 20px; border-width: 2px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Login Card replica ────────────────────────────────── */
+    .login-demo {
+      background: var(--color-gradient);
+      border-radius: var(--radius-xl);
+      padding: var(--sp-8);
+      display: flex;
+      justify-content: center;
+    }
+    .login-card {
+      max-width: 400px;
+      width: 100%;
+      background: var(--surface-white);
+      border-radius: var(--radius-xl);
+      padding: var(--sp-10) var(--sp-8);
+      box-shadow: var(--shadow-card);
+    }
+    .login-card h2 {
+      font-size: 2rem;
+      font-weight: 600;
+      text-align: center;
+      color: var(--text-dark-heading);
+      margin-bottom: var(--sp-8);
+      letter-spacing: -0.5px;
+    }
+    .login-card .field { margin-bottom: var(--sp-6); }
+    .login-card .btn-primary-lg {
+      width: 100%;
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+    }
+
+    /* ─── Section Details ───────────────────────────────────── */
+    .section-body { color: var(--text-medium); font-size: 0.9375rem; line-height: 1.6; margin-bottom: var(--sp-4); }
+
+    /* ─── Breakpoint table ──────────────────────────────────── */
+    .bp-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .bp-table th {
+      background: rgba(102,126,234,0.08);
+      color: var(--color-primary-hover);
+      padding: var(--sp-3) var(--sp-4);
+      text-align: left;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .bp-table td {
+      padding: var(--sp-3) var(--sp-4);
+      border-bottom: 1px solid var(--border-divider);
+      color: var(--text-high);
+    }
+    .bp-table tr:last-child td { border-bottom: none; }
+    .bp-table code { font-size: 0.8125rem; }
+
+    /* ─── Divider ───────────────────────────────────────────── */
+    hr.divider {
+      border: none;
+      border-top: 1px solid var(--border-divider);
+      margin: var(--sp-6) 0;
+    }
+
+    /* ─── Tag ───────────────────────────────────────────────── */
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .tag.mat { background: rgba(102,126,234,0.12); color: var(--color-primary-hover); }
+    .tag.new { background: rgba(76,175,80,0.12); color: #2e7d32; }
+
+    /* ─── Responsive ────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════ SIDEBAR ═══════════════════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <h1>Innoventity</h1>
+    <p>Visual Style Guide</p>
+  </div>
+  <nav>
+    <ul>
+      <li class="nav-section">Overview</li>
+      <li><a href="#overview">Introduction</a></li>
+      <li><a href="#tokens">Design Tokens</a></li>
+
+      <li class="nav-section">Foundations</li>
+      <li><a href="#colors">Color Palette</a></li>
+      <li><a href="#typography">Typography</a></li>
+      <li><a href="#spacing">Spacing</a></li>
+      <li><a href="#elevation">Elevation</a></li>
+
+      <li class="nav-section">Components</li>
+      <li><a href="#buttons">Buttons</a></li>
+      <li><a href="#form-fields">Form Fields</a></li>
+      <li><a href="#cards">Cards</a></li>
+      <li><a href="#chips">Chips</a></li>
+      <li><a href="#feedback">Status &amp; Feedback</a></li>
+      <li><a href="#loading">Loading States</a></li>
+
+      <li class="nav-section">Patterns</li>
+      <li><a href="#login-pattern">Login Screen</a></li>
+      <li><a href="#list-pattern">Innovation List</a></li>
+      <li><a href="#detail-pattern">Detail View</a></li>
+
+      <li class="nav-section">System</li>
+      <li><a href="#breakpoints">Breakpoints</a></li>
+      <li><a href="#motion">Motion &amp; Transitions</a></li>
+    </ul>
+  </nav>
+</aside>
+
+<!-- ═══════════════════════ MAIN ═══════════════════════════════ -->
+<main class="main">
+
+  <!-- Hero -->
+  <section class="page-hero" id="overview">
+    <h1>Visual Style Guide</h1>
+    <p>Design tokens, components, and patterns for the Innoventity Angular SPA.</p>
+    <div class="meta">
+      <span>Angular 19</span>
+      <span>Angular Material 19.2</span>
+      <span>SCSS</span>
+      <span>MDC-based Components</span>
+    </div>
+  </section>
+
+  <!-- ─── Design Tokens ──────────────────────────────────────── -->
+  <section class="section" id="tokens">
+    <div class="section-header">
+      <h2>Design Tokens</h2>
+      <p>All tokens are CSS custom properties defined in <code>:root</code> and consumed throughout the application.</p>
+    </div>
+    <p class="section-body">
+      Tokens are grouped into Brand, Semantic, Text, Surface, Border, Elevation, Spacing, Radius, and Transition families.
+      Use these instead of raw values to ensure consistency.
+    </p>
+    <pre><code>/* Example usage */
+.my-element {
+  color: var(--text-high);
+  background: var(--surface-input-bg);
+  border-color: var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: var(--sp-4) var(--sp-6);
+  transition: box-shadow var(--transition-fast);
+}</code></pre>
+  </section>
+
+  <!-- ─── Colors ─────────────────────────────────────────────── -->
+  <section class="section" id="colors">
+    <div class="section-header">
+      <h2>Color Palette</h2>
+      <p>Derived from Angular Material theme and app-level SCSS overrides in <code>styles.scss</code> and component files.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Brand</h3>
+      <div class="color-grid">
+        <div class="swatch">
+          <div class="swatch-color" style="background:#667eea;"></div>
+          <div class="swatch-info">
+            <div class="name">Primary</div>
+            <div class="hex">#667eea</div>
+            <div class="usage">Buttons, links, focus rings, chip highlights</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#5568d3;"></div>
+          <div class="swatch-info">
+            <div class="name">Primary Hover</div>
+            <div class="hex">#5568d3</div>
+            <div class="usage">Button/link hover states</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#764ba2;"></div>
+          <div class="swatch-info">
+            <div class="name">Secondary</div>
+            <div class="hex">#764ba2</div>
+            <div class="usage">Gradient endpoint, brand accent</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:linear-gradient(135deg,#667eea,#764ba2);"></div>
+          <div class="swatch-info">
+            <div class="name">Brand Gradient</div>
+            <div class="hex">#667eea → #764ba2</div>
+            <div class="usage">Login background, sidebar, hero sections</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Semantic</h3>
+      <div class="color-grid">
+        <div class="swatch">
+          <div class="swatch-color" style="background:#f44336;"></div>
+          <div class="swatch-info">
+            <div class="name">Error</div>
+            <div class="hex">#f44336</div>
+            <div class="usage">Error icons, destructive actions</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#cc3333;"></div>
+          <div class="swatch-info">
+            <div class="name">Error Dark</div>
+            <div class="hex">#cc3333</div>
+            <div class="usage">Error banner text, border</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#ffeeee; border:1px solid #e0e0e0;"></div>
+          <div class="swatch-info">
+            <div class="name">Error Background</div>
+            <div class="hex">#ffeeee</div>
+            <div class="usage">Inline error banner fill</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#ffc107;"></div>
+          <div class="swatch-info">
+            <div class="name">Warning</div>
+            <div class="hex">#ffc107</div>
+            <div class="usage">Empty-state icon</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#4caf50;"></div>
+          <div class="swatch-info">
+            <div class="name">Success</div>
+            <div class="hex">#4caf50</div>
+            <div class="usage">Positive confirmations</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Text Alpha Scale</h3>
+      <div class="color-grid">
+        <div class="swatch">
+          <div class="swatch-color" style="background:rgba(0,0,0,0.87);"></div>
+          <div class="swatch-info">
+            <div class="name">High Emphasis</div>
+            <div class="hex">rgba(0,0,0,.87)</div>
+            <div class="usage">Body copy, headings</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:rgba(0,0,0,0.60);"></div>
+          <div class="swatch-info">
+            <div class="name">Medium Emphasis</div>
+            <div class="hex">rgba(0,0,0,.60)</div>
+            <div class="usage">Subtitles, helper text</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:rgba(0,0,0,0.54);"></div>
+          <div class="swatch-info">
+            <div class="name">Disabled</div>
+            <div class="hex">rgba(0,0,0,.54)</div>
+            <div class="usage">Dates, secondary metadata</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:rgba(0,0,0,0.12); border:1px solid #e0e0e0;"></div>
+          <div class="swatch-info">
+            <div class="name">Divider</div>
+            <div class="hex">rgba(0,0,0,.12)</div>
+            <div class="usage">Card borders, section dividers</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Surface</h3>
+      <div class="color-grid">
+        <div class="swatch">
+          <div class="swatch-color" style="background:#ffffff; border:1px solid #e0e0e0;"></div>
+          <div class="swatch-info">
+            <div class="name">White</div>
+            <div class="hex">#ffffff</div>
+            <div class="usage">Cards, dialogs, dropdowns</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#f8f9fa; border:1px solid #e0e0e0;"></div>
+          <div class="swatch-info">
+            <div class="name">Input BG</div>
+            <div class="hex">#f8f9fa</div>
+            <div class="usage">Form field fill (unfocused)</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#f5f5f5; border:1px solid #e0e0e0;"></div>
+          <div class="swatch-info">
+            <div class="name">Page BG</div>
+            <div class="hex">#f5f5f5</div>
+            <div class="usage">App-level background</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#e0e0e0;"></div>
+          <div class="swatch-info">
+            <div class="name">Border Default</div>
+            <div class="hex">#e0e0e0</div>
+            <div class="usage">Input borders (unfocused)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Typography ─────────────────────────────────────────── -->
+  <section class="section" id="typography">
+    <div class="section-header">
+      <h2>Typography</h2>
+      <p>Primary font stack set in <code>styles.scss</code>. Heading weights overridden globally.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Font Stack</h3>
+      <pre><code>font-family: Roboto, "Helvetica Neue Light", "Helvetica Neue",
+             Helvetica, Arial, "Lucida Grande", sans-serif;</code></pre>
+    </div>
+
+    <div class="subsection">
+      <h3>Type Scale</h3>
+      <div class="demo white">
+        <div class="type-specimen">
+          <div class="type-meta">
+            <div class="label">Page Title</div>
+            <div class="spec">2rem / 400 / –0.5px</div>
+          </div>
+          <div class="type-sample" style="font-size:2rem;font-weight:400;letter-spacing:-0.5px;">
+            Published Innovations
+          </div>
+        </div>
+        <div class="type-specimen">
+          <div class="type-meta">
+            <div class="label">Login Heading</div>
+            <div class="spec">2rem / 600 / –0.5px</div>
+          </div>
+          <div class="type-sample" style="font-size:2rem;font-weight:600;letter-spacing:-0.5px;">
+            Log In to Innoventity
+          </div>
+        </div>
+        <div class="type-specimen">
+          <div class="type-meta">
+            <div class="label">Card Title (Detail)</div>
+            <div class="spec">1.75rem / 500</div>
+          </div>
+          <div class="type-sample" style="font-size:1.75rem;font-weight:500;">
+            Quantum Battery Prototype
+          </div>
+        </div>
+        <div class="type-specimen">
+          <div class="type-meta">
+            <div class="label">Card Title (List)</div>
+            <div class="spec">1.25rem / 500</div>
+          </div>
+          <div class="type-sample" style="font-size:1.25rem;font-weight:500;">
+            Quantum Battery Prototype
+          </div>
+        </div>
+        <div class="type-specimen">
+          <div class="type-meta">
+            <div class="label">Section Heading</div>
+            <div class="spec">1.25rem / 500</div>
+          </div>
+          <div class="type-sample" style="font-size:1.25rem;font-weight:500;">
+            Research Background
+          </div>
+        </div>
+        <div class="type-specimen">
+          <div class="type-meta">
+            <div class="label">Submit Button</div>
+            <div class="spec">1.0625rem / 500 / +0.5px</div>
+          </div>
+          <div class="type-sample" style="font-size:1.0625rem;font-weight:500;letter-spacing:0.5px;text-transform:uppercase;">
+            Log In
+          </div>
+        </div>
+        <div class="type-specimen">
+          <div class="type-meta">
+            <div class="label">Body / Form Label</div>
+            <div class="spec">1rem / 400 / 1.6 lh</div>
+          </div>
+          <div class="type-sample" style="font-size:1rem;font-weight:400;line-height:1.6;">
+            The innovation leverages advanced lithium-air chemistry to achieve energy densities
+            previously unattainable in commercial battery applications.
+          </div>
+        </div>
+        <div class="type-specimen">
+          <div class="type-meta">
+            <div class="label">Meta / Owner</div>
+            <div class="spec">0.9rem / 400</div>
+          </div>
+          <div class="type-sample" style="font-size:0.9rem;color:rgba(0,0,0,0.6);">
+            Dr. Sarah Chen
+          </div>
+        </div>
+        <div class="type-specimen">
+          <div class="type-meta">
+            <div class="label">Date / Secondary</div>
+            <div class="spec">0.85rem / 400</div>
+          </div>
+          <div class="type-sample" style="font-size:0.85rem;color:rgba(0,0,0,0.54);">
+            Submitted: Feb 17, 2026
+          </div>
+        </div>
+        <div class="type-specimen">
+          <div class="type-meta">
+            <div class="label">Field Error</div>
+            <div class="spec">0.8125rem / 500</div>
+          </div>
+          <div class="type-sample" style="font-size:0.8125rem;font-weight:500;color:#c33;">
+            Email address is required
+          </div>
+        </div>
+        <div class="type-specimen">
+          <div class="type-meta">
+            <div class="label">Register / Helper Link</div>
+            <div class="spec">0.9375rem / 400 (link: 600)</div>
+          </div>
+          <div class="type-sample" style="font-size:0.9375rem;color:#666;">
+            Don't have an account?
+            <a href="#" style="color:#667eea;font-weight:600;text-decoration:none;">Register here</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Spacing ────────────────────────────────────────────── -->
+  <section class="section" id="spacing">
+    <div class="section-header">
+      <h2>Spacing Scale</h2>
+      <p>4px base grid. Use CSS custom properties (<code>--sp-*</code>) to maintain rhythm.</p>
+    </div>
+    <div class="demo white">
+      <div class="spacing-row">
+        <div class="spacing-label">--sp-1</div>
+        <div class="spacing-bar" style="width:4px;"></div>
+        <div class="spacing-value">0.25rem / 4px</div>
+        <div class="spacing-token">Icon gaps, badge padding</div>
+      </div>
+      <div class="spacing-row">
+        <div class="spacing-label">--sp-2</div>
+        <div class="spacing-bar" style="width:8px;"></div>
+        <div class="spacing-value">0.5rem / 8px</div>
+        <div class="spacing-token">Chip gap, button gap, small padding</div>
+      </div>
+      <div class="spacing-row">
+        <div class="spacing-label">--sp-3</div>
+        <div class="spacing-bar" style="width:12px;"></div>
+        <div class="spacing-value">0.75rem / 12px</div>
+        <div class="spacing-token">Meta item gap, DL row gap</div>
+      </div>
+      <div class="spacing-row">
+        <div class="spacing-label">--sp-4</div>
+        <div class="spacing-bar" style="width:16px;"></div>
+        <div class="spacing-value">1rem / 16px</div>
+        <div class="spacing-token">Card actions padding, field margin-bottom</div>
+      </div>
+      <div class="spacing-row">
+        <div class="spacing-label">--sp-5</div>
+        <div class="spacing-bar" style="width:20px;"></div>
+        <div class="spacing-value">1.25rem / 20px</div>
+        <div class="spacing-token">Responsive adjustments</div>
+      </div>
+      <div class="spacing-row">
+        <div class="spacing-label">--sp-6</div>
+        <div class="spacing-bar" style="width:24px;"></div>
+        <div class="spacing-value">1.5rem / 24px</div>
+        <div class="spacing-token">Card content padding, grid gap</div>
+      </div>
+      <div class="spacing-row">
+        <div class="spacing-label">--sp-8</div>
+        <div class="spacing-bar" style="width:32px;"></div>
+        <div class="spacing-value">2rem / 32px</div>
+        <div class="spacing-token">Page margin, section vertical padding</div>
+      </div>
+      <div class="spacing-row">
+        <div class="spacing-label">--sp-10</div>
+        <div class="spacing-bar" style="width:40px;"></div>
+        <div class="spacing-value">2.5rem / 40px</div>
+        <div class="spacing-token">Login card header margin</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Elevation ──────────────────────────────────────────── -->
+  <section class="section" id="elevation">
+    <div class="section-header">
+      <h2>Elevation &amp; Shadows</h2>
+      <p>Three shadow levels used across the application for depth hierarchy.</p>
+    </div>
+    <div class="demo white" style="display:flex;gap:2rem;flex-wrap:wrap;align-items:flex-end;">
+      <div style="display:flex;flex-direction:column;gap:0.75rem;align-items:center;">
+        <div style="width:120px;height:80px;background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06);"></div>
+        <div style="font-size:0.75rem;color:var(--text-medium);text-align:center;">Level 0<br><code>0 1px 4px rgba(0,0,0,.06)</code></div>
+        <div style="font-size:0.75rem;color:var(--text-disabled);">Page sections</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0.75rem;align-items:center;">
+        <div style="width:120px;height:80px;background:#fff;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.08);"></div>
+        <div style="font-size:0.75rem;color:var(--text-medium);text-align:center;">Level 1<br><code>0 2px 12px rgba(0,0,0,.08)</code></div>
+        <div style="font-size:0.75rem;color:var(--text-disabled);">Innovation cards</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0.75rem;align-items:center;">
+        <div style="width:120px;height:80px;background:#fff;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
+        <div style="font-size:0.75rem;color:var(--text-medium);text-align:center;">Level 2<br><code>0 4px 12px rgba(0,0,0,.15)</code></div>
+        <div style="font-size:0.75rem;color:var(--text-disabled);">Dropdowns</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0.75rem;align-items:center;">
+        <div style="width:120px;height:80px;background:#fff;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,0.20);"></div>
+        <div style="font-size:0.75rem;color:var(--text-medium);text-align:center;">Level 3<br><code>0 8px 32px rgba(0,0,0,.20)</code></div>
+        <div style="font-size:0.75rem;color:var(--text-disabled);">Login card</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0.75rem;align-items:center;">
+        <div style="width:120px;height:80px;background:#667eea;border-radius:8px;box-shadow:0 2px 8px rgba(102,126,234,0.40);"></div>
+        <div style="font-size:0.75rem;color:var(--text-medium);text-align:center;">Primary Btn<br><code>0 2px 8px rgba(102,126,234,.40)</code></div>
+        <div style="font-size:0.75rem;color:var(--text-disabled);">CTA buttons</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Buttons ────────────────────────────────────────────── -->
+  <section class="section" id="buttons">
+    <div class="section-header">
+      <h2>Buttons</h2>
+      <p>Built on Angular Material <code>mat-raised-button</code>, <code>mat-button</code>, and <code>mat-stroked-button</code> with app-level overrides.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Variants</h3>
+      <div class="demo white">
+        <div class="btn-row">
+          <button class="btn btn-primary">Raised Primary</button>
+          <button class="btn btn-outlined">Stroked</button>
+          <button class="btn btn-text">Text Button</button>
+          <button class="btn btn-danger">Delete</button>
+          <button class="btn btn-disabled" disabled>Disabled</button>
+        </div>
+      </div>
+      <pre><code>&lt;button mat-raised-button color="primary"&gt;Raised Primary&lt;/button&gt;
+&lt;button mat-stroked-button color="primary"&gt;Stroked&lt;/button&gt;
+&lt;button mat-button color="primary"&gt;Text Button&lt;/button&gt;
+&lt;button mat-raised-button color="warn"&gt;Delete&lt;/button&gt;
+&lt;button mat-raised-button [disabled]="true"&gt;Disabled&lt;/button&gt;</code></pre>
+    </div>
+
+    <div class="subsection">
+      <h3>With Icons</h3>
+      <div class="demo white">
+        <div class="btn-row">
+          <button class="btn btn-primary">
+            <span class="material-icons">visibility</span>
+            View Details
+          </button>
+          <button class="btn btn-outlined">
+            <span class="material-icons">arrow_back</span>
+            Back
+          </button>
+          <button class="btn btn-text">
+            <span class="material-icons">refresh</span>
+            Retry
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Submit / CTA (Full Width, Login)</h3>
+      <div class="demo white" style="max-width:400px;">
+        <button class="btn btn-primary-lg" style="width:100%;border:none;cursor:pointer;font-family:inherit;">
+          Log In
+        </button>
+        <br /><br />
+        <button class="btn btn-primary-lg" style="width:100%;border:none;cursor:default;opacity:0.6;font-family:inherit;" disabled>
+          <div style="display:inline-flex;align-items:center;gap:8px;">
+            <div class="spinner spinner-sm"></div>
+            Loading…
+          </div>
+        </button>
+      </div>
+      <pre><code>/* CTA button overrides (login.component.scss) */
+button[type="submit"] {
+  height: 52px;
+  font-size: 1.0625rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(102,126,234, 0.4);
+  transition: all 0.2s ease;
+}
+button[type="submit"]:hover:not([disabled]) {
+  box-shadow: 0 4px 12px rgba(102,126,234, 0.5);
+  transform: translateY(-1px);
+}
+button[type="submit"]:disabled { opacity: 0.6; }</code></pre>
+    </div>
+  </section>
+
+  <!-- ─── Form Fields ────────────────────────────────────────── -->
+  <section class="section" id="form-fields">
+    <div class="section-header">
+      <h2>Form Fields</h2>
+      <p>Angular Material <code>mat-form-field</code> with <code>appearance="outline"</code>. Background overrides applied via <code>::ng-deep</code> in <code>login.component.scss</code>.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>States</h3>
+      <div class="demo white">
+        <div class="form-grid">
+          <div class="field-wrap">
+            <label>Default (unfocused)</label>
+            <input class="field" type="text" placeholder="Email address" />
+            <span class="field-hint">Uses #f8f9fa fill, #e0e0e0 border</span>
+          </div>
+          <div class="field-wrap">
+            <label>Focused</label>
+            <input class="field" type="text" value="sarah@example.com" style="border-color:#667eea;background:#fff;" />
+            <span class="field-hint">Border switches to var(--color-primary)</span>
+          </div>
+          <div class="field-wrap">
+            <label>Error state</label>
+            <input class="field error" type="email" value="not-an-email" />
+            <span class="field-error">Must be a valid email address</span>
+          </div>
+          <div class="field-wrap">
+            <label>Disabled</label>
+            <input class="field" type="text" value="Read only" disabled style="opacity:0.5;cursor:not-allowed;" />
+          </div>
+        </div>
+      </div>
+      <pre><code>/* mat-form-field outline overrides */
+.mdc-text-field--outlined .mdc-notched-outline * {
+  border-color: #e0e0e0;          /* unfocused */
+}
+.mdc-text-field--outlined:hover .mdc-notched-outline * {
+  border-color: #667eea;          /* hover */
+}
+.mat-mdc-text-field-wrapper {
+  background-color: #f8f9fa;      /* fill */
+  border-radius: 8px;
+}
+&.mat-focused .mat-mdc-text-field-wrapper {
+  background-color: #fff;         /* focused fill */
+}</code></pre>
+    </div>
+
+    <div class="subsection">
+      <h3>Field Types used in-app</h3>
+      <div class="demo white">
+        <div class="form-grid">
+          <div class="field-wrap">
+            <label>Email input</label>
+            <input class="field" type="email" placeholder="you@example.com" />
+          </div>
+          <div class="field-wrap">
+            <label>Password input</label>
+            <input class="field" type="password" placeholder="••••••••" />
+          </div>
+          <div class="field-wrap">
+            <label>Select (Actor Type)</label>
+            <select class="field" style="appearance:none;background-image:url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\"><path fill=\"%23666\" d=\"M7 10l5 5 5-5z\"/></svg>');background-repeat:no-repeat;background-position:right 1rem center;">
+              <option>Idea Generator</option>
+              <option>Manufacturing</option>
+              <option>R&amp;D</option>
+              <option>Investor</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Cards ─────────────────────────────────────────────── -->
+  <section class="section" id="cards">
+    <div class="section-header">
+      <h2>Cards</h2>
+      <p>Angular Material <code>mat-card</code>. Two variants: modal/form card (Login) and content card (Innovation list/detail).</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Basic Content Card</h3>
+      <div class="demo white">
+        <div class="card" style="max-width:500px;">
+          <div class="card-header">
+            <div class="card-title">Quantum Battery Prototype</div>
+            <div class="card-subtitle">Energy Storage Device</div>
+          </div>
+          <div class="card-content">
+            <p style="line-height:1.6;color:rgba(0,0,0,0.87);">
+              Next-generation lithium-air battery technology achieving 5× energy density
+              over current commercial cells at competitive production cost.
+            </p>
+          </div>
+          <div class="card-actions">
+            <button class="btn btn-text">Dismiss</button>
+            <button class="btn btn-primary">
+              <span class="material-icons">visibility</span>
+              View Details
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Innovation List Card</h3>
+      <div class="demo white">
+        <div style="max-width:400px;">
+          <div class="innovation-card">
+            <div class="ic-header">
+              <div class="ic-title">Quantum Battery Prototype</div>
+              <div class="chip-set" style="margin-top:0.5rem;">
+                <span class="chip">Energy Storage Device</span>
+                <span class="chip highlighted">Engineering</span>
+              </div>
+            </div>
+            <div class="ic-content">
+              <span class="ic-owner">
+                <span class="material-icons">person</span>
+                Dr. Sarah Chen
+              </span>
+              <div class="chip-set">
+                <span class="chip primary">Technology</span>
+                <span class="chip primary">Industrials</span>
+              </div>
+              <span class="ic-date">Submitted: Feb 17, 2026</span>
+            </div>
+            <div class="ic-actions">
+              <button class="btn btn-primary">
+                <span class="material-icons">visibility</span>
+                View Details
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Card radius tokens</h3>
+      <pre><code>/* Login / modal card */
+border-radius: 16px;   /* --radius-xl */
+box-shadow: 0 8px 32px rgba(0,0,0,0.20);
+
+/* Content / list cards */
+border-radius: 12px;   /* --radius-lg  (responsive) */
+
+/* Error / empty-state cards */
+border-radius: 16px;
+max-width: 600px;</code></pre>
+    </div>
+  </section>
+
+  <!-- ─── Chips ──────────────────────────────────────────────── -->
+  <section class="section" id="chips">
+    <div class="section-header">
+      <h2>Chips &amp; Chip Sets</h2>
+      <p>Angular Material <code>mat-chip</code> inside <code>mat-chip-set</code>. Used for taxonomy tagging, status badges, and keyword groups.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Variants</h3>
+      <div class="demo white">
+        <div class="chip-set" style="gap:0.75rem;">
+          <span class="chip">Default</span>
+          <span class="chip primary">Primary</span>
+          <span class="chip highlighted">Highlighted</span>
+          <span class="chip warning">Warning</span>
+          <span class="chip error">Error</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>With icons</h3>
+      <div class="demo white">
+        <div class="chip-set">
+          <span class="chip primary">
+            <span class="material-icons" style="font-size:16px;">lightbulb</span>
+            Innovation
+          </span>
+          <span class="chip highlighted">
+            <span class="material-icons" style="font-size:16px;">science</span>
+            Engineering
+          </span>
+          <span class="chip">
+            <span class="material-icons" style="font-size:16px;">business</span>
+            Technology
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Usage in-app</h3>
+      <p class="section-body">
+        <strong>Card subtitle</strong>: product type (default) + research category (highlighted)<br>
+        <strong>Industry tags</strong>: primary chips in card content and detail view<br>
+        <strong>Partners needed</strong>: default chips in detail keyword section
+      </p>
+      <pre><code>&lt;mat-chip-set&gt;
+  &lt;mat-chip&gt;Energy Storage Device&lt;/mat-chip&gt;
+  &lt;mat-chip highlighted&gt;Engineering&lt;/mat-chip&gt;
+&lt;/mat-chip-set&gt;</code></pre>
+    </div>
+  </section>
+
+  <!-- ─── Feedback ──────────────────────────────────────────── -->
+  <section class="section" id="feedback">
+    <div class="section-header">
+      <h2>Status &amp; Feedback</h2>
+      <p>Inline banners and full-page empty/error states.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Inline Banners</h3>
+      <div class="demo white" style="display:flex;flex-direction:column;gap:1rem;">
+        <div class="error-banner">
+          <strong>Login failed.</strong> Invalid email or password.
+        </div>
+        <div class="info-banner">
+          Your session is about to expire. Please save your work.
+        </div>
+        <div class="success-banner">
+          Innovation published successfully and is now visible to partners.
+        </div>
+      </div>
+      <pre><code>/* Error banner (login.component.scss) */
+.error-banner {
+  background-color: #fee;
+  color: #c33;
+  padding: 1rem;
+  border-left: 4px solid #c33;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}</code></pre>
+    </div>
+
+    <div class="subsection">
+      <h3>Empty &amp; Error State Cards</h3>
+      <div class="demo white" style="display:flex;flex-wrap:wrap;gap:1.5rem;">
+        <div class="state-card">
+          <span class="material-icons error">error</span>
+          <h3>Failed to Load Innovations</h3>
+          <p>Please check your connection and try again.</p>
+          <button class="btn btn-primary" style="margin-top:0.5rem;">Retry</button>
+        </div>
+        <div class="state-card">
+          <span class="material-icons warning">lightbulb</span>
+          <h3>No Innovations Found</h3>
+          <p>There are no published innovations yet.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Loading ────────────────────────────────────────────── -->
+  <section class="section" id="loading">
+    <div class="section-header">
+      <h2>Loading States</h2>
+      <p>Angular Material <code>mat-spinner</code> with two sizes used in-app.</p>
+    </div>
+    <div class="demo white" style="display:flex;flex-wrap:wrap;gap:3rem;align-items:center;">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:1rem;">
+        <div class="spinner"></div>
+        <p style="font-size:0.85rem;color:var(--text-medium);">Page-level<br>diameter=50</p>
+        <div style="color:rgba(0,0,0,0.6);font-size:0.9rem;">Loading innovations…</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:1rem;">
+        <div class="spinner spinner-sm"></div>
+        <p style="font-size:0.85rem;color:var(--text-medium);">Button-level<br>diameter=20</p>
+      </div>
+    </div>
+    <pre><code>&lt;!-- Page loading --&gt;
+&lt;div class="loading-spinner"&gt;
+  &lt;mat-spinner diameter="50"&gt;&lt;/mat-spinner&gt;
+  &lt;p&gt;Loading innovations...&lt;/p&gt;
+&lt;/div&gt;
+
+&lt;!-- Button loading --&gt;
+@if (isLoading()) {
+  &lt;mat-spinner diameter="20"&gt;&lt;/mat-spinner&gt;
+} @else {
+  Log In
+}</code></pre>
+  </section>
+
+  <!-- ─── Login Pattern ──────────────────────────────────────── -->
+  <section class="section" id="login-pattern">
+    <div class="section-header">
+      <h2>Pattern: Login Screen</h2>
+      <p>Full-viewport centred card on brand gradient. Source: <code>login.component.scss</code></p>
+    </div>
+    <div class="login-demo">
+      <div class="login-card">
+        <h2>Log In to Innoventity</h2>
+        <div class="field-wrap" style="margin-bottom:1.5rem;">
+          <input class="field" type="email" placeholder="Email" />
+        </div>
+        <div class="field-wrap" style="margin-bottom:1.5rem;">
+          <select class="field" style="appearance:none;">
+            <option>Idea Generator</option>
+          </select>
+        </div>
+        <div class="field-wrap" style="margin-bottom:1.5rem;">
+          <input class="field" type="password" placeholder="Password" />
+        </div>
+        <button class="btn btn-primary-lg" style="width:100%;border:none;cursor:pointer;font-family:inherit;">
+          Log In
+        </button>
+      </div>
+    </div>
+    <pre><code>/* Key layout rules */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+mat-card {
+  max-width: 480px;
+  padding: 2.5rem;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.20);
+}
+/* Responsive */
+@media (max-width: 600px) {
+  .login-container { padding: 1rem; }
+  mat-card { padding: 2rem 1.5rem; border-radius: 12px; }
+}</code></pre>
+  </section>
+
+  <!-- ─── List Pattern ───────────────────────────────────────── -->
+  <section class="section" id="list-pattern">
+    <div class="section-header">
+      <h2>Pattern: Innovation List</h2>
+      <p>Responsive auto-fill grid with max-width container. Source: <code>innovations-list.component.scss</code></p>
+    </div>
+    <div class="demo white">
+      <div style="margin-bottom:0.5rem;">
+        <h1 style="font-size:2rem;font-weight:400;color:rgba(0,0,0,0.87);">Published Innovations</h1>
+        <p style="color:rgba(0,0,0,0.6);margin-top:0.25rem;">3 innovations found</p>
+      </div>
+      <div class="innovations-grid">
+        <div class="innovation-card">
+          <div class="ic-header">
+            <div class="ic-title">Quantum Battery Prototype</div>
+            <div class="chip-set" style="margin-top:0.5rem;">
+              <span class="chip">Energy Storage</span>
+              <span class="chip highlighted">Engineering</span>
+            </div>
+          </div>
+          <div class="ic-content">
+            <span class="ic-owner"><span class="material-icons">person</span>Dr. Sarah Chen</span>
+            <span class="ic-date">Submitted: Feb 17, 2026</span>
+          </div>
+          <div class="ic-actions">
+            <button class="btn btn-primary"><span class="material-icons">visibility</span>View Details</button>
+          </div>
+        </div>
+        <div class="innovation-card">
+          <div class="ic-header">
+            <div class="ic-title">AI Diagnostic Platform</div>
+            <div class="chip-set" style="margin-top:0.5rem;">
+              <span class="chip">Medical Software</span>
+              <span class="chip highlighted">Management</span>
+            </div>
+          </div>
+          <div class="ic-content">
+            <span class="ic-owner"><span class="material-icons">person</span>Dr. James Osei</span>
+            <span class="ic-date">Submitted: Mar 1, 2026</span>
+          </div>
+          <div class="ic-actions">
+            <button class="btn btn-primary"><span class="material-icons">visibility</span>View Details</button>
+          </div>
+        </div>
+        <div class="innovation-card">
+          <div class="ic-header">
+            <div class="ic-title">Smart Grid Optimizer</div>
+            <div class="chip-set" style="margin-top:0.5rem;">
+              <span class="chip">Grid Software</span>
+              <span class="chip highlighted">Natural Science</span>
+            </div>
+          </div>
+          <div class="ic-content">
+            <span class="ic-owner"><span class="material-icons">person</span>Dr. Yuki Tanaka</span>
+            <span class="ic-date">Submitted: Apr 10, 2026</span>
+          </div>
+          <div class="ic-actions">
+            <button class="btn btn-primary"><span class="material-icons">visibility</span>View Details</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <pre><code>/* Grid layout */
+.innovations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+/* Container constraint */
+.innovations-list-container {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 1rem;
+}
+/* Mobile: single column */
+@media (max-width: 768px) {
+  .innovations-grid { grid-template-columns: 1fr; }
+}</code></pre>
+  </section>
+
+  <!-- ─── Detail Pattern ─────────────────────────────────────── -->
+  <section class="section" id="detail-pattern">
+    <div class="section-header">
+      <h2>Pattern: Detail View</h2>
+      <p>Single-column constrained layout with sectioned definition lists. Source: <code>innovation-detail.component.scss</code></p>
+    </div>
+    <div class="demo white">
+      <div style="max-width:860px;">
+        <div class="card">
+          <div class="card-header">
+            <div style="font-size:1.75rem;font-weight:500;color:#1a1a1a;margin-bottom:0.5rem;">Quantum Battery Prototype</div>
+            <div class="chip-set">
+              <span class="chip primary"><span class="material-icons" style="font-size:16px;">category</span>Energy Storage Device</span>
+              <span class="chip highlighted">Engineering</span>
+              <span class="chip">Published</span>
+            </div>
+          </div>
+          <div class="card-content">
+            <section style="margin-bottom:2rem;">
+              <h3 style="font-size:1.25rem;font-weight:500;border-bottom:1px solid rgba(0,0,0,0.12);padding-bottom:0.5rem;margin-bottom:1rem;">Research Background</h3>
+              <p style="line-height:1.6;color:rgba(0,0,0,0.87);">
+                Lithium-air battery technology leverages ambient oxygen as the cathode reactant,
+                enabling theoretical energy densities of 11,400 Wh/kg — over 10× current Li-ion cells.
+              </p>
+            </section>
+            <section style="margin-bottom:2rem;">
+              <h3 style="font-size:1.25rem;font-weight:500;border-bottom:1px solid rgba(0,0,0,0.12);padding-bottom:0.5rem;margin-bottom:1rem;">Market Information</h3>
+              <dl style="display:grid;grid-template-columns:auto 1fr;gap:0.75rem 1.5rem;margin:0;">
+                <dt style="font-weight:500;color:rgba(0,0,0,0.6);">Relevant Market Size</dt>
+                <dd style="margin:0;">$12.4 billion</dd>
+                <dt style="font-weight:500;color:rgba(0,0,0,0.6);">Potential Market Size</dt>
+                <dd style="margin:0;">$40 billion by 2035</dd>
+              </dl>
+            </section>
+            <section style="margin-bottom:2rem;">
+              <h3 style="font-size:1.25rem;font-weight:500;border-bottom:1px solid rgba(0,0,0,0.12);padding-bottom:0.5rem;margin-bottom:1rem;">Target Industries</h3>
+              <div class="chip-set">
+                <span class="chip primary">Technology</span>
+                <span class="chip primary">Industrials</span>
+                <span class="chip primary">Oil &amp; Gas</span>
+              </div>
+            </section>
+          </div>
+          <div class="card-actions">
+            <button class="btn btn-outlined"><span class="material-icons">arrow_back</span>Back</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <pre><code>/* Detail container */
+.innovation-detail-container {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 1rem;
+}
+/* Section dividers */
+section h3 {
+  border-bottom: 1px solid rgba(0,0,0,0.12);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+/* Definition lists (market, metadata) */
+dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem 1.5rem;
+}
+/* Mobile DL: single column */
+@media (max-width: 768px) {
+  dl { grid-template-columns: 1fr; }
+}</code></pre>
+  </section>
+
+  <!-- ─── Breakpoints ────────────────────────────────────────── -->
+  <section class="section" id="breakpoints">
+    <div class="section-header">
+      <h2>Responsive Breakpoints</h2>
+      <p>Two breakpoints defined consistently across component SCSS files.</p>
+    </div>
+    <table class="bp-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Breakpoint</th>
+          <th>Applies to</th>
+          <th>Key changes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Tablet / Narrow</td>
+          <td><code>max-width: 768px</code></td>
+          <td>Innovations list, detail, sidebar</td>
+          <td>Grid → single column; reduced margins; DL stack to 1-col; font-size reductions</td>
+        </tr>
+        <tr>
+          <td>Mobile</td>
+          <td><code>max-width: 600px</code></td>
+          <td>Login screen</td>
+          <td>Reduced card padding (2rem / 1.5rem); border-radius 16px → 12px</td>
+        </tr>
+      </tbody>
+    </table>
+    <pre><code>/* Tablet — grid collapses to single column */
+@media (max-width: 768px) {
+  .innovations-list-container { margin: 1rem auto; padding: 0.5rem; }
+  .innovations-grid            { grid-template-columns: 1fr; }
+}
+
+/* Mobile — card layout adjustments */
+@media (max-width: 600px) {
+  .login-container { padding: 1rem; }
+  mat-card { padding: 2rem 1.5rem; border-radius: 12px; }
+}</code></pre>
+  </section>
+
+  <!-- ─── Motion ─────────────────────────────────────────────── -->
+  <section class="section" id="motion">
+    <div class="section-header">
+      <h2>Motion &amp; Transitions</h2>
+      <p>Single timing function used throughout: <code>0.2s ease</code>. Applied to hover lift, shadow expansion, and opacity fades.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Interaction States</h3>
+      <div class="demo white">
+        <div style="display:flex;flex-wrap:wrap;gap:2rem;align-items:flex-start;">
+          <div>
+            <p style="font-size:0.8125rem;color:var(--text-medium);margin-bottom:0.75rem;">Button hover lift</p>
+            <button class="btn btn-primary" style="transition:all 0.2s ease;" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(102,126,234,0.5)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+              Hover me
+            </button>
+            <pre style="margin-top:0.75rem;"><code>transform: translateY(-1px);
+box-shadow: var(--shadow-btn-hover);
+transition: all 0.2s ease;</code></pre>
+          </div>
+          <div>
+            <p style="font-size:0.8125rem;color:var(--text-medium);margin-bottom:0.75rem;">Card hover lift</p>
+            <div class="innovation-card" style="max-width:220px;transition:all 0.2s ease;cursor:pointer;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+              <div class="ic-header"><div class="ic-title" style="font-size:1rem;">Sample card</div></div>
+              <div class="ic-content"><span class="ic-date">Hover me</span></div>
+            </div>
+            <pre style="margin-top:0.75rem;"><code>transform: translateY(-2px);
+transition: box-shadow 0.2s ease,
+            transform 0.2s ease;</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Token</h3>
+      <pre><code>/* Single transition token */
+--transition-fast: 0.2s ease;
+
+/* Used on */
+button:hover   → box-shadow + transform
+card:hover     → box-shadow + transform
+input:focus    → border-color + background-color
+form-field hover → border-color</code></pre>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  /* Highlight active nav link on scroll */
+  const sections = document.querySelectorAll('section[id]');
+  const navLinks = document.querySelectorAll('.sidebar nav a');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        navLinks.forEach(a => {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id);
+        });
+      }
+    });
+  }, { rootMargin: '-20% 0px -75% 0px' });
+  sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>
