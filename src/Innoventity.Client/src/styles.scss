@@ -1,3 +1,30 @@
+@use '@angular/material' as mat;
+
+/* Angular Material M3 theme — provides color="primary" for all mat-* components */
+html {
+  @include mat.theme((
+    color: (
+      primary: mat.$violet-palette,
+      theme-type: light,
+    ),
+    typography: (
+      plain-family: 'Roboto, "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif',
+    ),
+    density: (scale: 0),
+  ));
+
+  // Override primary role tokens to align with brand color #667eea (blue-violet).
+  // mat.$violet-palette generates #7d00fa which is too saturated;
+  // #5c6bc0 is tone-40 equivalent for hue ~230° — contrast 4.93:1 on white (WCAG AA).
+  // Wrapped in & {} to avoid Sass mixed-decls deprecation warning (decls after nested rules).
+  & {
+    --mat-sys-primary: #5c6bc0;
+    --mat-sys-on-primary: #ffffff;
+    --mat-sys-primary-container: #e0e4ff;
+    --mat-sys-on-primary-container: #0d1278;
+  }
+}
+
 /* Global styles */
 html, body {
   height: 100%;

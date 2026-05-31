@@ -4,7 +4,10 @@
   align-items: center;
   min-height: 100vh;
   padding: 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  // background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  // Match token to the 8px border-radius override on .mat-mdc-text-field-wrapper
+  // so the notched outline corners align with the background fill.
+  --mdc-outlined-text-field-container-shape: 8px;
 
   @media (max-width: 600px) {
     padding: 1rem;
