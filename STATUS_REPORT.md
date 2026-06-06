@@ -19,6 +19,12 @@
 - All PR review comments addressed (19 total)
 - CI/CD green post-merge
 
+## Scope Status Clarification (I4)
+
+- **Merged Baseline**: "Phase 0 COMPLETE and MERGED TO MAIN" means baseline deliverables shipped on merge commit 5b200d5.
+- **Deferred Backlog**: Unchecked items in `specs/001-platform-core/tasks.md` for Phase 8 (Notifications), Phase 9 (Partner Selection), and Phase 1+ Registration UI are intentionally deferred post-merge work.
+- **Not Active Scope**: This report does not represent active execution of deferred items unless a dedicated feature branch/spec is explicitly opened for them.
+
 **Key Achievements**:
 
 - ✅ All backend APIs functional and thoroughly tested
@@ -170,7 +176,7 @@ All Phase 7 objectives achieved. Known limitation documented and assessed as low
 
 **Summary**: All functional objectives achieved. Backend APIs, frontend components, and test infrastructure all working correctly. The E2E test limitation is a test infrastructure timing issue that does not affect production functionality. Manual testing confirms the complete user journey works as expected.
 
-**Next Phase**: Ready to proceed with Phase 8 (Notification System) or Phase 1+ features.
+**Next Phase**: Phase 0 baseline is closed. Candidate post-merge backlog items are Phase 8 Notifications, Phase 9 Partner Selection, and Phase 1+ Registration UI; these are deferred backlog (not active scope in this report).
 
 ---
 

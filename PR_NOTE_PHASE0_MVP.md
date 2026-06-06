@@ -11,6 +11,11 @@
 ## Summary
 Phase 0 MVP scope successfully merged to Main with all PR review comments addressed.
 
+## Scope Semantics
+- **Merged Baseline**: Phase 0 MVP deliverables closed by merge commit 5b200d5.
+- **Deferred Backlog**: Post-merge items in `specs/001-platform-core/tasks.md` are intentionally deferred and not part of this closed baseline.
+- **Active Scope**: Requires explicit activation via a new feature branch/spec workflow.
+
 ## Known Test Limitations (Accepted for Phase 0 MVP)
 - Angular unit tests: 26/28 passing (2 failing)
 - Playwright E2E: 1/3 passing (2 failing, test-context timing issue)

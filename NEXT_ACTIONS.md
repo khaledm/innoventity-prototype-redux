@@ -3,13 +3,20 @@
 **Created**: April 12, 2026
 **Context**: Phase 001 (001-platform-core) successfully merged to Main
 **Merge Commit**: 5b200d5
-**Status**: All Phase 0 work complete, planning Phase 1
+**Status**: Merged Baseline complete; Deferred Backlog planning in progress
+
+**Canonical Status Labels**:
+- **Merged Baseline**: Delivered and merged to Main.
+- **Deferred Backlog**: Planned but intentionally not in current merged baseline.
+- **Active Scope**: Currently being implemented on an open feature branch with active spec/tasks execution.
 
 ---
 
 ## Executive Summary
 
-Phase 001 (Platform Core - MVP) is now **merged to Main** and fully operational. This document outlines immediate operational tasks, Phase 1 planning, and future roadmap.
+Phase 001 (Platform Core - MVP) is now **merged to Main** and fully operational. This document outlines immediate operational tasks and deferred backlog planning.
+
+Phase 001 is complete as a merged baseline; remaining unchecked items in `specs/001-platform-core/tasks.md` are deferred post-merge backlog and are not active scope unless explicitly activated in a new feature phase.
 
 **Current State**:
 - ✅ Backend APIs: Registration, Authentication, Innovation viewing (112/115 tests passing)

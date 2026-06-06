@@ -7,6 +7,11 @@
 **Merge Commit**: 5b200d5
 **Purpose**: Map requirements → tasks → implementation artifacts → test evidence
 
+**Scope Semantics**:
+- **Merged Baseline**: Phase 0 deliverables shipped on merge commit 5b200d5.
+- **Deferred Backlog**: Remaining unchecked items in `specs/001-platform-core/tasks.md` are planned post-merge work.
+- **Active Scope**: Starts only when a dedicated feature branch/spec is explicitly opened.
+
 ---
 
 ## Requirements Coverage
@@ -193,11 +198,11 @@
 
 ## Status Distinction (per C2 finding resolution)
 
-- **"Backend Complete"**: All API endpoints, tests, infrastructure, CI/CD validated
-- **"Full Phase 0 Complete"**: Backend + Frontend + All acceptance criteria + Quickstart validation
-- **"Phase 0 MVP Accepted"**: Production-ready backend + functional frontend + documented limitations + Phase 1 roadmap
+- **"Merged Baseline"**: Approved Phase 0 scope delivered and merged to Main.
+- **"Deferred Backlog"**: Planned post-merge items not included in the merged baseline.
+- **"Active Scope"**: Work currently being implemented on an open feature branch/spec.
 
-**Current Status**: ✅ **Phase 0 MVP Accepted** (2026-04-06)
+**Current Status**: ✅ **Merged Baseline Closed** (merge commit: 5b200d5)
 
 ---
 

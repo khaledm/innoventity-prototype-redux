@@ -163,9 +163,19 @@ The following tracking documents have been updated to reflect Phase 001 merge co
 - Frontend CI/CD fully automated (no manual `swa deploy`)
 - Constitutional score: 99/100
 
+### Scope Semantics Note (to prevent I4 ambiguity)
+
+"MERGED" indicates completion of the approved baseline for Phase 001 at merge time.
+Any unchecked tasks remaining in `specs/001-platform-core/tasks.md` are tracked as deferred/post-merge backlog unless explicitly marked as Active Scope in a new phase branch/spec.
+
 ---
 
 ## What's Next? 🚀
+
+**Status Labels (Canonical)**:
+- **Merged Baseline**: Delivered and merged to Main.
+- **Deferred Backlog**: Planned but intentionally not in current merged baseline.
+- **Active Scope**: Currently being implemented on an open feature branch with active spec/tasks execution.
 
 ### This Week (Immediate)
 ```powershell

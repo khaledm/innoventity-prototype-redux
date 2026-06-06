@@ -7,6 +7,11 @@
 **Gap Analysis Reference**: [innovation-bid-domain-gap-analysis.md](../.specify/analysis/innovation-bid-domain-gap-analysis.md)
 **Phase 001 Status**: ✅ **MERGED TO MAIN** (Merge commit: 5b200d5, Date: April 12, 2026)
 
+**Scope Semantics**:
+- **Merged Baseline**: Phase 001 deliverables shipped on merge commit 5b200d5.
+- **Deferred Backlog**: Remaining unchecked items in `specs/001-platform-core/tasks.md` are planned post-merge work.
+- **Active Scope**: Starts only when a dedicated feature branch/spec is explicitly opened.
+
 ---
 
 ## Document Purpose
@@ -51,6 +56,8 @@ This roadmap ensures **all recommendations from legacy domain analysis are captu
 - **Accepted MVP limitation**: Angular client CI/CD to Azure Static Web Apps is deferred to Phase 1; manual `swa deploy` remains acceptable for demo/pilot scope
 
 Source of truth: `specs/001-platform-core/tasks.md` and `specs/001-platform-core/plan.md` ("Phase 0 Scope: backend + minimal frontend"; "MVP Goal: Register -> Activate -> Login -> View Innovation via Angular client").
+
+Phase 001 is complete as a merged baseline; remaining unchecked items in `specs/001-platform-core/tasks.md` are deferred post-merge backlog and are not active scope unless explicitly activated in a new feature phase.
 
 ---
 

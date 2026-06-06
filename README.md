@@ -4,6 +4,11 @@ A .NET 8 Minimal API + Angular 19 SPA for the Innoventity platform — a B2B inn
 
 **Phase 0 MVP Status**: ✅ **MERGED TO MAIN** (2026-04-12) — Merge commit: 5b200d5
 
+**Scope Semantics**:
+- **Merged Baseline**: Phase 0 deliverables shipped on merge commit 5b200d5.
+- **Deferred Backlog**: Remaining unchecked items in `specs/001-platform-core/tasks.md` are planned post-merge work.
+- **Active Scope**: Starts only when a dedicated feature branch/spec is explicitly opened.
+
 **Next Steps**: See [NEXT_ACTIONS.md](NEXT_ACTIONS.md) for Phase 1 planning
 
 ---
@@ -103,7 +108,7 @@ Current status: **26/28 unit tests passing** (41.8% coverage), **1/3 E2E passing
 **Merge Commit**: 5b200d5
 **Status**: ✅ PRODUCTION-READY — All review comments addressed, CI green
 
-**Next Phase**: See [NEXT_ACTIONS.md](NEXT_ACTIONS.md) for Phase 1 roadmap
+**Next Phase**: See [NEXT_ACTIONS.md](NEXT_ACTIONS.md) for deferred backlog planning and activation sequencing.
 
 ### What's Included
 
