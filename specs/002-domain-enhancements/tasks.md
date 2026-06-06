@@ -287,40 +287,40 @@ Recommended execution order:
 ### After Phase 2 (Entity Equality)
 
 **Verify**:
-- [ ] EntityBase tests: 7/7 passing
-- [ ] Actor/Innovation/Industry inherit from correct base
-- [ ] Entities can be added to HashSet without duplicates
-- [ ] IsTransient() returns true for new entities
+- [x] EntityBase tests: 7/7 passing
+- [x] Actor/Innovation/Industry inherit from correct base
+- [x] Entities can be added to HashSet without duplicates
+- [x] IsTransient() returns true for new entities
 
 **Command**: `dotnet test --filter "FullyQualifiedName~EntityBase"`
 
 ### After Phase 3 (Actor Refactoring)
 
 **Verify**:
-- [ ] Database columns: FirstName, LastName, PasswordSalt, ContactAddress_Address1, etc.
-- [ ] Migration executed successfully (FullName split, PasswordSalt backfilled)
-- [ ] Seed data: 3 actors with FirstName/LastName/PasswordSalt
-- [ ] Domain tests: AddressTests (3/3), ActorTests (6/6)
+- [x] Database columns: FirstName, LastName, PasswordSalt, ContactAddress_Address1, etc.
+- [x] Migration executed successfully (FullName split, PasswordSalt backfilled)
+- [x] Seed data: 3 actors with FirstName/LastName/PasswordSalt
+- [x] Domain tests: AddressTests (3/3), ActorTests (6/6)
 
 **Command**: `dotnet test --filter "Category=Unit&FullyQualifiedName~Entities"`
 
 ### After Phase 4 (API Updates)
 
 **Verify**:
-- [ ] Registration: Accepts firstName/lastName/contactAddress (structured)
-- [ ] Login: Returns firstName/lastName/displayName
-- [ ] GetInnovation: Owner includes firstName/lastName/displayName
-- [ ] Integration tests: 25/25 passing
+- [x] Registration: Accepts firstName/lastName/contactAddress (structured)
+- [x] Login: Returns firstName/lastName/displayName
+- [x] GetInnovation: Owner includes firstName/lastName/displayName
+- [x] Integration tests: 25/25 passing
 
 **Command**: `dotnet test --filter "Category=Integration"`
 
 ### Final Validation (Phase 5)
 
 **Verify**:
-- [ ] Full test suite: 42+ tests passing
-- [ ] Build: Zero warnings, zero errors
-- [ ] Migration: Down() rollback works (data preserved)
-- [ ] Checklists: migration.md (SEC001, DATA001 resolved), planning.md (CHK021, CHK022 resolved)
+- [x] Full test suite: 42+ tests passing
+- [x] Build: Zero warnings, zero errors
+- [x] Migration: Down() rollback works (data preserved)
+- [x] Checklists: migration.md (SEC001, DATA001 resolved), planning.md (CHK021, CHK022 resolved)
 
 **Command**: `dotnet test --verbosity normal`
 
