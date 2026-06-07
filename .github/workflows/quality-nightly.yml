@@ -36,6 +36,32 @@ jobs:
           name: mutation-results
           path: src/Innoventity.API/StrykerOutput/**
 
+      - name: Post mutation score summary
+        if: always()
+        shell: pwsh
+        run: |
+          $report = Get-Content "src/Innoventity.API/StrykerOutput/reports/mutation-report.json" | ConvertFrom-Json
+          $mutants = $report.files.PSObject.Properties.Value.mutants
+          $killed   = ($mutants | Where-Object { $_.status -in @('Killed','Timeout') }).Count
+          $survived = ($mutants | Where-Object { $_.status -eq 'Survived' }).Count
+          $noCov    = ($mutants | Where-Object { $_.status -eq 'NoCoverage' }).Count
+          $total    = $killed + $survived
+          $score    = if ($total -gt 0) { [math]::Round($killed / $total * 100, 1) } else { 0 }
+          $icon     = if ($score -ge 80) { '✅' } elseif ($score -ge 70) { '⚠️' } else { '❌' }
+          $summary  = @"
+          ## 🧬 Mutation Testing Results
+
+          | Metric | Value |
+          |--------|-------|
+          | **Mutation Score** | **$score% $icon** |
+          | Killed / Total | $killed / $total |
+          | Survived | $survived |
+          | No Coverage | $noCov |
+          | Thresholds | High: 80% · Low: 70% · Break: 60% |
+
+          "@
+          $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
   e2e-tests:
     name: E2E Journeys
     runs-on: ubuntu-latest
