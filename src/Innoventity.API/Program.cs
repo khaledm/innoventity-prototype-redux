@@ -178,6 +178,7 @@ app.MapGetIndustries(); // T009: GET /industries - Industry master list (public,
 app.MapSubmitBid(); // T010: POST /innovations/{innovationId}/bids - Submit partnership proposal
 app.MapGetBids(); // T011: GET /innovations/{innovationId}/bids - List bids for innovation (owner only)
 app.MapUpdateBid(); // T012: PUT /bids/{bidId} - Update unaccepted bid (author only)
+app.MapSelectPartners(); // T094: POST /innovations/{innovationId}/select-partners - Complete partner selection
 app.MapGet("/", () => "Hello World!");
 
 app.Run();

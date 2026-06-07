@@ -195,6 +195,12 @@ public class AppDbContext : DbContext
             entity.Property(i => i.CreatedAt)
                   .HasDefaultValueSql("GETUTCDATE()");
 
+            entity.Property(i => i.PartnerSelectionCompletedOn)
+                  .IsRequired(false);
+
+            entity.Property(i => i.SelectedByActorId)
+                  .IsRequired(false);
+
             // Configure relationship with Actor (Owner)
             entity.HasOne(i => i.Owner)
                   .WithMany()
@@ -273,9 +279,9 @@ public class AppDbContext : DbContext
             entity.Property(b => b.SubmittedAt)
                   .IsRequired();
 
-            // Configure relationship with Innovation
+            // Configure relationship with Innovation (inverse: Innovation.Bids)
             entity.HasOne(b => b.Innovation)
-                  .WithMany()
+                  .WithMany(i => i.Bids)
                   .HasForeignKey(b => b.InnovationId)
                   .OnDelete(DeleteBehavior.Cascade);
 

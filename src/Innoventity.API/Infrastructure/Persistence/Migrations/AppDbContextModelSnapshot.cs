@@ -265,6 +265,9 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTimeOffset?>("PartnerSelectionCompletedOn")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<string>("PartnersNeeded")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -305,6 +308,9 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                     b.Property<string>("ResearchCategory")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("SelectedByActorId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -422,7 +428,7 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.HasOne("Innoventity.API.Domain.Entities.Innovation", "Innovation")
-                        .WithMany()
+                        .WithMany("Bids")
                         .HasForeignKey("InnovationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -441,6 +447,11 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("Innoventity.API.Domain.Entities.Innovation", b =>
+                {
+                    b.Navigation("Bids");
                 });
 #pragma warning restore 612, 618
         }

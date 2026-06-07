@@ -2,7 +2,7 @@
 
 ## Vision to Implementation Tracking
 
-**Last Updated**: May 30, 2026
+**Last Updated**: June 7, 2026
 **Constitutional Alignment**: See [constitution.md](../.specify/memory/constitution.md)
 **Gap Analysis Reference**: [innovation-bid-domain-gap-analysis.md](../.specify/analysis/innovation-bid-domain-gap-analysis.md)
 **Phase 001 Status**: ✅ **MERGED TO MAIN** (Merge commit: 5b200d5, Date: April 12, 2026)
@@ -11,6 +11,11 @@
 - **Merged Baseline**: Phase 001 deliverables shipped on merge commit 5b200d5.
 - **Deferred Backlog**: Remaining unchecked items in `specs/001-platform-core/tasks.md` are planned post-merge work.
 - **Active Scope**: Starts only when a dedicated feature branch/spec is explicitly opened.
+
+**Status Authority Contract**:
+1. Feature `tasks.md` is authoritative for execution state of that feature.
+2. This `ROADMAP.md` is authoritative for phase sequencing and cross-feature intent.
+3. Status snapshots (`STATUS_REPORT.md`, `NEXT_ACTIONS.md`) are advisory context, not execution source-of-truth.
 
 ---
 
@@ -34,13 +39,14 @@ This roadmap ensures **all recommendations from legacy domain analysis are captu
 ## Phase Completion Status
 
 | Phase | Status | Branch | Spec | Tests | Gap Analysis Coverage |
-| ------- | --------  |-------- | ------ | ------- | ---------------------- |
+| ------- | --------  | -------- | ------ | ------- | ---------------------- |
 | **Phase 0 Backend (MVP core)** | ✅ **MERGED** | `001-platform-core` → `Main` | [spec.md](001-platform-core/spec.md) | 112/115 ✅ | Registration/auth + view innovation backend slice complete |
 | **Phase 0 Full Scope (Backend + Infra + Frontend + CI/CD)** | ✅ **MERGED** | `001-platform-core` → `Main` | [spec.md](001-platform-core/spec.md) | MVP accepted with documented frontend limitations | Full MVP includes Angular client + infra automation + CI/CD validation + browser E2E |
 | **Phase 0.5 (Foundation)** | ✅ **MERGED** | `002-domain-enhancements` → `001-platform-core` → `Main` | [spec.md](002-domain-enhancements/spec.md) | 31/31 ✅ | EntityBase, Actor name/address, and contract alignment complete |
 | **Phase 0.6 (API Completion)** | ✅ **MERGED** | `003-api-completion` → `001-platform-core` → `Main` | [spec.md](003-api-completion/spec.md) | 17/17 tasks ✅ | Innovation CRUD + bid management + journey testing + traceability complete |
 | **Phase 1a (Frontend CI/CD)** | ✅ **MERGED** | `002-frontend-cicd` → `Main` | [spec.md](002-frontend-cicd/spec.md) | 84/84 tasks ✅ (T082–T085 deferred to `004-pattern-d-nightly-e2e`) | Angular 19 CI/CD → Azure Static Web Apps; approval gate; Pester validation; Pattern D nightly E2E scaffold |
-| **Phase 1b (Pattern D Nightly E2E)** | 📋 PLANNED | `004-pattern-d-nightly-e2e` | TBD | T082–T085 (secrets + prod account + first run + failure notify) | Operational close of nightly Playwright journey tests against production |
+| **Phase 1b (Pattern D Nightly E2E)** | ✅ **MERGED** | `004-pattern-d-nightly-e2e` → `Main` | TBD | T082–T085 (secrets + prod account + first run + failure notify) | Operational close of nightly Playwright journey tests against production |
+| **Phase 1c (Partner Selection Foundation)** | 🏃 **In Progress** (branch complete, PR pending) | `004-partner-selection` | [spec.md](004-partner-selection/spec.md) | 14/14 ✅ | `POST /innovations/{id}/select-partners` complete; 14 integration tests covering all 8 scenarios + full error contract; NFR-003 audit trail (`SelectedByActorId` + `PartnerSelectionCompletedOn`); 39 tasks done (T090–T128, T122 deferred to staging) |
 | **Phase 1 (Domain Richness)** | 📋 PLANNED | TBD | [See below](#phase-1-domain-richness--rich-behavior) | TBD | ProductIdea composition, FormalResponse polymorphism, Selection workflow |
 | **Phase 2 (Engagement)** | 📋 PLANNED | TBD | [See below](#phase-2-engagement--communication) | TBD | Messaging, interest tracking, industry hierarchy |
 | **Phase 3 (Virtual Incubator)** | 💡 VISION | TBD | Not yet specified | TBD | BusinessPlan aggregate, collaboration workspace |
@@ -110,10 +116,10 @@ Focus on **bid submission and viewing** (NOT partner selection, NOT financial pr
 
 ---
 
-## Phase 1b (Next) - Pattern D Nightly E2E Operational Close
+## Phase 1b (Complete) - Pattern D Nightly E2E Operational Close
 
 **Branch**: `004-pattern-d-nightly-e2e`
-**Status**: 📋 PLANNED
+**Status**: ✅ **MERGED**
 **Scope**: T082–T085 only — provision secrets + prod test account + first run + failure notify
 
 ---
@@ -252,7 +258,7 @@ ManufacturingResponse for Innovation X:
 
 #### 3. Partner Selection Workflow
 
-**Effort**: 2 days | **Priority**: HIGH | **Spec**: ⚠️ NOT YET DOCUMENTED
+**Effort**: 2 days | **Priority**: HIGH | **Spec**: ⚠️ SPEC-ONLY (needs plan + tasks activation)
 
 **Gap Analysis Reference**: [§2.6 Partnership Selection Workflow](../.specify/analysis/innovation-bid-domain-gap-analysis.md#26-partnership-selection-workflow-comparison)
 
@@ -320,11 +326,13 @@ Rule 3: SelectedBidsMustBeValid
 - US SelectPartner-3: System enforces one partner per type rule
 - US SelectPartner-4: Cannot change selection after commitment (irreversibility)
 
-**⚠️ ACTION REQUIRED**: Create specification document for this feature
+**Current Status**: ✅ **IMPLEMENTED** (branch `004-partner-selection`, PR pending merge)
 
-- Suggested location: `specs/004-partner-selection/spec.md`
-- Include: User stories, business rules, validation logic, state transitions
-- Reference: Legacy `SelectCollaborationPartnerCommandHandler.cs`
+- Spec, plan, and tasks fully codified in `specs/004-partner-selection/`
+- `POST /innovations/{id}/select-partners` endpoint complete with all 12 validation steps and atomic mutation
+- 14 integration tests — all 8 spec scenarios + full error contract (401/403/404/409/422)
+- NFR-003 audit trail complete: `SelectedByActorId` (selector), `PartnerSelectionCompletedOn` (timestamp), immutable Accepted bid states (selected bid IDs)
+- Stryker mutation testing configured for `SelectPartners.cs` with constitution-compliant thresholds
 
 ---
 
@@ -334,7 +342,7 @@ Rule 3: SelectedBidsMustBeValid
 |-------------|--------------|---------------|-------------------|--------|
 | **R3.5: ProductIdea Composition** | ✅ [002/spec.md §R3.5](002-domain-enhancements/spec.md#r35-productidea-composition-pattern) | ✅ [002/plan.md](002-domain-enhancements/plan.md) | [§1.1](../.specify/analysis/innovation-bid-domain-gap-analysis.md#11-legacy-productidea---rich-aggregate-structure) | READY |
 | **R3.6: FormalResponse Hierarchy** | ✅ [002/spec.md §R3.6](002-domain-enhancements/spec.md#r36-formalresponse-strategy-pattern) | ✅ [002/plan.md](002-domain-enhancements/plan.md) | [§2.1](../.specify/analysis/innovation-bid-domain-gap-analysis.md#21-legacy-formalresponse---polymorphic-hierarchy) | READY |
-| **Partner Selection Workflow** | ❌ NOT DOCUMENTED | ❌ NOT DOCUMENTED | [§2.6](../.specify/analysis/innovation-bid-domain-gap-analysis.md#26-partnership-selection-workflow-comparison) | ⚠️ NEEDS SPEC |
+| **Partner Selection Workflow** | ✅ [004/spec.md](004-partner-selection/spec.md) | ✅ [004/plan.md](004-partner-selection/plan.md) | [§2.6](../.specify/analysis/innovation-bid-domain-gap-analysis.md#26-partnership-selection-workflow-comparison) | ✅ COMPLETE (branch PR pending) |
 | **Rich Domain Behavior Methods** | ✅ [002/spec.md §R3.5](002-domain-enhancements/spec.md#r35-productidea-composition-pattern) | ✅ Covered in composition | [§1.2](../.specify/analysis/innovation-bid-domain-gap-analysis.md#12-legacy-productidea---rich-domain-behavior) | READY |
 
 ---
@@ -542,7 +550,7 @@ Endpoints:
 ### Phase 2 Specifications Summary
 
 | Feature | Spec Needed | Plan Needed | Gap Analysis Link | Priority | Effort |
-|---------|-------------|-------------|-------------------|----------|--------|
+| --------- | ------------- | ------------- | ------------------- | ---------- | -------- |
 | **Industry Hierarchy** | ⚠️ YES | ⚠️ YES | [§1.4.3](../.specify/analysis/innovation-bid-domain-gap-analysis.md#missing-concept-3-industry-hierarchy-subsector-targeting) | MEDIUM | 3-4 days |
 | **IdeaCommunication** | ⚠️ YES | ⚠️ YES | [§3.1](../.specify/analysis/innovation-bid-domain-gap-analysis.md#31-ideacommunication---actor-messaging-system) | MEDIUM | 3 days |
 | **RegisteredInterest** | ⚠️ YES | ⚠️ YES | [§3.2](../.specify/analysis/innovation-bid-domain-gap-analysis.md#32-registeredinterest---engagement-tracking) | MEDIUM | 2 days |
@@ -761,11 +769,11 @@ All Phase 1-2 items mapped back to gap analysis sections:
 | [§1.4.1 CollaborationRequirement](../.specify/analysis/innovation-bid-domain-gap-analysis.md#missing-concept-1-collaborationrequirement) | Declare Partner Needs | [002/spec.md §R3.5](002-domain-enhancements/spec.md#r35-productidea-composition-pattern) | Phase 1 | ✅ SPEC READY |
 | [§1.4.2 Submission Workflow](../.specify/analysis/innovation-bid-domain-gap-analysis.md#missing-concept-2-submission-workflow-state-machine) | IsReadyForSubmission() | [002/spec.md §R3.5](002-domain-enhancements/spec.md#r35-productidea-composition-pattern) | Phase 1 | ✅ SPEC READY |
 | [§1.4.3 Industry Hierarchy](../.specify/analysis/innovation-bid-domain-gap-analysis.md#missing-concept-3-industry-hierarchy-subsector-targeting) | 4-Level Taxonomy | ⚠️ NEEDS SPEC | Phase 2 | ❌ NOT SPEC'D |
-| [§1.4.4 Partner Selection State](../.specify/analysis/innovation-bid-domain-gap-analysis.md#missing-concept-4-partner-selection-state-machine) | Selection Workflow | ⚠️ NEEDS SPEC | Phase 1 | ❌ NOT SPEC'D |
+| [§1.4.4 Partner Selection State](../.specify/analysis/innovation-bid-domain-gap-analysis.md#missing-concept-4-partner-selection-state-machine) | Selection Workflow | [004/spec.md](004-partner-selection/spec.md) | Phase 1c | ✅ COMPLETE |
 | [§2.1 FormalResponse Hierarchy](../.specify/analysis/innovation-bid-domain-gap-analysis.md#21-legacy-formalresponse---polymorphic-hierarchy) | Polymorphic Bids | [002/spec.md §R3.6](002-domain-enhancements/spec.md#r36-formalresponse-strategy-pattern) | Phase 1 | ✅ SPEC READY |
 | [§2.2 Business Valuation](../.specify/analysis/innovation-bid-domain-gap-analysis.md#22-legacy-business-valuation-integration) | IProjectValuationService | [002/spec.md §US8](002-domain-enhancements/spec.md#user-story-8---project-valuation-domain-service-priority-p3---phase-2) | Phase 3 | ✅ SPEC READY |
 | [§2.4 Financial Projections](../.specify/analysis/innovation-bid-domain-gap-analysis.md#24-critical-gap---financial-projection-structure-loss) | Yearly Projection Dictionaries | [002/spec.md §R3.6](002-domain-enhancements/spec.md#r36-formalresponse-strategy-pattern) | Phase 1 | ✅ SPEC READY |
-| [§2.6 Selection Workflow](../.specify/analysis/innovation-bid-domain-gap-analysis.md#26-partnership-selection-workflow-comparison) | SelectPartners Command | ⚠️ NEEDS SPEC | Phase 1 | ❌ NOT SPEC'D |
+| [§2.6 Selection Workflow](../.specify/analysis/innovation-bid-domain-gap-analysis.md#26-partnership-selection-workflow-comparison) | SelectPartners Command | [004/spec.md](004-partner-selection/spec.md) | Phase 1c | ✅ COMPLETE |
 | [§3.1 IdeaCommunication](../.specify/analysis/innovation-bid-domain-gap-analysis.md#31-ideacommunication---actor-messaging-system) | Private Messaging | ⚠️ NEEDS SPEC | Phase 2 | ❌ NOT SPEC'D |
 | [§3.2 RegisteredInterest](../.specify/analysis/innovation-bid-domain-gap-analysis.md#32-registeredinterest---engagement-tracking) | Bookmarking System | ⚠️ NEEDS SPEC | Phase 2 | ❌ NOT SPEC'D |
 | [§3.3 Comment System](../.specify/analysis/innovation-bid-domain-gap-analysis.md#33-comment-system---public-discussion) | Public Discussion | ⚠️ NEEDS SPEC | Phase 2 | ❌ NOT SPEC'D |
@@ -774,63 +782,20 @@ All Phase 1-2 items mapped back to gap analysis sections:
 
 ---
 
-## Immediate Action Items
+## Immediate Action Items (Current)
 
-### Before Continuing Phase 0.6 Implementation
+### Phase 1c — COMPLETE (pending merge)
 
-✅ **1. Acknowledge Intentional Simplification**
+Branch `004-partner-selection` is complete and ready for PR to `Main`. All 39 tasks done (T122 deferred to first staging deploy). Next step: open PR from `004-partner-selection` → `Main`.
 
-- Current Bid entity is **intentionally simplified** for Phase 0.6 MVP
-- Financial projections **deferred by design** (not oversight)
-- This roadmap ensures refactoring happens in Phase 1
+### Phase 2 preparation (still valid)
 
-✅ **2. Update Phase 0.6 Spec**
-Add explicit deferral notices:
+Create missing specs/plans for:
 
-```markdown
-## Phase 0.6 Scope Boundaries
-
-**IN SCOPE**: Bid submission and viewing (generic proposal text)
-**OUT OF SCOPE (Phase 1)**:
-- Financial projection structures (YearlyManufacturingCosts, etc.)
-- Partner selection workflow
-- Innovation composition (IdeaSummary, Product, Market)
-- Rich domain behavior (IsReadyForSubmission, etc.)
-
-See [ROADMAP.md](../ROADMAP.md#phase-1-domain-richness--rich-behavior) for Phase 1 refactoring plan.
-```
-
-### Before Starting Phase 1
-
-❌ **3. Create Missing Specifications** (CRITICAL)
-
-Create these spec documents:
-
-```
-specs/004-partner-selection/
-  ├── spec.md             ← Partner selection workflow (US, business rules)
-  └── plan.md             ← Technical approach (endpoints, validation)
-
-specs/005-industry-taxonomy/
-  ├── spec.md             ← 4-level hierarchy (user needs, discovery scenarios)
-  ├── plan.md             ← Implementation (seed data, migration)
-  └── data/
-      └── industry-seed.json  ← Standard classification data
-
-specs/006-private-messaging/
-  ├── spec.md             ← IdeaCommunication (user stories, workflows)
-  └── plan.md             ← Technical approach (notifications, anti-spam)
-
-specs/007-interest-tracking/
-  ├── spec.md             ← RegisteredInterest (bookmarking, analytics)
-  └── plan.md             ← Implementation (email digests, dashboard)
-
-specs/008-public-comments/
-  ├── spec.md             ← Comment system (moderation, threading)
-  └── plan.md             ← Technical approach (abuse prevention)
-```
-
-**Estimated Effort**: 1-2 days to write all missing specs
+- `specs/005-industry-taxonomy/`
+- `specs/006-private-messaging/`
+- `specs/007-interest-tracking/`
+- `specs/008-public-comments/`
 
 ---
 
@@ -864,8 +829,14 @@ specs/008-public-comments/
 
 - ✅ ProductIdea composition refactored
 - ✅ FormalResponse hierarchy implemented
-- ✅ Partner selection workflow complete
 - ✅ Constitutional score: 99/100
+
+**Phase 1c Success**:
+
+- ✅ `POST /innovations/{id}/select-partners` implemented with full validation pipeline and atomic mutation
+- ✅ 14 integration tests covering all 8 spec scenarios + full error contract (401/403/404/409/422)
+- ✅ NFR-003 audit trail complete: `SelectedByActorId` + `PartnerSelectionCompletedOn` + immutable Accepted bid states
+- ✅ Stryker mutation testing configured with constitution-compliant thresholds (break: 60, low: 70, high: 80)
 
 **Phase 2 Success**:
 
@@ -892,5 +863,5 @@ specs/008-public-comments/
 
 ---
 
-**Last Updated**: April 7, 2026
-**Next Review**: Before Phase 1 kickoff (Est. March 2026)
+**Last Updated**: June 7, 2026
+**Next Review**: Before Phase 1 (Domain Richness) kickoff — FormalResponse Polymorphic Hierarchy (CRITICAL) or ProductIdea Composition Pattern (HIGH)
