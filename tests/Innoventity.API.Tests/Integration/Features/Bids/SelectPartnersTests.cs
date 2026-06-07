@@ -57,6 +57,12 @@ public class SelectPartnersTests : IDisposable
     // Bid on _insufficientId (only manufacturing)
     private readonly Guid _insuffMfgBidId = new Guid("cc000031-0000-0000-0000-000000000000");
 
+    // Bids on _completedId (accepted + rejected — for AC3 bid-state preservation)
+    private readonly Guid _cMfgBidId = new Guid("cc000041-0000-0000-0000-000000000000");
+    private readonly Guid _cSalesBidId = new Guid("cc000042-0000-0000-0000-000000000000");
+    private readonly Guid _cRdBidId = new Guid("cc000043-0000-0000-0000-000000000000");
+    private readonly Guid _cRejectedBidId = new Guid("cc000044-0000-0000-0000-000000000000");
+
     public SelectPartnersTests()
     {
         _factory = CreateFactory();
@@ -313,6 +319,41 @@ public class SelectPartnersTests : IDisposable
             SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3)
         });
 
+        // --- Bids on _completedId (accepted + rejected, for AC3 bid-state preservation) ---
+        db.Bids.AddRange(
+            new Bid(_cMfgBidId)
+            {
+                InnovationId = _completedId, ActorId = _mfgActorId,
+                Location = "Munich, Germany", ParticipationType = "Manufacturing Partner",
+                ParticipationProposal = MakeProposal(), Status = BidStatus.Accepted,
+                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-5),
+                AcceptedAt = DateTimeOffset.UtcNow.AddDays(-1)
+            },
+            new Bid(_cSalesBidId)
+            {
+                InnovationId = _completedId, ActorId = _salesActorId,
+                Location = "London, UK", ParticipationType = "Sales Partner",
+                ParticipationProposal = MakeProposal(), Status = BidStatus.Accepted,
+                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-5),
+                AcceptedAt = DateTimeOffset.UtcNow.AddDays(-1)
+            },
+            new Bid(_cRdBidId)
+            {
+                InnovationId = _completedId, ActorId = _rdActorId,
+                Location = "Boston, MA, USA", ParticipationType = "R&D Partner",
+                ParticipationProposal = MakeProposal(), Status = BidStatus.Accepted,
+                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-5),
+                AcceptedAt = DateTimeOffset.UtcNow.AddDays(-1)
+            },
+            new Bid(_cRejectedBidId)
+            {
+                InnovationId = _completedId, ActorId = _mfg2ActorId,
+                Location = "Stuttgart, Germany", ParticipationType = "Manufacturing Partner",
+                ParticipationProposal = MakeProposal(), Status = BidStatus.Rejected,
+                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-5)
+            }
+        );
+
         db.SaveChanges();
     }
 
@@ -515,6 +556,20 @@ public class SelectPartnersTests : IDisposable
         Assert.NotNull(innovation);
         Assert.Equal(InnovationStatus.PartnersSelected, innovation.Status);
         Assert.NotNull(innovation.PartnerSelectionCompletedOn);
+
+        // Verify: existing accepted/rejected bid outcomes are preserved (US SelectPartner-4 AC3)
+        var cMfgBid = await db.Bids.FindAsync(_cMfgBidId);
+        Assert.Equal(BidStatus.Accepted, cMfgBid!.Status);
+        Assert.NotNull(cMfgBid.AcceptedAt);
+
+        var cSalesBid = await db.Bids.FindAsync(_cSalesBidId);
+        Assert.Equal(BidStatus.Accepted, cSalesBid!.Status);
+
+        var cRdBid = await db.Bids.FindAsync(_cRdBidId);
+        Assert.Equal(BidStatus.Accepted, cRdBid!.Status);
+
+        var cRejectedBid = await db.Bids.FindAsync(_cRejectedBidId);
+        Assert.Equal(BidStatus.Rejected, cRejectedBid!.Status);
     }
 
     // ==========================================
