@@ -1,5 +1,8 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using Innoventity.API.Domain.Entities;
 using Innoventity.API.Features.Bids;
@@ -9,6 +12,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 using Xunit;
 
 namespace Innoventity.API.Tests.Integration.Features.Bids;
@@ -388,6 +392,21 @@ public class SelectPartnersTests : IDisposable
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         });
+    }
+
+    private static string CreateRawJwtToken(string sub)
+    {
+        const string signingKey = "DEV-ONLY-KEY-REPLACE-IN-PRODUCTION-VIA-CONFIGURATION-MINIMUM-32-CHARACTERS";
+        var credentials = new SigningCredentials(
+            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
+            SecurityAlgorithms.HmacSha256);
+        var token = new JwtSecurityToken(
+            issuer: "Innoventity",
+            audience: "Innoventity.API",
+            claims: [new Claim(JwtRegisteredClaimNames.Sub, sub)],
+            expires: DateTime.UtcNow.AddHours(1),
+            signingCredentials: credentials);
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
     // ==========================================
@@ -812,7 +831,7 @@ public class SelectPartnersTests : IDisposable
     }
 
     /// <summary>
-    /// Non-existent innovationId returns 404 Not Found (spec error table, Step 3).
+    /// Non-existent innovationId returns 404 Not Found with RFC7807 Problem Details (spec error table, Step 3).
     /// </summary>
     [Fact]
     public async Task SelectPartners_InnovationNotFound_Returns404()
@@ -828,6 +847,56 @@ public class SelectPartnersTests : IDisposable
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Not Found", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(nonExistentId.ToString(), body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// JWT with a valid signature but a non-Guid 'sub' claim returns 401 Problem Details (Step 1–2 guard).
+    /// Covers the Guid.TryParse failure branch inside the handler.
+    /// </summary>
+    [Fact]
+    public async Task SelectPartners_InvalidSubClaim_Returns401ProblemDetails()
+    {
+        // Arrange — token is cryptographically valid but sub is not a Guid
+        var token = CreateRawJwtToken("not-a-guid");
+        var content = MakeRequest(_t1MfgBidId, _t1SalesBidId, _t1RdBidId);
+
+        // Act
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_target1Id}/select-partners", content, token);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Unauthorized", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("authenticated identity", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// JWT with a valid Guid 'sub' that does not match any Actor row returns 401 Problem Details (Step 2 guard).
+    /// Covers the db.Actors.FindAsync == null branch inside the handler.
+    /// </summary>
+    [Fact]
+    public async Task SelectPartners_UnknownActor_Returns401ProblemDetails()
+    {
+        // Arrange — token sub is a well-formed Guid but no Actor with that ID exists in the DB
+        var token = CreateRawJwtToken(new Guid("ff000001-0000-0000-0000-000000000000").ToString());
+        var content = MakeRequest(_t1MfgBidId, _t1SalesBidId, _t1RdBidId);
+
+        // Act
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_target1Id}/select-partners", content, token);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Unauthorized", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("known actor", body, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

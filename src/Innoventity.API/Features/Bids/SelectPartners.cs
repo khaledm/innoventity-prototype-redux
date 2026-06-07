@@ -113,7 +113,7 @@ public static class SelectPartners
 
         // Step 7: Readiness check — at least one Pending bid per required type before validation (FR-005, FR-009, FR-015)
         // This is a precondition on the innovation, checked before payload validation.
-        var allBids = innovation.Bids ?? [];
+        var allBids = innovation.Bids;
         var pendingBids = allBids.Where(b => b.Status == BidStatus.Pending).ToList();
         var missingReadiness = RequiredActorTypes
             .Where(t => !pendingBids.Any(b => b.Actor?.ActorType == t))
