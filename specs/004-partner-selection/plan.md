@@ -151,7 +151,8 @@ All design questions were resolved from the legacy system and spec clarification
 
 | Field | Type | Constraint | Purpose |
 |-------|------|------------|---------|
-| `PartnerSelectionCompletedOn` | `DateTimeOffset?` | Nullable | Sentinel for irreversibility; non-null = committed; provides timestamp for audit (NFR-003 partial) |
+| `PartnerSelectionCompletedOn` | `DateTimeOffset?` | Nullable | Sentinel for irreversibility; non-null = committed; provides timestamp for audit (NFR-003) |
+| `SelectedByActorId` | `Guid?` | Nullable | Actor who completed partner selection; explicit selector identity for audit (NFR-003) |
 | `Bids` | `ICollection<Bid>?` | Inverse navigation | Eager-loadable via `Include(i => i.Bids).ThenInclude(b => b.Actor)` for validation in a single DB round-trip |
 
 **Bid state transitions (FR-006):**

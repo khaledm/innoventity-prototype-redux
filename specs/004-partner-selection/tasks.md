@@ -69,7 +69,7 @@
   - Step 7: Readiness check — at least one Pending bid per required type (FR-005/FR-015) → 409 with missing type list
   - Step 8: Payload count == 3 (FR-004) → 422 ValidationProblem
   - Step 9: No duplicate bid IDs → 422 ValidationProblem
-  - Step 10: All bid IDs belong to this innovation (FR-003) → 422 ValidationProblem
+  - Step 10: All bid IDs belong to this innovation (FR-004) → 422 ValidationProblem
   - Step 11: No unsupported actor types (FR-014) → 422 ValidationProblem
   - Step 12: No duplicate actor types (FR-004) → 422 ValidationProblem
   - Step 14: Atomic mutation — selected bids → Accepted + AcceptedAt, remaining Pending → Rejected, innovation → PartnersSelected + PartnerSelectionCompletedOn = UtcNow; single `SaveChangesAsync` (FR-006/FR-012) → 200
@@ -100,8 +100,10 @@
 - [X] T109 [P] [US SelectPartner-3] Implement guard test: bid IDs from a different innovation → 422 with "do not belong to this innovation"
 - [X] T110 [P] [US SelectPartner-3] Implement guard test: duplicate bid IDs in payload → 422 with "Duplicate bid IDs"; assert no mutations
 - [X] T111 [US SelectPartner-2] Implement guard test: non-selected Pending bids are Rejected after successful selection — seeds _publishedId with 5 bids, selects 3, asserts _pMfg2BidId and _pInvestorBidId transition to Rejected
+- [X] T120 [P] [US SelectPartner-2] Implement guard test: unauthenticated request (no Bearer token) → 401 Unauthorized; uses `_client.PostAsync` without auth header against `_target1Id`
+- [X] T121 [P] [US SelectPartner-2] Implement guard test: non-existent innovationId (`ee000001-...`) → 404 Not Found; authenticated owner, innovation absent from DB
 
-**Checkpoint**: All 12 test methods implemented and passing — feature verified against all spec scenarios
+**Checkpoint**: All 14 test methods implemented and passing — feature verified against all spec scenarios and full API error contract
 
 ---
 
@@ -111,8 +113,9 @@
 
 - [X] T112 Add `"Features/Bids/SelectPartners.cs"` to the `mutate` list in `src/Innoventity.API/stryker-config.json`
 - [X] T113 Restore Stryker `low` threshold to `70` (constitution §5 requirement: mutation score > 70%); keep `break: 60` as absolute floor; keep `high: 80` unchanged
+- [ ] T122 [DEFERRED — pre-launch staging gate] Validate NFR-002 (p95 < 500ms, ≤50 bids per innovation): install k6, write a minimal smoke-test script targeting `POST /innovations/{innovationId}/select-partners` at 10 concurrent users against the staging deployment; assert p95 < 500ms; block launch if threshold fails — defer to first staging deploy of this branch
 
-**Checkpoint**: Quality gates constitution-compliant
+**Checkpoint**: Quality gates constitution-compliant; NFR-002 performance validation deferred to staging gate (T122)
 
 ---
 
@@ -135,6 +138,21 @@
 
 - [X] T118 [P] Generate `specs/004-partner-selection/plan.md` capturing Technical Context, Constitution Check, Architecture, Key Design Decisions, and Success Criteria
 - [X] T119 [P] Generate `specs/004-partner-selection/tasks.md` (this file) capturing the full reverse-engineered task history
+
+---
+
+## Phase 8: Audit Trail Completion (NFR-003)
+
+**Purpose**: Complete NFR-003 by persisting the selector actor ID on the `Innovation` entity, closing the "partial" gap documented in plan.md.
+
+- [X] T123 Add `Guid? SelectedByActorId` nullable property to `Innovation` entity in `src/Innoventity.API/Domain/Entities/Innovation.cs`
+- [X] T124 Configure `SelectedByActorId` as optional (`IsRequired(false)`) in `AppDbContext.OnModelCreating` in `src/Innoventity.API/Infrastructure/Persistence/AppDbContext.cs`
+- [X] T125 Generate EF migration `AddSelectedByActorIdToInnovations` — adds nullable `uniqueidentifier` column to `Innovations` table — `src/Innoventity.API/Infrastructure/Persistence/Migrations/20260607142635_AddSelectedByActorIdToInnovations.cs`
+- [X] T126 Set `innovation.SelectedByActorId = actorId` in Step 14 atomic mutation block in `src/Innoventity.API/Features/Bids/SelectPartners.cs`
+- [X] T127 Assert `innovation.SelectedByActorId == _ownerId` in Scenario 3 test (`SelectPartners_ValidSelection_Returns200AndTransitions`) in `tests/Innoventity.API.Tests/Integration/Features/Bids/SelectPartnersTests.cs`
+- [X] T128 [P] Update `specs/004-partner-selection/spec.md` NFR-003 to document full coverage: `SelectedByActorId` (selector actor), `PartnerSelectionCompletedOn` (timestamp), immutable Accepted bid states (selected bid IDs)
+
+**Checkpoint**: NFR-003 fully satisfied — selector actor, timestamp, and selected bid IDs all durably recorded
 
 ---
 
@@ -190,9 +208,11 @@ Phase 5 (Quality: T112-T113) — Stryker config updated after code exists
 | Guard: Foreign bids → 422 | `SelectPartners_BidsFromDifferentInnovation_Returns422` | ✅ |
 | Guard: Duplicate bid IDs → 422 | `SelectPartners_DuplicateBidIds_Returns422` | ✅ |
 | Guard: Non-selected Pending → Rejected | `SelectPartners_NonSelectedPendingBidsAreRejected` | ✅ |
+| Guard: Unauthenticated → 401 | `SelectPartners_Unauthenticated_Returns401` | ✅ |
+| Guard: Innovation not found → 404 | `SelectPartners_InnovationNotFound_Returns404` | ✅ |
 
 ---
 
-**Total Tasks**: 30 (T090–T119, with T094 used for endpoint registration per `Program.cs` comment)
+**Total Tasks**: 39 (T090–T128, with T094 used for endpoint registration per `Program.cs` comment; T122 deferred)
 **Branch**: `004-partner-selection`
 **Status**: All tasks complete. Feature ready for PR.

@@ -93,7 +93,7 @@ Acceptance criteria:
 ## Non-Functional Requirements
 - NFR-001: Operation is transactional and idempotent for repeated identical attempts after completion (returns 403 without mutation).
 - NFR-002: Response time target p95 under 500ms for typical bid volumes.
-- NFR-003: Audit trail records selector actor, timestamp, and selected bid IDs.
+- NFR-003: Audit trail records selector actor, timestamp, and selected bid IDs. Implemented via `Innovation.SelectedByActorId` (selector actor), `Innovation.PartnerSelectionCompletedOn` (timestamp), and the immutable Accepted bid states (selected bid IDs are uniquely recoverable from `Bids WHERE InnovationId = X AND Status = Accepted`).
 
 ## API Response Contract
 
