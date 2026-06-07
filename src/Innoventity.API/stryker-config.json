@@ -6,13 +6,14 @@
       "Infrastructure/Authentication/JwtTokenService.cs",
       "Infrastructure/Authentication/PasswordHasher.cs",
       "Features/Authentication/Login.cs",
-      "Domain/Entities/Actor.cs"
+      "Domain/Entities/Actor.cs",
+      "Features/Bids/SelectPartners.cs"
     ],
     "reporters": [ "html", "json", "progress" ],
     "thresholds": {
       "high": 80,
-      "low": 70,
-      "break": 0
+      "low": 60,
+      "break": 60
     }
   }
 }
