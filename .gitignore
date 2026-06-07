@@ -76,3 +76,6 @@ infrastructure/**/terraform.tfstate.backup
 infrastructure/**/tfplan
 infrastructure/**/tfplan-destroy
 infrastructure/**/outputs.json
+
+# to prevent accidental credential leakag
+.claude
