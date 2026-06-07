@@ -128,7 +128,7 @@ public static class SelectPartners
         {
             validationErrors["SelectedBidIds"] = new[]
             {
-                $"Exactly {RequiredActorTypes.Length} bid IDs must be provided — one per required actor type (Manufacturing, SalesMarketing, ResearchDevelopment)."
+                $"Exactly {RequiredActorTypes.Length} bid IDs must be provided — one per required actor type (Manufacturing, SalesMarketing, RD)."
             };
             return Results.ValidationProblem(validationErrors, statusCode: StatusCodes.Status422UnprocessableEntity);
         }
@@ -158,7 +158,7 @@ public static class SelectPartners
         {
             validationErrors["SelectedBidIds"] = new[]
             {
-                "Selection payload includes bids from actor types that are not required for partner selection. Required types: Manufacturing, SalesMarketing, ResearchDevelopment."
+                "Selection payload includes bids from actor types that are not required for partner selection. Required types: Manufacturing, SalesMarketing, RD."
             };
             return Results.ValidationProblem(validationErrors, statusCode: StatusCodes.Status422UnprocessableEntity);
         }
@@ -220,7 +220,7 @@ public static class SelectPartners
     public record SelectPartnersRequest
     {
         /// <summary>
-        /// Exactly one bid ID per required actor type: Manufacturing, SalesMarketing, ResearchDevelopment (FR-004)
+        /// Exactly one bid ID per required actor type: Manufacturing, SalesMarketing, RD (FR-004)
         /// </summary>
         public Guid[] SelectedBidIds { get; init; } = [];
     }
