@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UX Mock — Partner Selection Workflow (004)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <style>
+    /* ─── Reset & Base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body {
+      font-family: Roboto, "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background: #f5f5f5;
+      color: rgba(0,0,0,0.87);
+    }
+
+    /* ─── Design Tokens ────────────────────────────────────────── */
+    :root {
+      --color-primary:          #667eea;
+      --color-primary-hover:    #5568d3;
+      --color-secondary:        #764ba2;
+      --color-gradient:         linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --color-error:            #f44336;
+      --color-error-bg:         #fee;
+      --color-error-border:     #c33;
+      --color-warning:          #ffc107;
+      --color-success:          #4caf50;
+      --text-high:              rgba(0,0,0,0.87);
+      --text-medium:            rgba(0,0,0,0.60);
+      --text-disabled:          rgba(0,0,0,0.54);
+      --text-dark-heading:      #1a1a1a;
+      --surface-white:          #ffffff;
+      --surface-input-bg:       #f8f9fa;
+      --surface-page-bg:        #f5f5f5;
+      --border-default:         #e0e0e0;
+      --border-divider:         rgba(0,0,0,0.12);
+      --shadow-card:            0 8px 32px rgba(0,0,0,0.20);
+      --shadow-btn:             0 2px 8px rgba(102,126,234,0.40);
+      --shadow-btn-hover:       0 4px 12px rgba(102,126,234,0.50);
+      --sp-1: 0.25rem; --sp-2: 0.5rem;  --sp-3: 0.75rem;
+      --sp-4: 1rem;    --sp-5: 1.25rem; --sp-6: 1.5rem;
+      --sp-8: 2rem;    --sp-10: 2.5rem;
+      --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px;
+      --transition-fast: 0.2s ease;
+    }
+
+    /* ─── Demo Navigation Bar ──────────────────────────────────── */
+    .demo-bar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      background: #fff;
+      border-bottom: 1px solid var(--border-default);
+      padding: 0.5rem 1.5rem;
+      display: flex; align-items: center; gap: var(--sp-4);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .demo-bar-label {
+      font-size: 0.6875rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--text-disabled); white-space: nowrap;
+    }
+    .demo-tabs { display: flex; gap: 0.375rem; flex-wrap: wrap; }
+    .demo-tab {
+      padding: 0.3rem 0.875rem; border-radius: 20px;
+      border: 1.5px solid var(--border-default);
+      background: transparent; color: var(--text-medium);
+      font-family: inherit; font-size: 0.8125rem; font-weight: 500;
+      cursor: pointer; transition: all var(--transition-fast); white-space: nowrap;
+    }
+    .demo-tab:hover { border-color: var(--color-primary); color: var(--color-primary); }
+    .demo-tab.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+
+    /* ─── Main Wrapper ─────────────────────────────────────────── */
+    .main-wrapper { padding-top: 52px; min-height: 100vh; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ─── Containers ───────────────────────────────────────────── */
+    .page-container        { max-width: 1100px; margin: 0 auto; padding: var(--sp-8) var(--sp-6); }
+    .page-container-narrow { max-width: 900px;  margin: 0 auto; padding: var(--sp-8) var(--sp-6); }
+
+    /* ─── Back Button ──────────────────────────────────────────── */
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      color: var(--text-medium); font-size: 0.875rem; font-weight: 500;
+      background: none; border: none; cursor: pointer;
+      padding: 0.25rem 0; margin-bottom: var(--sp-6);
+      transition: color var(--transition-fast);
+    }
+    .back-btn:hover { color: var(--color-primary); }
+    .back-btn .material-icons { font-size: 18px; }
+
+    /* ─── Page Header ──────────────────────────────────────────── */
+    .page-title    { font-size: 2rem; font-weight: 400; color: var(--text-dark-heading); letter-spacing: -0.5px; }
+    .page-subtitle { font-size: 0.9375rem; color: var(--text-medium); margin-top: 0.25rem; margin-bottom: var(--sp-6); }
+
+    /* ─── Card ─────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface-white); border-radius: var(--radius-xl);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden;
+      margin-bottom: var(--sp-6);
+    }
+    .card-header     { padding: var(--sp-6) var(--sp-6) 0; }
+    .card-title      { font-size: 1.75rem; font-weight: 500; color: var(--text-dark-heading); }
+    .card-subtitle   { color: var(--text-medium); font-size: 0.9375rem; margin-top: var(--sp-1); }
+    .card-content    { padding: var(--sp-6); }
+    .card-actions    {
+      padding: var(--sp-4) var(--sp-6); border-top: 1px solid var(--border-divider);
+      display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2);
+    }
+
+    /* ─── Chips ────────────────────────────────────────────────── */
+    .chip-set { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
+    .chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      height: 28px; padding: 0 0.75rem;
+      background: rgba(0,0,0,0.08); color: var(--text-high);
+      border-radius: 14px; font-size: 0.8125rem; font-weight: 400;
+    }
+    .chip .material-icons { font-size: 14px; }
+    .chip.primary      { background: rgba(102,126,234,0.12); color: var(--color-primary-hover); }
+    .chip.highlighted  { background: var(--color-primary); color: #fff; }
+    .chip.success-chip { background: rgba(76,175,80,0.12); color: #2e7d32; font-weight: 500; }
+    .chip.collab-chip  { background: var(--color-gradient); color: #fff; font-weight: 500; }
+
+    /* ─── Buttons ──────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: var(--sp-2); padding: 0 var(--sp-4); height: 36px;
+      border: none; border-radius: var(--radius-sm); font-family: inherit;
+      font-size: 0.875rem; font-weight: 500; letter-spacing: 0.4px;
+      cursor: pointer; transition: all var(--transition-fast); text-transform: uppercase;
+    }
+    .btn .material-icons { font-size: 18px; }
+    .btn-primary  { background: var(--color-primary); color: #fff; box-shadow: var(--shadow-btn); }
+    .btn-primary:hover  { box-shadow: var(--shadow-btn-hover); transform: translateY(-1px); }
+    .btn-outlined { background: transparent; color: var(--color-primary); border: 1px solid var(--color-primary); }
+    .btn-outlined:hover { background: rgba(102,126,234,0.06); }
+    .btn-text     { background: transparent; color: var(--color-primary); }
+    .btn-text:hover { background: rgba(102,126,234,0.06); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+    .btn-cta {
+      background: var(--color-gradient); color: #fff;
+      height: 44px; padding: 0 var(--sp-6); font-size: 0.9375rem;
+      box-shadow: 0 4px 16px rgba(102,126,234,0.40); border-radius: var(--radius-md);
+    }
+    .btn-cta:hover { box-shadow: 0 6px 20px rgba(102,126,234,0.50); transform: translateY(-1px); }
+    .btn-cta:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+    /* ─── Banners ──────────────────────────────────────────────── */
+    .banner {
+      padding: var(--sp-4); border-radius: var(--radius-md);
+      font-size: 0.9rem; display: flex; align-items: flex-start;
+      gap: 0.75rem; margin-bottom: var(--sp-6);
+    }
+    .banner .material-icons { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .banner strong { font-weight: 600; }
+    .banner-warning { background: rgba(255,193,7,0.12); color: #7a5900; border-left: 4px solid var(--color-warning); }
+    .banner-warning .material-icons { color: #c8820a; }
+    .banner-error   { background: var(--color-error-bg); color: var(--color-error-border); border-left: 4px solid var(--color-error-border); }
+    .banner-error .material-icons   { color: var(--color-error); }
+    .banner-success { background: rgba(76,175,80,0.08); color: #2e7d32; border-left: 4px solid var(--color-success); }
+    .banner-success .material-icons { color: var(--color-success); }
+    .banner-info    { background: rgba(102,126,234,0.08); color: var(--color-primary-hover); border-left: 4px solid var(--color-primary); }
+    .banner-info .material-icons    { color: var(--color-primary); }
+
+    /* ─── Detail page helpers ──────────────────────────────────── */
+    .owner-row {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.9rem; color: var(--text-medium); margin-bottom: var(--sp-4);
+    }
+    .owner-row .material-icons { font-size: 20px; }
+    .detail-section { margin-bottom: var(--sp-8); }
+    .detail-section h3 {
+      font-size: 1.1rem; font-weight: 500; color: var(--text-dark-heading);
+      border-bottom: 1px solid var(--border-divider);
+      padding-bottom: var(--sp-2); margin-bottom: var(--sp-4);
+    }
+    dl.meta-grid {
+      display: grid; grid-template-columns: auto 1fr; gap: 0.75rem 1.5rem;
+    }
+    dl.meta-grid dt { font-weight: 500; color: var(--text-medium); font-size: 0.9rem; }
+    dl.meta-grid dd { color: var(--text-high); font-size: 0.9rem; margin: 0; }
+
+    /* ─── Readiness grid (detail page) ────────────────────────── */
+    .readiness-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-3);
+      margin-bottom: var(--sp-4);
+    }
+    .readiness-cell {
+      background: var(--surface-page-bg); border-radius: var(--radius-md);
+      padding: var(--sp-4); text-align: center;
+    }
+    .readiness-count { font-size: 1.5rem; font-weight: 600; color: var(--color-primary-hover); }
+    .readiness-type  { font-size: 0.75rem; color: var(--text-medium); margin-top: 2px; }
+    .readiness-ok    { font-size: 0.6875rem; font-weight: 600; color: var(--color-success); margin-top: var(--sp-1); }
+    .readiness-warn  { font-size: 0.6875rem; font-weight: 600; color: #c8820a;            margin-top: var(--sp-1); }
+
+    /* ─── Selection Layout ─────────────────────────────────────── */
+    .selection-layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: var(--sp-6);
+      align-items: start;
+    }
+
+    /* ─── Actor Group ──────────────────────────────────────────── */
+    .actor-group {
+      background: var(--surface-white);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      overflow: hidden;
+      margin-bottom: var(--sp-5);
+    }
+    .actor-group-header {
+      padding: var(--sp-4) var(--sp-5);
+      border-bottom: 1px solid var(--border-divider);
+      display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+    }
+    .actor-group-title {
+      font-size: 1rem; font-weight: 600; color: var(--text-dark-heading);
+      display: flex; align-items: center; gap: var(--sp-3);
+    }
+    .type-icon {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .type-icon .material-icons { font-size: 17px; }
+    .type-icon-mfg   { background: rgba(102,126,234,0.12); color: var(--color-primary-hover); }
+    .type-icon-sales { background: rgba(118,75,162,0.12);  color: var(--color-secondary); }
+    .type-icon-rd    { background: rgba(76,175,80,0.12);   color: #2e7d32; }
+    .actor-meta { display: flex; align-items: center; gap: var(--sp-3); }
+    .bid-count  {
+      background: rgba(0,0,0,0.06); color: var(--text-medium);
+      font-size: 0.75rem; font-weight: 600; padding: 0.125rem 0.5rem; border-radius: 10px;
+    }
+    .threshold-ok   { display: flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: #2e7d32; font-weight: 500; }
+    .threshold-warn { display: flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: #c8820a;  font-weight: 500; }
+    .threshold-ok .material-icons, .threshold-warn .material-icons { font-size: 14px; }
+    .actor-group-body { padding: var(--sp-4) var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-4); }
+
+    /* ─── Bid Card ─────────────────────────────────────────────── */
+    .bid-card {
+      border: 1.5px solid var(--border-default);
+      border-radius: var(--radius-md); padding: var(--sp-4);
+      cursor: pointer;
+      transition: border-color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    .bid-card:hover:not(.bid-disabled) {
+      border-color: var(--color-primary);
+      box-shadow: 0 2px 8px rgba(102,126,234,0.12);
+    }
+    .bid-card.selected {
+      border-color: var(--color-primary); border-width: 2px;
+      background: rgba(102,126,234,0.03);
+    }
+    .bid-card.bid-disabled {
+      opacity: 0.5; cursor: not-allowed; background: var(--surface-page-bg);
+    }
+
+    .bid-card-top {
+      display: flex; align-items: flex-start; gap: var(--sp-3); margin-bottom: var(--sp-3);
+    }
+    .bid-radio {
+      width: 20px; height: 20px; border: 2px solid var(--border-default); border-radius: 50%;
+      flex-shrink: 0; margin-top: 3px; display: flex; align-items: center; justify-content: center;
+      transition: border-color var(--transition-fast), background var(--transition-fast);
+    }
+    .bid-card:hover:not(.selected):not(.bid-disabled) .bid-radio { border-color: var(--color-primary); }
+    .bid-card.selected .bid-radio {
+      border-color: var(--color-primary); background: var(--color-primary);
+    }
+    .bid-card.selected .bid-radio::after {
+      content: ''; width: 8px; height: 8px; background: #fff; border-radius: 50%;
+    }
+
+    .bid-info { flex: 1; min-width: 0; }
+    .bid-name { font-size: 1rem; font-weight: 500; color: var(--text-dark-heading); }
+    .bid-card.selected .bid-name { color: var(--color-primary-hover); }
+    .bid-tags { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.375rem; }
+    .bid-tag { font-size: 0.75rem; padding: 0.125rem 0.5rem; border-radius: 3px; font-weight: 500; }
+    .bid-tag-type   { background: rgba(102,126,234,0.1);  color: var(--color-primary-hover); }
+    .bid-tag-region { background: rgba(0,0,0,0.06); color: var(--text-medium); }
+
+    .bid-selected-pill {
+      display: none; align-items: center; gap: 0.25rem;
+      font-size: 0.75rem; font-weight: 600; color: var(--color-primary-hover);
+      background: rgba(102,126,234,0.1); padding: 0.2rem 0.625rem; border-radius: 10px;
+      flex-shrink: 0;
+    }
+    .bid-selected-pill .material-icons { font-size: 14px; }
+    .bid-card.selected .bid-selected-pill { display: flex; }
+
+    .bid-excerpt {
+      font-size: 0.875rem; color: var(--text-medium);
+      line-height: 1.55; margin-bottom: var(--sp-3);
+    }
+    .bid-date { font-size: 0.8125rem; color: var(--text-disabled); }
+
+    /* ─── No-bids placeholder ──────────────────────────────────── */
+    .no-bids-placeholder {
+      text-align: center; padding: 2rem 1rem; color: var(--text-disabled);
+    }
+    .no-bids-placeholder .material-icons { font-size: 40px; display: block; margin-bottom: 0.75rem; }
+    .no-bids-placeholder p { font-size: 0.9rem; line-height: 1.5; }
+
+    /* ─── Summary Panel ────────────────────────────────────────── */
+    .summary-panel {
+      background: var(--surface-white);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      padding: var(--sp-5);
+      position: sticky;
+      top: calc(52px + 1.5rem);
+    }
+    .summary-heading {
+      font-size: 0.9375rem; font-weight: 600; color: var(--text-dark-heading);
+      padding-bottom: var(--sp-3); border-bottom: 1px solid var(--border-divider);
+      margin-bottom: var(--sp-4);
+    }
+
+    .summary-rows { display: flex; flex-direction: column; gap: var(--sp-2); margin-bottom: var(--sp-4); }
+    .summary-row {
+      display: flex; align-items: flex-start; gap: var(--sp-2);
+      padding: var(--sp-3); border-radius: var(--radius-md);
+      background: var(--surface-page-bg);
+      transition: background var(--transition-fast);
+    }
+    .summary-row.row-done { background: rgba(76,175,80,0.06); }
+    .summary-row-icon { flex-shrink: 0; display: flex; align-items: center; padding-top: 2px; }
+    .summary-row-icon .material-icons { font-size: 18px; color: var(--border-default); transition: color var(--transition-fast); }
+    .summary-row.row-done .summary-row-icon .material-icons { color: var(--color-success); }
+    .summary-row-body { flex: 1; min-width: 0; }
+    .summary-type-label { font-size: 0.75rem; font-weight: 500; color: var(--text-medium); }
+    .summary-partner-name { font-size: 0.875rem; font-weight: 500; color: var(--text-dark-heading); margin-top: 1px; }
+    .summary-pending-text { font-size: 0.8125rem; color: var(--text-disabled); margin-top: 1px; }
+
+    .progress-track {
+      height: 6px; background: var(--border-default);
+      border-radius: 3px; margin-bottom: var(--sp-2); overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; background: var(--color-gradient);
+      border-radius: 3px; transition: width 0.3s ease;
+    }
+    .progress-text {
+      font-size: 0.8125rem; color: var(--text-medium); text-align: center;
+      padding-bottom: var(--sp-3); margin-bottom: var(--sp-4);
+      border-bottom: 1px solid var(--border-divider);
+    }
+    .progress-text strong { color: var(--color-primary-hover); }
+
+    .summary-note {
+      font-size: 0.75rem; color: var(--text-disabled);
+      text-align: center; margin-top: var(--sp-3); line-height: 1.4;
+    }
+
+    /* ─── Confirmation Modal ───────────────────────────────────── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); z-index: 2000;
+      align-items: center; justify-content: center; padding: var(--sp-6);
+    }
+    .modal-overlay.open { display: flex; animation: fadeIn 0.15s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .modal {
+      background: var(--surface-white); border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-card); max-width: 460px; width: 100%;
+      padding: var(--sp-8); animation: slideUp 0.2s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .modal-icon-wrap {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: rgba(255,152,0,0.12); display: flex; align-items: center;
+      justify-content: center; margin: 0 auto var(--sp-5);
+    }
+    .modal-icon-wrap .material-icons { font-size: 28px; color: #e65100; }
+    .modal-title {
+      font-size: 1.375rem; font-weight: 500; color: var(--text-dark-heading);
+      text-align: center; margin-bottom: var(--sp-2);
+    }
+    .modal-body {
+      font-size: 0.9375rem; color: var(--text-medium);
+      text-align: center; line-height: 1.6; margin-bottom: var(--sp-5);
+    }
+    .modal-summary {
+      background: var(--surface-page-bg); border-radius: var(--radius-md);
+      padding: var(--sp-4); margin-bottom: var(--sp-5);
+    }
+    .modal-summary-label {
+      font-size: 0.6875rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--text-disabled); margin-bottom: var(--sp-3);
+    }
+    .modal-row {
+      display: flex; align-items: center; gap: var(--sp-3);
+      padding: var(--sp-2) 0; border-bottom: 1px solid var(--border-divider);
+    }
+    .modal-row:last-child { border-bottom: none; }
+    .modal-row-type { font-size: 0.75rem; color: var(--text-disabled); min-width: 110px; }
+    .modal-row-name { font-size: 0.875rem; font-weight: 500; color: var(--text-dark-heading); }
+
+    .modal-confirm-checkbox {
+      display: flex; align-items: center; gap: var(--sp-3);
+      background: rgba(255,152,0,0.06); border: 1px solid rgba(255,152,0,0.25);
+      border-radius: var(--radius-md); padding: var(--sp-3) var(--sp-4);
+      margin-bottom: var(--sp-5); cursor: pointer;
+    }
+    .modal-confirm-checkbox input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; accent-color: var(--color-primary); }
+    .modal-confirm-checkbox span { font-size: 0.875rem; color: #7a5900; line-height: 1.4; user-select: none; }
+    .modal-actions { display: flex; gap: var(--sp-3); justify-content: center; }
+
+    /* ─── Selected Partners (success screen) ───────────────────── */
+    .partners-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: var(--sp-4);
+    }
+    .partner-card {
+      border: 1.5px solid rgba(76,175,80,0.3); border-radius: var(--radius-md);
+      padding: var(--sp-4); background: rgba(76,175,80,0.03);
+      display: flex; flex-direction: column; gap: var(--sp-2);
+    }
+    .partner-card-type {
+      font-size: 0.6875rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.6px; color: var(--text-disabled);
+    }
+    .partner-card-name { font-size: 1rem; font-weight: 500; color: var(--text-dark-heading); }
+    .partner-card-accepted {
+      display: flex; align-items: center; gap: 0.25rem;
+      font-size: 0.75rem; font-weight: 600; color: #2e7d32;
+    }
+    .partner-card-accepted .material-icons { font-size: 14px; }
+
+    /* ─── State Card (403/empty) ───────────────────────────────── */
+    .state-card {
+      display: flex; flex-direction: column; align-items: center;
+      gap: var(--sp-4); padding: var(--sp-8) var(--sp-6); text-align: center;
+      background: var(--surface-white); border-radius: var(--radius-xl);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06); max-width: 480px; margin: 0 auto;
+    }
+    .state-card .state-icon { font-size: 56px; }
+    .state-card h3 { font-size: 1.25rem; font-weight: 500; color: var(--text-dark-heading); }
+    .state-card p  { color: var(--text-medium); font-size: 0.9375rem; line-height: 1.6; }
+    .state-card .accepted-summary {
+      background: var(--surface-page-bg); border-radius: var(--radius-md);
+      padding: var(--sp-4); width: 100%;
+    }
+
+    /* ─── Responsive ───────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .selection-layout { grid-template-columns: 1fr; }
+      .summary-panel { position: static; }
+      .readiness-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .demo-bar { padding: 0.5rem 1rem; }
+      .page-container, .page-container-narrow { padding: var(--sp-5) var(--sp-4); }
+      .readiness-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════ DEMO BAR ════════════════════════════ -->
+<div class="demo-bar">
+  <span class="demo-bar-label">UX Mock · 004</span>
+  <div class="demo-tabs">
+    <button class="demo-tab active" onclick="showScreen('entry')">A — Entry Point</button>
+    <button class="demo-tab" onclick="showScreen('select')">B — Partner Selection</button>
+    <button class="demo-tab" onclick="showScreen('success')">C — Success</button>
+    <button class="demo-tab" onclick="showScreen('e409')">D — 409 Insufficient Bids</button>
+    <button class="demo-tab" onclick="showScreen('e403')">E — 403 Already Selected</button>
+  </div>
+</div>
+
+<div class="main-wrapper">
+
+<!-- ════════════════════════════════════════════════════════════════
+     SCREEN A — INNOVATION DETAIL (Entry Point)
+     Shows the detail view of a Published innovation with bid
+     readiness summary and the "Select Partners" CTA.
+════════════════════════════════════════════════════════════════ -->
+<div class="screen active" id="screen-entry">
+  <div class="page-container-narrow">
+
+    <button class="back-btn">
+      <span class="material-icons">arrow_back</span>Published Innovations
+    </button>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Quantum Battery Prototype</div>
+        <div class="chip-set">
+          <span class="chip primary"><span class="material-icons">category</span>Energy Storage Device</span>
+          <span class="chip highlighted">Engineering</span>
+          <span class="chip success-chip"><span class="material-icons">check_circle</span>Published</span>
+        </div>
+      </div>
+
+      <div class="card-content">
+        <div class="owner-row">
+          <span class="material-icons">person</span>
+          Dr. Sarah Chen &nbsp;·&nbsp; Idea Generator
+          &nbsp;·&nbsp; <span style="color:var(--text-disabled)">Submitted Feb 17, 2026</span>
+        </div>
+
+        <div class="detail-section">
+          <h3>Research Background</h3>
+          <p style="line-height:1.6; color:var(--text-high);">
+            Lithium-air battery technology leverages ambient oxygen as the cathode reactant, enabling theoretical
+            energy densities of 11,400 Wh/kg — over 10× current Li-ion cells. Our prototype demonstrates
+            stable cycling at 3,200 Wh/kg under controlled conditions, a first in the field.
+          </p>
+        </div>
+
+        <div class="detail-section">
+          <h3>Market Information</h3>
+          <dl class="meta-grid">
+            <dt>Target Market</dt>       <dd>Electric vehicles and grid storage</dd>
+            <dt>Relevant Market Size</dt><dd>$12.4 billion</dd>
+            <dt>Potential Market Size</dt><dd>$40 billion by 2035</dd>
+            <dt>Customer Type</dt>       <dd>Enterprise, Utility operators</dd>
+          </dl>
+        </div>
+
+        <div class="detail-section">
+          <h3>Target Industries</h3>
+          <div class="chip-set" style="margin-top:0;">
+            <span class="chip primary">Technology</span>
+            <span class="chip primary">Industrials</span>
+            <span class="chip primary">Oil &amp; Gas</span>
+          </div>
+        </div>
+
+        <!-- ── Bid Readiness ── -->
+        <div class="detail-section" style="margin-bottom:0;">
+          <h3>Partner Bids &amp; Selection Readiness</h3>
+
+          <div class="readiness-grid">
+            <div class="readiness-cell">
+              <div class="readiness-count">2</div>
+              <div class="readiness-type">Manufacturing</div>
+              <div class="readiness-ok">✓ Threshold met</div>
+            </div>
+            <div class="readiness-cell">
+              <div class="readiness-count">1</div>
+              <div class="readiness-type">Sales &amp; Marketing</div>
+              <div class="readiness-ok">✓ Threshold met</div>
+            </div>
+            <div class="readiness-cell">
+              <div class="readiness-count">3</div>
+              <div class="readiness-type">Research &amp; Dev</div>
+              <div class="readiness-ok">✓ Threshold met</div>
+            </div>
+          </div>
+
+          <div class="banner banner-info">
+            <span class="material-icons">info</span>
+            <div>
+              <strong>Ready for partner selection.</strong>
+              All 3 required actor types have at least one eligible bid. Select exactly one
+              partner per type to move this innovation into collaboration.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-actions">
+        <button class="btn btn-outlined">
+          <span class="material-icons">arrow_back</span>Back
+        </button>
+        <button class="btn btn-cta" onclick="showScreen('select')">
+          <span class="material-icons">people_alt</span>
+          Select Partners
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════════
+     SCREEN B — PARTNER SELECTION (Interactive)
+     Owner selects exactly one bid per required actor type.
+     Summary panel tracks progress; submit is locked until complete.
+════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-select">
+  <div class="page-container">
+
+    <button class="back-btn" onclick="showScreen('entry')">
+      <span class="material-icons">arrow_back</span>Quantum Battery Prototype
+    </button>
+
+    <div class="page-title">Select Partners</div>
+    <div class="page-subtitle">Quantum Battery Prototype &nbsp;·&nbsp; Published</div>
+
+    <div class="banner banner-warning">
+      <span class="material-icons">warning</span>
+      <div>
+        <strong>This action is permanent and cannot be reversed.</strong>
+        Once submitted, selected partners will be accepted, all other bids will be rejected,
+        and the innovation will enter the collaboration phase. Review all bids carefully
+        before confirming.
+      </div>
+    </div>
+
+    <div class="selection-layout">
+
+      <!-- ── LEFT: Bid groups ── -->
+      <div id="bid-groups">
+
+        <!-- Manufacturing -->
+        <div class="actor-group">
+          <div class="actor-group-header">
+            <div class="actor-group-title">
+              <div class="type-icon type-icon-mfg">
+                <span class="material-icons">precision_manufacturing</span>
+              </div>
+              Manufacturing
+            </div>
+            <div class="actor-meta">
+              <span class="bid-count">2 bids</span>
+              <span class="threshold-ok">
+                <span class="material-icons">check_circle</span>Min. threshold met
+              </span>
+            </div>
+          </div>
+          <div class="actor-group-body">
+
+            <div class="bid-card" id="bid-mfg-1" data-actor="mfg"
+                 onclick="selectBid('mfg','bid-mfg-1','Siemens Manufacturing AG')">
+              <div class="bid-card-top">
+                <div class="bid-radio"></div>
+                <div class="bid-info">
+                  <div class="bid-name">Siemens Manufacturing AG</div>
+                  <div class="bid-tags">
+                    <span class="bid-tag bid-tag-type">Manufacturing</span>
+                    <span class="bid-tag bid-tag-region">Europe</span>
+                  </div>
+                </div>
+                <div class="bid-selected-pill">
+                  <span class="material-icons">check</span>Selected
+                </div>
+              </div>
+              <div class="bid-excerpt">
+                "Our Stuttgart facility can accommodate full-scale production of the Quantum Battery
+                Prototype using our existing advanced materials lines. We bring 15+ years of
+                high-precision battery manufacturing experience and ISO 9001 certification."
+              </div>
+              <div class="bid-date">Submitted May 12, 2026</div>
+            </div>
+
+            <div class="bid-card" id="bid-mfg-2" data-actor="mfg"
+                 onclick="selectBid('mfg','bid-mfg-2','Bosch Industrial Systems')">
+              <div class="bid-card-top">
+                <div class="bid-radio"></div>
+                <div class="bid-info">
+                  <div class="bid-name">Bosch Industrial Systems</div>
+                  <div class="bid-tags">
+                    <span class="bid-tag bid-tag-type">Manufacturing</span>
+                    <span class="bid-tag bid-tag-region">Germany</span>
+                  </div>
+                </div>
+                <div class="bid-selected-pill">
+                  <span class="material-icons">check</span>Selected
+                </div>
+              </div>
+              <div class="bid-excerpt">
+                "Our dedicated battery production line in Gerlingen can meet production targets
+                within 6 months of commitment. Full quality assurance including in-process
+                testing and traceability documentation."
+              </div>
+              <div class="bid-date">Submitted May 18, 2026</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Sales & Marketing -->
+        <div class="actor-group">
+          <div class="actor-group-header">
+            <div class="actor-group-title">
+              <div class="type-icon type-icon-sales">
+                <span class="material-icons">campaign</span>
+              </div>
+              Sales &amp; Marketing
+            </div>
+            <div class="actor-meta">
+              <span class="bid-count">1 bid</span>
+              <span class="threshold-ok">
+                <span class="material-icons">check_circle</span>Min. threshold met
+              </span>
+            </div>
+          </div>
+          <div class="actor-group-body">
+
+            <div class="bid-card" id="bid-sales-1" data-actor="sales"
+                 onclick="selectBid('sales','bid-sales-1','MarketPro International')">
+              <div class="bid-card-top">
+                <div class="bid-radio"></div>
+                <div class="bid-info">
+                  <div class="bid-name">MarketPro International</div>
+                  <div class="bid-tags">
+                    <span class="bid-tag bid-tag-type">Sales &amp; Marketing</span>
+                    <span class="bid-tag bid-tag-region">USA</span>
+                  </div>
+                </div>
+                <div class="bid-selected-pill">
+                  <span class="material-icons">check</span>Selected
+                </div>
+              </div>
+              <div class="bid-excerpt">
+                "Our team specialises in B2B cleantech market entry for European innovations entering
+                North American and APAC markets. We maintain established relationships with 200+
+                enterprise buyers in the energy storage sector and managed $340M in deals in 2025."
+              </div>
+              <div class="bid-date">Submitted May 22, 2026</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Research & Development -->
+        <div class="actor-group">
+          <div class="actor-group-header">
+            <div class="actor-group-title">
+              <div class="type-icon type-icon-rd">
+                <span class="material-icons">science</span>
+              </div>
+              Research &amp; Development
+            </div>
+            <div class="actor-meta">
+              <span class="bid-count">3 bids</span>
+              <span class="threshold-ok">
+                <span class="material-icons">check_circle</span>Min. threshold met
+              </span>
+            </div>
+          </div>
+          <div class="actor-group-body">
+
+            <div class="bid-card" id="bid-rd-1" data-actor="rd"
+                 onclick="selectBid('rd','bid-rd-1','TechLabs GmbH')">
+              <div class="bid-card-top">
+                <div class="bid-radio"></div>
+                <div class="bid-info">
+                  <div class="bid-name">TechLabs GmbH</div>
+                  <div class="bid-tags">
+                    <span class="bid-tag bid-tag-type">Research &amp; Development</span>
+                    <span class="bid-tag bid-tag-region">Germany</span>
+                  </div>
+                </div>
+                <div class="bid-selected-pill">
+                  <span class="material-icons">check</span>Selected
+                </div>
+              </div>
+              <div class="bid-excerpt">
+                "Our electrochemistry division holds 12 active patents in lithium-air technology.
+                We provide pilot testing, materials analysis, and cycle-life optimisation services
+                with rapid turnaround supported by our Fraunhofer partnership."
+              </div>
+              <div class="bid-date">Submitted May 10, 2026</div>
+            </div>
+
+            <div class="bid-card" id="bid-rd-2" data-actor="rd"
+                 onclick="selectBid('rd','bid-rd-2','Applied Science Corp')">
+              <div class="bid-card-top">
+                <div class="bid-radio"></div>
+                <div class="bid-info">
+                  <div class="bid-name">Applied Science Corp</div>
+                  <div class="bid-tags">
+                    <span class="bid-tag bid-tag-type">Research &amp; Development</span>
+                    <span class="bid-tag bid-tag-region">USA</span>
+                  </div>
+                </div>
+                <div class="bid-selected-pill">
+                  <span class="material-icons">check</span>Selected
+                </div>
+              </div>
+              <div class="bid-excerpt">
+                "Our Argonne-partnered laboratory focuses on energy storage and electrochemistry R&amp;D.
+                We bring NSF-funded research infrastructure and a team of 30 PhD researchers dedicated
+                to next-generation battery technology and commercialisation pathways."
+              </div>
+              <div class="bid-date">Submitted May 14, 2026</div>
+            </div>
+
+            <div class="bid-card" id="bid-rd-3" data-actor="rd"
+                 onclick="selectBid('rd','bid-rd-3','InnoResearch Institute')">
+              <div class="bid-card-top">
+                <div class="bid-radio"></div>
+                <div class="bid-info">
+                  <div class="bid-name">InnoResearch Institute</div>
+                  <div class="bid-tags">
+                    <span class="bid-tag bid-tag-type">Research &amp; Development</span>
+                    <span class="bid-tag bid-tag-region">Netherlands</span>
+                  </div>
+                </div>
+                <div class="bid-selected-pill">
+                  <span class="material-icons">check</span>Selected
+                </div>
+              </div>
+              <div class="bid-excerpt">
+                "InnoResearch has published 45 peer-reviewed papers on Li-air battery technology
+                since 2018. We offer materials characterisation, in-situ testing, and direct
+                collaboration with TU Delft's energy research group at no overhead cost."
+              </div>
+              <div class="bid-date">Submitted May 20, 2026</div>
+            </div>
+
+          </div>
+        </div>
+
+      </div><!-- /bid-groups -->
+
+      <!-- ── RIGHT: Summary Panel ── -->
+      <div class="summary-panel">
+        <div class="summary-heading">Your Selection</div>
+
+        <div class="summary-rows">
+          <div class="summary-row" id="row-mfg">
+            <div class="summary-row-icon">
+              <span class="material-icons" id="icon-mfg">radio_button_unchecked</span>
+            </div>
+            <div class="summary-row-body">
+              <div class="summary-type-label">Manufacturing</div>
+              <div id="name-mfg" class="summary-pending-text">— Not selected</div>
+            </div>
+          </div>
+
+          <div class="summary-row" id="row-sales">
+            <div class="summary-row-icon">
+              <span class="material-icons" id="icon-sales">radio_button_unchecked</span>
+            </div>
+            <div class="summary-row-body">
+              <div class="summary-type-label">Sales &amp; Marketing</div>
+              <div id="name-sales" class="summary-pending-text">— Not selected</div>
+            </div>
+          </div>
+
+          <div class="summary-row" id="row-rd">
+            <div class="summary-row-icon">
+              <span class="material-icons" id="icon-rd">radio_button_unchecked</span>
+            </div>
+            <div class="summary-row-body">
+              <div class="summary-type-label">Research &amp; Dev</div>
+              <div id="name-rd" class="summary-pending-text">— Not selected</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+        </div>
+        <div class="progress-text" id="progress-text">
+          <strong>0</strong> of 3 required types covered
+        </div>
+
+        <button class="btn btn-cta" id="submit-btn" style="width:100%;" disabled onclick="openModal()">
+          <span class="material-icons">people_alt</span>
+          Complete Partner Selection
+        </button>
+        <div class="summary-note">
+          Requires all 3 types. This action is permanent and cannot be undone.
+        </div>
+      </div>
+
+    </div><!-- /selection-layout -->
+
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════════
+     SCREEN C — SUCCESS (InCollaboration)
+     Innovation has transitioned. Selected partners shown.
+════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-success">
+  <div class="page-container-narrow">
+
+    <button class="back-btn">
+      <span class="material-icons">arrow_back</span>Published Innovations
+    </button>
+
+    <div class="banner banner-success">
+      <span class="material-icons">check_circle</span>
+      <div>
+        <strong>Partner selection confirmed.</strong>
+        Quantum Battery Prototype has entered the collaboration phase. Selected partners have been
+        accepted and all other bids have been rejected.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Quantum Battery Prototype</div>
+        <div class="chip-set">
+          <span class="chip primary"><span class="material-icons">category</span>Energy Storage Device</span>
+          <span class="chip highlighted">Engineering</span>
+          <span class="chip collab-chip"><span class="material-icons">handshake</span>In Collaboration</span>
+        </div>
+      </div>
+
+      <div class="card-content">
+        <div class="owner-row">
+          <span class="material-icons">person</span>
+          Dr. Sarah Chen &nbsp;·&nbsp; Idea Generator
+          &nbsp;·&nbsp; <span style="color:var(--text-disabled)">Partners selected Jun 7, 2026</span>
+        </div>
+
+        <div class="detail-section">
+          <h3>Selected Partners</h3>
+          <div class="partners-grid">
+            <div class="partner-card">
+              <div class="partner-card-type">Manufacturing</div>
+              <div class="partner-card-name">Siemens Manufacturing AG</div>
+              <div class="partner-card-accepted">
+                <span class="material-icons">check_circle</span>Accepted
+              </div>
+            </div>
+            <div class="partner-card">
+              <div class="partner-card-type">Sales &amp; Marketing</div>
+              <div class="partner-card-name">MarketPro International</div>
+              <div class="partner-card-accepted">
+                <span class="material-icons">check_circle</span>Accepted
+              </div>
+            </div>
+            <div class="partner-card">
+              <div class="partner-card-type">Research &amp; Development</div>
+              <div class="partner-card-name">TechLabs GmbH</div>
+              <div class="partner-card-accepted">
+                <span class="material-icons">check_circle</span>Accepted
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h3>Research Background</h3>
+          <p style="line-height:1.6; color:var(--text-high);">
+            Lithium-air battery technology leverages ambient oxygen as the cathode reactant, enabling theoretical
+            energy densities of 11,400 Wh/kg — over 10× current Li-ion cells.
+          </p>
+        </div>
+
+        <div class="detail-section" style="margin-bottom:0;">
+          <h3>Bid Outcomes</h3>
+          <dl class="meta-grid">
+            <dt>Accepted (selected)</dt><dd>3 bids</dd>
+            <dt>Rejected</dt>           <dd>3 bids</dd>
+            <dt>Selection date</dt>     <dd>Jun 7, 2026</dd>
+            <dt>Confirmed by</dt>       <dd>Dr. Sarah Chen</dd>
+          </dl>
+        </div>
+      </div>
+
+      <div class="card-actions" style="justify-content:flex-start;">
+        <button class="btn btn-outlined">
+          <span class="material-icons">arrow_back</span>Back to Innovations
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════════
+     SCREEN D — 409 INSUFFICIENT BIDS
+     Minimum readiness threshold not met: Sales & Marketing has
+     zero eligible bids. Selection is blocked with clear feedback.
+════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-e409">
+  <div class="page-container">
+
+    <button class="back-btn" onclick="showScreen('entry')">
+      <span class="material-icons">arrow_back</span>Quantum Battery Prototype
+    </button>
+
+    <div class="page-title">Select Partners</div>
+    <div class="page-subtitle">Quantum Battery Prototype &nbsp;·&nbsp; Published</div>
+
+    <div class="banner banner-error">
+      <span class="material-icons">error</span>
+      <div>
+        <strong>Selection unavailable — minimum readiness threshold not met.</strong>
+        Partner selection requires at least one eligible bid in every required actor type.
+        <strong>Sales &amp; Marketing</strong> currently has no bids. Selection is blocked
+        until at least one bid is submitted for that type. (HTTP 409)
+      </div>
+    </div>
+
+    <div class="selection-layout">
+      <div>
+
+        <!-- Manufacturing — has bids but selection blocked -->
+        <div class="actor-group">
+          <div class="actor-group-header">
+            <div class="actor-group-title">
+              <div class="type-icon type-icon-mfg">
+                <span class="material-icons">precision_manufacturing</span>
+              </div>
+              Manufacturing
+            </div>
+            <div class="actor-meta">
+              <span class="bid-count">2 bids</span>
+              <span class="threshold-ok">
+                <span class="material-icons">check_circle</span>Threshold met
+              </span>
+            </div>
+          </div>
+          <div class="actor-group-body">
+            <div class="bid-card bid-disabled">
+              <div class="bid-card-top">
+                <div class="bid-radio"></div>
+                <div class="bid-info">
+                  <div class="bid-name">Siemens Manufacturing AG</div>
+                  <div class="bid-tags">
+                    <span class="bid-tag bid-tag-type">Manufacturing</span>
+                    <span class="bid-tag bid-tag-region">Europe</span>
+                  </div>
+                </div>
+              </div>
+              <div class="bid-date">Submitted May 12, 2026</div>
+            </div>
+            <div class="bid-card bid-disabled">
+              <div class="bid-card-top">
+                <div class="bid-radio"></div>
+                <div class="bid-info">
+                  <div class="bid-name">Bosch Industrial Systems</div>
+                  <div class="bid-tags">
+                    <span class="bid-tag bid-tag-type">Manufacturing</span>
+                    <span class="bid-tag bid-tag-region">Germany</span>
+                  </div>
+                </div>
+              </div>
+              <div class="bid-date">Submitted May 18, 2026</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sales & Marketing — no bids at all -->
+        <div class="actor-group" style="border: 1.5px solid rgba(255,193,7,0.5);">
+          <div class="actor-group-header" style="background:rgba(255,193,7,0.05);">
+            <div class="actor-group-title">
+              <div class="type-icon type-icon-sales">
+                <span class="material-icons">campaign</span>
+              </div>
+              Sales &amp; Marketing
+            </div>
+            <div class="actor-meta">
+              <span class="bid-count">0 bids</span>
+              <span class="threshold-warn">
+                <span class="material-icons">warning</span>No eligible bids — blocking
+              </span>
+            </div>
+          </div>
+          <div class="actor-group-body">
+            <div class="no-bids-placeholder">
+              <span class="material-icons">inbox</span>
+              <p>
+                No bids have been submitted for this actor type.<br>
+                Partner selection cannot proceed until at least one bid is received here.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- R&D -->
+        <div class="actor-group">
+          <div class="actor-group-header">
+            <div class="actor-group-title">
+              <div class="type-icon type-icon-rd">
+                <span class="material-icons">science</span>
+              </div>
+              Research &amp; Development
+            </div>
+            <div class="actor-meta">
+              <span class="bid-count">3 bids</span>
+              <span class="threshold-ok">
+                <span class="material-icons">check_circle</span>Threshold met
+              </span>
+            </div>
+          </div>
+          <div class="actor-group-body">
+            <div class="bid-card bid-disabled">
+              <div class="bid-card-top">
+                <div class="bid-radio"></div>
+                <div class="bid-info">
+                  <div class="bid-name">TechLabs GmbH</div>
+                  <div class="bid-tags">
+                    <span class="bid-tag bid-tag-type">Research &amp; Development</span>
+                    <span class="bid-tag bid-tag-region">Germany</span>
+                  </div>
+                </div>
+              </div>
+              <div class="bid-date">Submitted May 10, 2026</div>
+            </div>
+            <div class="bid-card bid-disabled">
+              <div class="bid-card-top">
+                <div class="bid-radio"></div>
+                <div class="bid-info">
+                  <div class="bid-name">Applied Science Corp</div>
+                  <div class="bid-tags">
+                    <span class="bid-tag bid-tag-type">Research &amp; Development</span>
+                    <span class="bid-tag bid-tag-region">USA</span>
+                  </div>
+                </div>
+              </div>
+              <div class="bid-date">Submitted May 14, 2026</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /bid-groups -->
+
+      <!-- Summary — blocked -->
+      <div class="summary-panel">
+        <div class="summary-heading">Your Selection</div>
+        <div class="summary-rows">
+          <div class="summary-row">
+            <div class="summary-row-icon">
+              <span class="material-icons" style="color:var(--border-default);">radio_button_unchecked</span>
+            </div>
+            <div class="summary-row-body">
+              <div class="summary-type-label">Manufacturing</div>
+              <div class="summary-pending-text">Blocked — threshold unmet</div>
+            </div>
+          </div>
+          <div class="summary-row" style="background:rgba(244,67,54,0.05);">
+            <div class="summary-row-icon">
+              <span class="material-icons" style="color:var(--color-error);">error</span>
+            </div>
+            <div class="summary-row-body">
+              <div class="summary-type-label" style="color:var(--color-error-border);">Sales &amp; Marketing</div>
+              <div class="summary-pending-text" style="color:var(--color-error);">No eligible bids — blocking all</div>
+            </div>
+          </div>
+          <div class="summary-row">
+            <div class="summary-row-icon">
+              <span class="material-icons" style="color:var(--border-default);">radio_button_unchecked</span>
+            </div>
+            <div class="summary-row-body">
+              <div class="summary-type-label">Research &amp; Dev</div>
+              <div class="summary-pending-text">Blocked — threshold unmet</div>
+            </div>
+          </div>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:0%; background:#e0e0e0;"></div>
+        </div>
+        <div class="progress-text" style="color:var(--color-error-border);">
+          Selection blocked — 1 type has no eligible bids
+        </div>
+        <button class="btn btn-cta" style="width:100%;" disabled>
+          <span class="material-icons">block</span>
+          Selection Unavailable
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════════
+     SCREEN E — 403 ALREADY SELECTED
+     A second selection attempt after commitment has been made.
+     Returns 403 Forbidden with an immutable-selection message.
+════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-e403">
+  <div class="page-container-narrow">
+
+    <button class="back-btn" onclick="showScreen('success')">
+      <span class="material-icons">arrow_back</span>Quantum Battery Prototype
+    </button>
+
+    <div class="page-title">Select Partners</div>
+    <div class="page-subtitle">Quantum Battery Prototype &nbsp;·&nbsp; In Collaboration</div>
+
+    <div class="state-card">
+      <span class="material-icons state-icon" style="color:var(--color-warning);">lock</span>
+      <h3>Partner Selection is Final</h3>
+      <p>
+        Partner selection for this innovation has already been completed and
+        cannot be changed. This decision is permanent and irreversible. (HTTP 403)
+      </p>
+      <div class="accepted-summary">
+        <div style="font-size:0.6875rem; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-disabled); margin-bottom:0.75rem;">
+          Accepted Partners
+        </div>
+        <div class="modal-row" style="display:flex; align-items:center; gap:0.75rem; padding:0.5rem 0; border-bottom:1px solid var(--border-divider);">
+          <span style="font-size:0.75rem; color:var(--text-disabled); min-width:110px;">Manufacturing</span>
+          <span style="font-size:0.875rem; font-weight:500; color:var(--text-dark-heading);">Siemens Manufacturing AG</span>
+        </div>
+        <div class="modal-row" style="display:flex; align-items:center; gap:0.75rem; padding:0.5rem 0; border-bottom:1px solid var(--border-divider);">
+          <span style="font-size:0.75rem; color:var(--text-disabled); min-width:110px;">Sales &amp; Marketing</span>
+          <span style="font-size:0.875rem; font-weight:500; color:var(--text-dark-heading);">MarketPro International</span>
+        </div>
+        <div class="modal-row" style="display:flex; align-items:center; gap:0.75rem; padding:0.5rem 0;">
+          <span style="font-size:0.75rem; color:var(--text-disabled); min-width:110px;">Research &amp; Dev</span>
+          <span style="font-size:0.875rem; font-weight:500; color:var(--text-dark-heading);">TechLabs GmbH</span>
+        </div>
+      </div>
+      <button class="btn btn-outlined" onclick="showScreen('success')">
+        <span class="material-icons">arrow_back</span>Return to Innovation
+      </button>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- /main-wrapper -->
+
+
+<!-- ════════════════════════════════════════════════════════════════
+     CONFIRMATION MODAL
+     Triggered from Screen B. Requires an explicit "I understand"
+     checkbox before the commit button is enabled.
+════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="confirm-modal" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-icon-wrap">
+      <span class="material-icons">warning_amber</span>
+    </div>
+    <div class="modal-title">Confirm Partner Selection</div>
+    <div class="modal-body">
+      This action is <strong>permanent and cannot be undone.</strong>
+      The partners listed below will be accepted, all other bids will be rejected,
+      and this innovation will move to the collaboration phase immediately.
+    </div>
+
+    <div class="modal-summary">
+      <div class="modal-summary-label">Partners to be accepted</div>
+      <div class="modal-row">
+        <span class="modal-row-type">Manufacturing</span>
+        <span class="modal-row-name" id="m-mfg">—</span>
+      </div>
+      <div class="modal-row">
+        <span class="modal-row-type">Sales &amp; Marketing</span>
+        <span class="modal-row-name" id="m-sales">—</span>
+      </div>
+      <div class="modal-row">
+        <span class="modal-row-type">Research &amp; Dev</span>
+        <span class="modal-row-name" id="m-rd">—</span>
+      </div>
+    </div>
+
+    <label class="modal-confirm-checkbox" for="confirm-check">
+      <input type="checkbox" id="confirm-check" onchange="toggleConfirmBtn()" />
+      <span>I understand this selection is permanent and cannot be changed after confirmation.</span>
+    </label>
+
+    <div class="modal-actions">
+      <button class="btn btn-text" onclick="closeModal()">Review Again</button>
+      <button class="btn btn-cta" id="lock-btn" disabled onclick="commitSelection()">
+        <span class="material-icons">lock</span>
+        Confirm &amp; Lock Selection
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  /* ── State ───────────────────────────────────────────────────── */
+  const sel   = { mfg: null, sales: null, rd: null };
+  const names = { mfg: null, sales: null, rd: null };
+
+  /* ── Screen navigation ───────────────────────────────────────── */
+  const SCREENS = ['entry','select','success','e409','e403'];
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + id).classList.add('active');
+    document.querySelectorAll('.demo-tab').forEach((t, i) => {
+      t.classList.toggle('active', i === SCREENS.indexOf(id));
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /* ── Bid selection ───────────────────────────────────────────── */
+  function selectBid(actor, bidId, name) {
+    const alreadySelected = sel[actor] === bidId;
+    // Deselect all cards for this actor type
+    document.querySelectorAll(`[data-actor="${actor}"]`).forEach(c => c.classList.remove('selected'));
+    if (alreadySelected) {
+      sel[actor] = null; names[actor] = null;
+    } else {
+      document.getElementById(bidId).classList.add('selected');
+      sel[actor] = bidId; names[actor] = name;
+    }
+    syncSummary();
+  }
+
+  /* ── Sync summary panel ──────────────────────────────────────── */
+  function syncSummary() {
+    let count = 0;
+    ['mfg','sales','rd'].forEach(a => {
+      const row  = document.getElementById('row-' + a);
+      const icon = document.getElementById('icon-' + a);
+      const name = document.getElementById('name-' + a);
+      if (names[a]) {
+        count++;
+        row.classList.add('row-done');
+        icon.textContent = 'check_circle';
+        name.className = 'summary-partner-name';
+        name.textContent = names[a];
+      } else {
+        row.classList.remove('row-done');
+        icon.textContent = 'radio_button_unchecked';
+        name.className = 'summary-pending-text';
+        name.textContent = '— Not selected';
+      }
+    });
+    document.getElementById('progress-fill').style.width = Math.round(count / 3 * 100) + '%';
+    document.getElementById('progress-text').innerHTML =
+      `<strong>${count}</strong> of 3 required types covered`;
+    document.getElementById('submit-btn').disabled = count < 3;
+  }
+
+  /* ── Modal ───────────────────────────────────────────────────── */
+  function openModal() {
+    document.getElementById('m-mfg').textContent   = names.mfg   || '—';
+    document.getElementById('m-sales').textContent = names.sales || '—';
+    document.getElementById('m-rd').textContent    = names.rd    || '—';
+    document.getElementById('confirm-check').checked = false;
+    document.getElementById('lock-btn').disabled  = true;
+    document.getElementById('confirm-modal').classList.add('open');
+  }
+  function closeModal() {
+    document.getElementById('confirm-modal').classList.remove('open');
+  }
+  function toggleConfirmBtn() {
+    document.getElementById('lock-btn').disabled =
+      !document.getElementById('confirm-check').checked;
+  }
+  function commitSelection() {
+    closeModal();
+    showScreen('success');
+  }
+  function handleOverlayClick(e) {
+    if (e.target === document.getElementById('confirm-modal')) closeModal();
+  }
+</script>
+
+</body>
+</html>
