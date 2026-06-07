@@ -55,13 +55,19 @@ public static class SelectPartners
         var actorIdClaim = user.FindFirst("sub") ?? user.FindFirst(ClaimTypes.NameIdentifier);
         if (actorIdClaim == null || !Guid.TryParse(actorIdClaim.Value, out var actorId))
         {
-            return Results.Unauthorized();
+            return Results.Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Unauthorized",
+                detail: "A valid authenticated identity is required.");
         }
 
         var actor = await db.Actors.FindAsync(actorId);
         if (actor == null)
         {
-            return Results.Unauthorized();
+            return Results.Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Unauthorized",
+                detail: "The authenticated identity does not correspond to a known actor.");
         }
 
         // Step 3: Load innovation with all bids and their actors
@@ -72,7 +78,10 @@ public static class SelectPartners
 
         if (innovation == null)
         {
-            return Results.NotFound();
+            return Results.Problem(
+                statusCode: StatusCodes.Status404NotFound,
+                title: "Not Found",
+                detail: $"Innovation '{innovationId}' was not found.");
         }
 
         // Step 4: Ownership check (FR-002, FR-011)

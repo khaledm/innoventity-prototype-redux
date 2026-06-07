@@ -189,7 +189,7 @@ public class Innovation : EntityOfGuid
     /// <summary>
     /// Bids submitted for this innovation (one-to-many inverse navigation)
     /// </summary>
-    public ICollection<Bid>? Bids { get; set; }
+    public ICollection<Bid> Bids { get; set; } = [];
 
     /// <summary>
     /// Partners needed: RD, Manufacturing, SalesMarketing, Investor (Spec §US3 R2.1)
