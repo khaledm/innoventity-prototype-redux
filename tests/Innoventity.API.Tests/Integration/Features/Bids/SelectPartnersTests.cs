@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Innoventity.API.Domain.Entities;
 using Innoventity.API.Features.Bids;
 using Innoventity.API.Infrastructure.Persistence;
@@ -94,7 +95,9 @@ public class SelectPartnersTests : IDisposable
                     var descriptor = services.SingleOrDefault(
                         d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
                     if (descriptor != null)
+                    {
                         services.Remove(descriptor);
+                    }
 
                     services.AddDbContext<AppDbContext>(options =>
                         options.UseInMemoryDatabase(databaseName));
@@ -371,19 +374,19 @@ public class SelectPartnersTests : IDisposable
         var response = await _client.PostAsJsonAsync("/auth/login", loginRequest);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var result = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(
-            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        var result = await response.Content.ReadFromJsonAsync<JsonElement>(
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         var token = result.GetProperty("accessToken").GetString();
         Assert.NotNull(token);
         return token;
     }
 
-    private static HttpContent MakeRequest(params Guid[] bidIds)
+    private static JsonContent MakeRequest(params Guid[] bidIds)
     {
         var payload = new SelectPartners.SelectPartnersRequest { SelectedBidIds = bidIds };
-        return JsonContent.Create(payload, options: new System.Text.Json.JsonSerializerOptions
+        return JsonContent.Create(payload, options: new JsonSerializerOptions
         {
-            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         });
     }
 
@@ -511,6 +514,7 @@ public class SelectPartnersTests : IDisposable
         Assert.NotNull(innovation);
         Assert.Equal(InnovationStatus.PartnersSelected, innovation.Status);
         Assert.NotNull(innovation.PartnerSelectionCompletedOn);
+        Assert.Equal(_ownerId, innovation.SelectedByActorId); // NFR-003: selector actor recorded
 
         var mfgBid = await db.Bids.FindAsync(_t1MfgBidId);
         var salesBid = await db.Bids.FindAsync(_t1SalesBidId);
@@ -788,6 +792,42 @@ public class SelectPartnersTests : IDisposable
         Assert.Null(innovation.PartnerSelectionCompletedOn);
         var bids = await db.Bids.Where(b => b.InnovationId == _publishedId).ToListAsync();
         Assert.All(bids, b => Assert.Equal(BidStatus.Pending, b.Status));
+    }
+
+    /// <summary>
+    /// Unauthenticated request (no Bearer token) returns 401 Unauthorized (spec error table, FR step 1-2).
+    /// </summary>
+    [Fact]
+    public async Task SelectPartners_Unauthenticated_Returns401()
+    {
+        // Arrange — no Authorization header attached
+        var content = MakeRequest(_t1MfgBidId, _t1SalesBidId, _t1RdBidId);
+
+        // Act
+        var response = await _client.PostAsync(
+            $"/innovations/{_target1Id}/select-partners", content);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    /// <summary>
+    /// Non-existent innovationId returns 404 Not Found (spec error table, Step 3).
+    /// </summary>
+    [Fact]
+    public async Task SelectPartners_InnovationNotFound_Returns404()
+    {
+        // Arrange — authenticated owner, but innovation does not exist in the database
+        var token = await GetAccessToken("owner@select.test", "IdeaGenerator");
+        var nonExistentId = new Guid("ee000001-0000-0000-0000-000000000000");
+        var content = MakeRequest(_t1MfgBidId, _t1SalesBidId, _t1RdBidId);
+
+        // Act
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{nonExistentId}/select-partners", content, token);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     /// <summary>
