@@ -203,4 +203,9 @@ public class Innovation : EntityOfGuid
     /// Non-null means selection is final and immutable.
     /// </summary>
     public DateTimeOffset? PartnerSelectionCompletedOn { get; set; }
+
+    /// <summary>
+    /// Actor who completed partner selection (Spec 004 NFR-003 audit trail)
+    /// </summary>
+    public Guid? SelectedByActorId { get; set; }
 }

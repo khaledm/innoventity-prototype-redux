@@ -198,6 +198,9 @@ public class AppDbContext : DbContext
             entity.Property(i => i.PartnerSelectionCompletedOn)
                   .IsRequired(false);
 
+            entity.Property(i => i.SelectedByActorId)
+                  .IsRequired(false);
+
             // Configure relationship with Actor (Owner)
             entity.HasOne(i => i.Owner)
                   .WithMany()

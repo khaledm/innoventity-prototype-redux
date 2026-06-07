@@ -140,7 +140,7 @@ public static class SelectPartners
             return Results.ValidationProblem(validationErrors, statusCode: StatusCodes.Status422UnprocessableEntity);
         }
 
-        // Step 10: All bids must belong to this innovation (FR-003, SelectPartner-3 AC3)
+        // Step 10: All bids must belong to this innovation (FR-004, SelectPartner-3 AC3)
         var allBidIds = allBids.Select(b => b.Id).ToHashSet();
         var foreignBidIds = selectedIds.Where(id => !allBidIds.Contains(id)).ToList();
         if (foreignBidIds.Count > 0)
@@ -195,6 +195,7 @@ public static class SelectPartners
 
         innovation.Status = InnovationStatus.PartnersSelected;
         innovation.PartnerSelectionCompletedOn = DateTimeOffset.UtcNow;
+        innovation.SelectedByActorId = actorId;
 
         await db.SaveChangesAsync();
 
