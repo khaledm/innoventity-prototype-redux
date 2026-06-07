@@ -9,13 +9,13 @@
 ## Clarifications
 
 ### Session 2026-06-06
-- Q: What is the minimum readiness threshold before partner selection is allowed? -> A: At least 1 eligible bid in each required type (Manufacturing, SalesMarketing, ResearchDevelopment).
+- Q: What is the minimum readiness threshold before partner selection is allowed? -> A: At least 1 eligible bid in each required type (Manufacturing, SalesMarketing, RD).
 - Q: Which innovation state is selectable for partner selection in Phase 1c? -> A: Published only.
 
 ## Clarified Scope
 - Phase alignment: Phase 1c Partner Selection Foundation.
 - Core guarantees: irreversibility and one-partner-per-type enforcement.
-- Required actor types for this phase are fixed: Manufacturing, SalesMarketing, and ResearchDevelopment.
+- Required actor types for this phase are fixed: Manufacturing, SalesMarketing, and RD.
 
 ## Context
 After bids are submitted, the innovation owner must select exactly one partner per required actor type to move into collaboration. Selection is permanent and must enforce minimum bid readiness and ownership/security checks.
@@ -28,7 +28,7 @@ As an innovation owner, I can complete partner selection through a single struct
 Acceptance criteria:
 1. Endpoint accepts selected bid IDs scoped to one innovation.
 2. Selection request is validated as a complete set before any state mutation occurs.
-3. On success, selected bids are accepted, non-selected bids are rejected, and innovation status transitions to InCollaboration.
+3. On success, selected bids are accepted, non-selected bids are rejected, and innovation status transitions to PartnersSelected.
 
 ### US SelectPartner-3: One Partner Per Required Type
 As the platform, partner selection enforces exactly one selected bid per required actor type so collaboration roles are complete and non-duplicated.
@@ -50,7 +50,7 @@ Acceptance criteria:
 - Innovation has bids submitted and is eligible for selection.
 - Minimum readiness threshold is satisfied before selection is allowed.
 - Caller is authenticated and is the owner of the innovation.
-- Eligible selection set includes exactly one selected bid for each fixed required actor type: Manufacturing, SalesMarketing, and ResearchDevelopment.
+- Eligible selection set includes exactly one selected bid for each fixed required actor type: Manufacturing, SalesMarketing, and RD.
 
 ## Functional Requirements
 
@@ -66,7 +66,7 @@ Acceptance criteria:
 - FR-010: Return 422 when required actor type coverage is invalid.
 - FR-011: Return 403 for non-owner callers.
 - FR-012: Return 200 only when full selection succeeds with a single atomic mutation.
-- FR-013: Required actor types are fixed for Phase 1c foundation: Manufacturing, SalesMarketing, and ResearchDevelopment.
+- FR-013: Required actor types are fixed for Phase 1c foundation: Manufacturing, SalesMarketing, and RD.
 - FR-014: Selection payload must not contain duplicate actor types and must not include unsupported actor types.
 - FR-015: Minimum readiness threshold for Phase 1c is exactly one eligible bid available in each required actor type before selection is permitted.
 - FR-016: Selectable innovation state for Phase 1c is Published only; all other states are ineligible.
@@ -81,19 +81,48 @@ Acceptance criteria:
 ## Required Actor-Type Matrix (Phase 1c)
 - Manufacturing: exactly 1 selected bid required.
 - SalesMarketing: exactly 1 selected bid required.
-- ResearchDevelopment: exactly 1 selected bid required.
+- RD: exactly 1 selected bid required.
 - Investor and other types: optional for participation, not part of mandatory partner selection coverage in this phase.
 
 ## State Transitions
-- Published -> InCollaboration when selection succeeds.
+- Published -> PartnersSelected when selection succeeds.
 - Published remains unchanged when validation fails.
-- InCollaboration remains unchanged for repeated selection attempts.
+- PartnersSelected (PartnerSelectionCompletedOn non-null) returns 403 without mutation for repeated selection attempts.
 - Any state other than Published -> selection rejected with deterministic validation error and no mutation.
 
 ## Non-Functional Requirements
 - NFR-001: Operation is transactional and idempotent for repeated identical attempts after completion (returns 403 without mutation).
 - NFR-002: Response time target p95 under 500ms for typical bid volumes.
 - NFR-003: Audit trail records selector actor, timestamp, and selected bid IDs.
+
+## API Response Contract
+
+### Success (200)
+```json
+{
+  "innovationId": "<guid>",
+  "status": "PartnersSelected",
+  "partnerSelectionCompletedOn": "<DateTimeOffset ISO-8601>",
+  "acceptedBids": [
+    { "bidId": "<guid>", "actorId": "<guid>", "actorType": "<string>" }
+  ]
+}
+```
+`actorType` values match the `ActorType` enum string: `"Manufacturing"`, `"SalesMarketing"`, `"RD"`.
+`acceptedBids` contains exactly the selected bids (one per required actor type).
+
+### Error Responses
+| Status | Condition |
+|--------|-----------|
+| 401 | No valid authenticated user |
+| 403 | Caller is not the innovation owner |
+| 403 | Selection already completed (`PartnerSelectionCompletedOn` non-null); body includes "partner selection is final and cannot be changed" |
+| 404 | Innovation not found |
+| 409 | Innovation is not in Published status |
+| 409 | Minimum readiness threshold not met (missing eligible bid for one or more required actor types) |
+| 422 | Payload count != 3, duplicate bid IDs, foreign bid IDs, duplicate actor types, or unsupported actor type |
+
+All error responses use RFC 7807 Problem Details format (`title`, `detail`, `status`). Validation errors (422) use `errors` map keyed by `"SelectedBidIds"`.
 
 ## Verification Scenarios
 1. Insufficient readiness threshold -> 409, no mutations.
