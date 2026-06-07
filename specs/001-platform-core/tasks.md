@@ -6,6 +6,11 @@
 **Phase 0 Scope**: User Registration & Authentication + View Single Innovation (backend + minimal frontend)
 **MVP Goal**: Prove end-to-end: Register → Activate → Login → View Innovation via Angular client
 
+**Scope Boundary (Read First)**:
+- **Merged Baseline (Phase 0)**: Phases 1-7 in this file were the original implementation track and are now merged.
+- **Deferred Backlog**: `T057a`, Phase 8, Phase 9, and the "Phase 1+ Registration UI" section are post-merge backlog and not active unless explicitly activated in a dedicated feature phase/branch.
+- **Phase 004 Intent**: Partner-selection-related backlog can be executed under Phase 004 planning once explicitly approved.
+
 ## Phase 1: Setup
 
 - [X] T001 Create solution structure src/Innoventity.API/, tests/Innoventity.API.Tests/
@@ -138,7 +143,7 @@
 - [X] T055 [US3] Add [Authorize] attribute to innovation endpoint in Features/Innovations/GetInnovation.cs
 - [X] T056 [US3] Add validation for non-existent innovation ID in Features/Innovations/GetInnovation.cs
 - [X] T057 [US3] Create seed data script implementing spec.md §6 Test Data Requirements (Quantum Battery Prototype with fixed GUIDs, seeded actor, 2 industries) in Infrastructure/Persistence/SeedData.cs
-- [ ] T057a [Future-Phase6+] Integration test: Partner selection irreversibility - verify attempting to modify accepted partner selection returns 403 Forbidden with error "Partner selection is final and cannot be changed" in tests/Integration/Features/PartnerSelection/PartnerSelectionTests.cs (CRITICAL per Constitution Principle 5: human-written test required before implementing partner selection endpoint)
+- [ ] T057a [Phase004-Gate] Integration test: Partner selection irreversibility - verify attempting to modify accepted partner selection returns 403 Forbidden with error "Partner selection is final and cannot be changed" in tests/Integration/Features/PartnerSelection/PartnerSelectionTests.cs (CRITICAL per Constitution Principle 5: human-written test required before implementing partner selection endpoint)
 
 ---
 
@@ -202,6 +207,12 @@
 
 ---
 
+## Deferred Backlog (Post-Merge, Candidate for Phase 004+)
+
+**Not part of merged Phase 0 baseline**. Execute only when a dedicated feature phase/branch is activated.
+
+---
+
 ## Phase 8: Notification System (Journey 2+3 Prerequisite)
 
 **Goal**: DB-persisted in-app notification feed so innovation owners are alerted when bids arrive and the sufficient-bids threshold is crossed (spec.md §Clarifications Q3, R5.5).
@@ -220,7 +231,7 @@
 
 ## Phase 9: Partner Selection (Journey 3)
 
-**Goal**: Innovation owner selects exactly one bid per required actor type; selection is permanent (R5.1–R5.5). T057a (Future-Phase6+) in Phase 5 constitutes the constitution-mandated human-written irreversibility test anchor for this phase.
+**Goal**: Innovation owner selects exactly one bid per required actor type; selection is permanent (R5.1–R5.5). T057a (`[Phase004-Gate]`) in Phase 5 constitutes the constitution-mandated human-written irreversibility test anchor for this phase.
 **Prerequisite**: Phase 8 complete (notification system must fire post-selection workspace notifications).
 
 - [ ] T094 Integration test: POST /innovations/{id}/select-partners returns 409 when sufficient bids threshold not met (R5.4) in tests/Integration/Features/PartnerSelection/SelectPartnersTests.cs
@@ -368,6 +379,10 @@ For each user story:
 
 ---
 ---
+
+## Deferred Backlog (Separate Track): Phase 1+ Registration UI
+
+**This section is a separate frontend backlog track and is not part of merged Phase 0 baseline execution.**
 
 # Phase 1+: Registration User Interface (Frontend)
 
