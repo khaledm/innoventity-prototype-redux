@@ -187,9 +187,20 @@ public class Innovation : EntityOfGuid
     public ICollection<Industry> TargetIndustries { get; set; } = new List<Industry>();
 
     /// <summary>
+    /// Bids submitted for this innovation (one-to-many inverse navigation)
+    /// </summary>
+    public ICollection<Bid>? Bids { get; set; }
+
+    /// <summary>
     /// Partners needed: RD, Manufacturing, SalesMarketing, Investor (Spec §US3 R2.1)
     /// Stored as comma-separated string
     /// </summary>
     [MaxLength(500)]
     public string? PartnersNeeded { get; set; }
+
+    /// <summary>
+    /// Timestamp when partner selection was completed (Spec 004 FR-007)
+    /// Non-null means selection is final and immutable.
+    /// </summary>
+    public DateTimeOffset? PartnerSelectionCompletedOn { get; set; }
 }

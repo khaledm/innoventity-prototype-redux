@@ -265,6 +265,9 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTimeOffset?>("PartnerSelectionCompletedOn")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<string>("PartnersNeeded")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
