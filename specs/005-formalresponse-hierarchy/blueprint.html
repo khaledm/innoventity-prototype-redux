@@ -1,0 +1,2432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FormalResponse Polymorphic Hierarchy — Implementation Blueprint</title>
+<style>
+  :root {
+    --ivory:    #FAF9F5;
+    --slate:    #141413;
+    --clay:     #D97757;
+    --oat:      #E3DACC;
+    --olive:    #788C5D;
+    --gold:     #C9B98A;
+    --gray-150: #F0EEE6;
+    --gray-300: #D1CFC5;
+    --gray-500: #87867F;
+    --gray-700: #3D3D3A;
+    --serif: 'Georgia', 'Times New Roman', serif;
+    --sans:  'Inter', 'Helvetica Neue', Arial, sans-serif;
+    --mono:  'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--ivory);
+    color: var(--slate);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+
+  /* ─── HEADER ─── */
+  header {
+    background: var(--slate);
+    color: var(--ivory);
+    padding: 3rem 4rem 2.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--clay), var(--gold), var(--olive));
+  }
+  .header-label {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--gray-500);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+  header h1 {
+    font-family: var(--serif);
+    font-size: 2.4rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-bottom: 1rem;
+  }
+  .header-meta {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+  .header-meta span {
+    font-size: 0.8rem;
+    color: var(--gray-300);
+  }
+  .header-meta .tag {
+    display: inline-block;
+    background: rgba(217,119,87,0.2);
+    color: var(--clay);
+    border: 1px solid rgba(217,119,87,0.4);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    padding: 0.2em 0.6em;
+    border-radius: 3px;
+  }
+
+  /* ─── LAYOUT ─── */
+  main { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem 6rem; }
+
+  section { margin-bottom: 4rem; }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--gray-500);
+    margin-bottom: 0.4rem;
+  }
+  h2 {
+    font-family: var(--serif);
+    font-size: 1.6rem;
+    font-weight: 400;
+    color: var(--slate);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--gray-300);
+  }
+  h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--gray-700);
+    margin: 1.5rem 0 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ─── SUMMARY STRIP ─── */
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--gray-300);
+    border: 1px solid var(--gray-300);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 3rem;
+  }
+  .summary-cell {
+    background: var(--ivory);
+    padding: 1.25rem 1.5rem;
+    text-align: center;
+  }
+  .summary-cell .num {
+    font-family: var(--serif);
+    font-size: 2.6rem;
+    color: var(--clay);
+    line-height: 1;
+    margin-bottom: 0.25rem;
+  }
+  .summary-cell .lbl {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* ─── MILESTONES ─── */
+  .milestones { display: flex; flex-direction: column; gap: 0; }
+
+  .milestone {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 0;
+    border-left: 2px solid var(--gray-300);
+    margin-left: 1rem;
+    padding-left: 1.5rem;
+    padding-bottom: 2rem;
+    position: relative;
+  }
+  .milestone::before {
+    content: '';
+    position: absolute;
+    left: -7px;
+    top: 6px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--clay);
+    border: 2px solid var(--ivory);
+    box-shadow: 0 0 0 2px var(--clay);
+  }
+  .milestone.foundation::before { background: var(--olive); box-shadow: 0 0 0 2px var(--olive); }
+  .milestone.polish::before     { background: var(--gold);  box-shadow: 0 0 0 2px var(--gold); }
+  .milestone:last-child { border-left-color: transparent; }
+
+  .milestone-meta { padding-right: 1.5rem; padding-top: 2px; }
+  .milestone-phase {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.2rem;
+  }
+  .milestone-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--slate);
+    margin-bottom: 0.35rem;
+  }
+  .milestone-badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-family: var(--mono);
+    background: var(--gray-150);
+    color: var(--gray-700);
+    padding: 0.15em 0.5em;
+    border-radius: 3px;
+    border: 1px solid var(--gray-300);
+  }
+  .milestone-badge.p1 { background: rgba(217,119,87,0.12); color: var(--clay); border-color: rgba(217,119,87,0.3); }
+  .milestone-badge.mvp { background: rgba(120,140,93,0.15); color: var(--olive); border-color: rgba(120,140,93,0.4); }
+
+  .milestone-content { }
+  .milestone-goal {
+    font-size: 0.85rem;
+    color: var(--gray-700);
+    margin-bottom: 0.75rem;
+    font-style: italic;
+  }
+  .task-list { list-style: none; }
+  .task-list li {
+    font-size: 0.82rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid var(--gray-150);
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+  .task-list li:last-child { border-bottom: none; }
+  .task-id {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--clay);
+    white-space: nowrap;
+    min-width: 38px;
+  }
+  .task-par {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--olive);
+    background: rgba(120,140,93,0.1);
+    border: 1px solid rgba(120,140,93,0.3);
+    padding: 0.1em 0.3em;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .task-desc { color: var(--gray-700); }
+  .task-file {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--olive);
+  }
+  .checkpoint {
+    margin-top: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(201,185,138,0.12);
+    border-left: 3px solid var(--gold);
+    font-size: 0.8rem;
+    color: var(--gray-700);
+    border-radius: 0 4px 4px 0;
+  }
+  .checkpoint strong { color: var(--slate); }
+
+  /* ─── DIAGRAM ─── */
+  .diagram {
+    background: var(--slate);
+    border-radius: 8px;
+    padding: 2rem;
+    overflow: hidden;
+  }
+  .diagram svg { width: 100%; height: auto; }
+
+  /* ─── MOCKS / API CONTRACTS ─── */
+  .mocks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  .mock-card {
+    background: var(--gray-150);
+    border: 1px solid var(--gray-300);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .mock-card-header {
+    background: var(--slate);
+    color: var(--ivory);
+    padding: 0.6rem 1rem;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .method-badge {
+    display: inline-block;
+    padding: 0.15em 0.5em;
+    border-radius: 3px;
+    font-weight: 700;
+    font-size: 0.68rem;
+  }
+  .method-post { background: var(--clay); color: white; }
+  .method-get  { background: var(--olive); color: white; }
+  .mock-card pre {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    padding: 1rem;
+    overflow-x: auto;
+    line-height: 1.5;
+    color: var(--slate);
+  }
+
+  /* ─── CODE GRID ─── */
+  .code-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  .code-block {
+    background: var(--slate);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .code-block-header {
+    background: rgba(255,255,255,0.06);
+    padding: 0.5rem 1rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--gray-300);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .code-block pre {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    padding: 1rem;
+    overflow-x: auto;
+    line-height: 1.6;
+    color: #d4d0c8;
+  }
+  .kw  { color: var(--clay); }
+  .str { color: var(--olive); }
+  .cm  { color: var(--gray-500); }
+  .fn  { color: var(--gold); }
+  .nb  { color: #8fbcbb; }
+  .num { color: #b5cea8; }
+
+  /* ─── RISKS TABLE ─── */
+  .risks-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  .risks-table th {
+    text-align: left;
+    padding: 0.6rem 1rem;
+    background: var(--slate);
+    color: var(--ivory);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .risks-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--gray-150);
+    vertical-align: top;
+  }
+  .risks-table tr:nth-child(even) td { background: var(--gray-150); }
+  .risk-level {
+    display: inline-block;
+    padding: 0.2em 0.6em;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    font-family: var(--mono);
+    text-transform: uppercase;
+  }
+  .risk-high   { background: rgba(217,119,87,0.15); color: #b85c35; border: 1px solid rgba(217,119,87,0.4); }
+  .risk-medium { background: rgba(201,185,138,0.2); color: #8a6d1e; border: 1px solid rgba(201,185,138,0.5); }
+  .risk-low    { background: rgba(120,140,93,0.12); color: var(--olive); border: 1px solid rgba(120,140,93,0.35); }
+
+  /* ─── RESOLVED Q&A ─── */
+  .qa-list { display: flex; flex-direction: column; gap: 1rem; }
+  .qa-item {
+    background: var(--gray-150);
+    border: 1px solid var(--gray-300);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .qa-question {
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--slate);
+    background: white;
+    border-bottom: 1px solid var(--gray-300);
+  }
+  .qa-question::before { content: 'Q  '; font-family: var(--mono); color: var(--clay); font-weight: 700; }
+  .qa-answer {
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    color: var(--gray-700);
+  }
+  .qa-answer::before { content: 'A  '; font-family: var(--mono); color: var(--olive); font-weight: 700; }
+
+  /* ─── FULL-WIDTH CODE BLOCK ─── */
+  .code-block-full {
+    background: var(--slate);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-top: 1.5rem;
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 900px) {
+    .summary       { grid-template-columns: repeat(2, 1fr); }
+    .mocks         { grid-template-columns: 1fr; }
+    .code-grid     { grid-template-columns: 1fr; }
+    .milestone     { grid-template-columns: 1fr; }
+    header         { padding: 2rem 1.5rem; }
+    header h1      { font-size: 1.7rem; }
+    main           { padding: 2rem 1rem; }
+  }
+
+  /* ─── DIFF VIEWER (§08 / §09) ─── */
+  .file-section { margin-bottom: 2.5rem; }
+  .file-hdr { display:flex; align-items:center; gap:0.75rem; padding:0.6rem 1rem; background:var(--gray-700); border-radius:6px 6px 0 0; font-family:var(--mono); font-size:0.78rem; color:var(--oat); flex-wrap:wrap; }
+  .file-badge { padding:0.12em 0.5em; border-radius:3px; font-size:0.66rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; flex-shrink:0; }
+  .fbadge-new { background:rgba(120,140,93,0.25); color:var(--olive); border:1px solid rgba(120,140,93,0.5); }
+  .fbadge-mod { background:rgba(201,185,138,0.25); color:var(--gold); border:1px solid rgba(201,185,138,0.5); }
+  .fbadge-del { background:rgba(217,119,87,0.25); color:var(--clay); border:1px solid rgba(217,119,87,0.5); }
+  .diff-pane  { background:#1a1a17; border-radius:0 0 6px 6px; overflow:auto; font-family:var(--mono); font-size:0.76rem; line-height:1.55; }
+  .diff-pane pre { margin:0; padding:1rem 1.25rem; color:var(--oat); }
+  .dl  { display:flex; min-height:1.55em; }
+  .dl-r{ background:rgba(224,108,117,0.1); }
+  .dl-a{ background:rgba(152,195,121,0.09); }
+  .dl-h{ background:rgba(97,175,239,0.07); }
+  .dl-ln{ min-width:44px; padding:0 0.5rem; text-align:right; color:var(--gray-500); user-select:none; flex-shrink:0; border-right:1px solid #2a2a27; font-size:0.71rem; }
+  .dl-sg{ min-width:1.4rem; text-align:center; flex-shrink:0; }
+  .dl-r .dl-sg{ color:#e06c75; }
+  .dl-a .dl-sg{ color:#98c379; }
+  .dl-h .dl-sg{ color:#61afef; }
+  .dl-cd{ padding:0 0.75rem; color:var(--oat); white-space:pre; flex:1; }
+  .dl-r .dl-cd{ color:#e06c75; }
+  .dl-a .dl-cd{ color:#98c379; }
+  .dl-h .dl-cd{ color:#61afef; font-style:italic; }
+
+  /* ─── TRACEABILITY TABLE (§10) ─── */
+  .trace-table { width:100%; border-collapse:collapse; margin-top:1.5rem; }
+  .trace-table th { background:var(--gray-700); color:var(--oat); padding:0.55rem 1rem; text-align:left; font-family:var(--mono); font-size:0.71rem; text-transform:uppercase; letter-spacing:0.06em; }
+  .trace-table td { padding:0.45rem 1rem; border-bottom:1px solid var(--gray-300); font-size:0.82rem; vertical-align:top; }
+  .trace-table tr:nth-child(even) td { background:var(--gray-150); }
+  .fr-tag { display:inline-block; background:rgba(217,119,87,0.12); color:var(--clay); border:1px solid rgba(217,119,87,0.3); font-family:var(--mono); font-size:0.68rem; padding:0.1em 0.4em; border-radius:3px; font-weight:700; white-space:nowrap; }
+  .t-tag  { display:inline-block; background:rgba(120,140,93,0.12); color:var(--olive); border:1px solid rgba(120,140,93,0.3); font-family:var(--mono); font-size:0.68rem; padding:0.1em 0.35em; border-radius:3px; margin:0.1em 0.1em 0.1em 0; white-space:nowrap; }
+
+  /* ─── INTERACTIVE CHECKLIST (§11) ─── */
+  .progress-wrap  { margin:1rem 0 2rem; }
+  .progress-track { background:var(--gray-300); border-radius:999px; height:10px; overflow:hidden; }
+  #progress-fill  { height:100%; background:linear-gradient(90deg,var(--olive),var(--gold)); border-radius:999px; width:0%; transition:width 0.35s ease; }
+  #progress-text  { font-family:var(--mono); font-size:0.72rem; color:var(--gray-500); margin-top:0.4rem; }
+  .cl-phase  { margin-bottom:2.5rem; }
+  .cl-ph     { display:flex; align-items:center; gap:0.75rem; padding-bottom:0.5rem; border-bottom:2px solid var(--gray-300); margin-bottom:0.75rem; }
+  .cl-ph-num { font-family:var(--mono); font-size:0.67rem; color:var(--gray-500); text-transform:uppercase; letter-spacing:0.1em; }
+  .cl-ph-name{ font-weight:600; font-size:0.93rem; }
+  .cl-item   { display:flex; align-items:flex-start; gap:0.55rem; padding:0.38rem 0.5rem; border-radius:4px; cursor:default; }
+  .cl-item:hover { background:var(--gray-150); }
+  .cl-item input[type=checkbox] { margin-top:0.22rem; flex-shrink:0; accent-color:var(--olive); cursor:pointer; width:15px; height:15px; }
+  .cl-item label { cursor:pointer; flex:1; font-size:0.83rem; line-height:1.5; }
+  .cl-item.done label { text-decoration:line-through; color:var(--gray-500); }
+  .cl-tid { font-family:var(--mono); font-size:0.67rem; background:#2a2a27; color:var(--oat); padding:0.1em 0.4em; border-radius:3px; flex-shrink:0; margin-top:0.25rem; }
+  .cl-par { font-family:var(--mono); font-size:0.63rem; background:rgba(201,185,138,0.15); color:var(--gold); border:1px solid rgba(201,185,138,0.3); padding:0.1em 0.3em; border-radius:3px; flex-shrink:0; margin-top:0.25rem; }
+  .cl-us  { font-family:var(--mono); font-size:0.63rem; background:rgba(120,140,93,0.15); color:var(--olive); border:1px solid rgba(120,140,93,0.3); padding:0.1em 0.3em; border-radius:3px; flex-shrink:0; margin-top:0.25rem; }
+  .cl-chk { margin-top:0.6rem; padding:0.45rem 0.75rem; background:var(--gray-150); border-left:3px solid var(--olive); border-radius:0 4px 4px 0; font-size:0.8rem; color:var(--gray-700); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════ HEADER -->
+<header>
+  <div class="header-label">Implementation Blueprint · Innoventity Prototype</div>
+  <h1>FormalResponse Polymorphic Hierarchy</h1>
+  <div class="header-meta">
+    <span><span class="tag">005-formalresponse-hierarchy</span></span>
+    <span>Branch: <strong>005-formalresponse-hierarchy</strong></span>
+    <span>Date: 2026-06-07</span>
+    <span>Spec: <code>specs/005-formalresponse-hierarchy/spec.md</code></span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ═══════════════════════════════════════════════════ SUMMARY STRIP -->
+  <div class="summary">
+    <div class="summary-cell">
+      <div class="num">49</div>
+      <div class="lbl">Total Tasks</div>
+    </div>
+    <div class="summary-cell">
+      <div class="num">9</div>
+      <div class="lbl">Phases</div>
+    </div>
+    <div class="summary-cell">
+      <div class="num">24</div>
+      <div class="lbl">New / Modified Files</div>
+    </div>
+    <div class="summary-cell">
+      <div class="num">5</div>
+      <div class="lbl">Breaking Changes</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ SECTION 01: PHASES -->
+  <section id="phases">
+    <div class="section-label">Section 01</div>
+    <h2>Implementation Phases &amp; Task Checklist</h2>
+
+    <div class="milestones">
+
+      <!-- Phase 1 -->
+      <div class="milestone foundation">
+        <div class="milestone-meta">
+          <div class="milestone-phase">Phase 1</div>
+          <div class="milestone-title">Domain Layer</div>
+          <span class="milestone-badge">Foundation</span>
+        </div>
+        <div class="milestone-content">
+          <div class="milestone-goal">New entity types, enums, and value objects. All user story work is blocked until this phase compiles cleanly.</div>
+          <ul class="task-list">
+            <li><span class="task-id">T001</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">GeographicRegion.cs</span> — Add enum: Asia, Americas, Europe, Africa, Oceania (stored as string)</span></li>
+            <li><span class="task-id">T002</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">ResponseStatus.cs</span> — Add enum: Pending, Accepted, Rejected (stored as string)</span></li>
+            <li><span class="task-id">T003</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">YearlyManufacturingCost.cs</span> — Value object (no EF key): Year, ProductionVolume, ProductionVolumeRationale, UnitCost, UnitCostRationale, AverageGlobalDistributionExpense, AvgDistributionExpenseRationale</span></li>
+            <li><span class="task-id">T004</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">YearlySale.cs</span> — Value object: Year, UnitsSold, UnitsSoldRationale, UnitPrice, UnitPriceRationale, SalesMarketingExpense, SalesMarketingExpenseRationale</span></li>
+            <li><span class="task-id">T005</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">YearlyDevelopmentCost.cs</span> — Value object: Year, InfrastructureCost, InfrastructureCostRationale, PeopleCost, PeopleCostRationale</span></li>
+            <li><span class="task-id">T006</span><span class="task-desc"><span class="task-file">FormalResponse.cs</span> — Abstract base (EntityOfGuid): InnovationId, ActorId, Location (GeographicRegion), ParticipationType [MaxLength 100], ParticipationProposal [MaxLength 5000], Status (default Pending), SubmittedAt, UpdatedAt?, AcceptedAt?</span></li>
+            <li><span class="task-id">T007</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">ManufacturingResponse.cs</span> — Inherits FormalResponse; adds IList&lt;YearlyManufacturingCost&gt; YearlyManufacturingCosts</span></li>
+            <li><span class="task-id">T008</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">SalesMarketingResponse.cs</span> — Inherits FormalResponse; adds IList&lt;YearlySale&gt; YearlySales</span></li>
+            <li><span class="task-id">T009</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">ResearchDevelopmentResponse.cs</span> — Inherits FormalResponse; adds int ProductDevelopmentDuration + IList&lt;YearlyDevelopmentCost&gt; YearlyDevelopmentCosts</span></li>
+            <li><span class="task-id">T010</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">InvestorResponse.cs</span> — Inherits FormalResponse; adds string Feedback [MaxLength 2000]</span></li>
+            <li><span class="task-id">T011</span><span class="task-desc"><span class="task-file">Innovation.cs</span> — Rename nav property: ICollection&lt;Bid&gt; Bids → ICollection&lt;FormalResponse&gt; FormalResponses</span></li>
+            <li><span class="task-id">T012</span><span class="task-desc"><span class="task-file">Bid.cs</span> + <span class="task-file">BidStatus.cs</span> — Delete both files</span></li>
+            <li><span class="task-id">T013</span><span class="task-desc"><code>dotnet build</code> — Expect compilation errors ONLY in consumers (AppDbContext, SeedData, SelectPartners, GetBids, Program.cs); none in Domain/Entities/</span></li>
+          </ul>
+          <div class="checkpoint"><strong>Checkpoint:</strong> 10 new files, 1 modified, 2 deleted. Domain compiles.</div>
+        </div>
+      </div>
+
+      <!-- Phase 2 -->
+      <div class="milestone foundation">
+        <div class="milestone-meta">
+          <div class="milestone-phase">Phase 2</div>
+          <div class="milestone-title">Persistence Layer</div>
+          <span class="milestone-badge">Foundation</span>
+        </div>
+        <div class="milestone-content">
+          <div class="milestone-goal">Wire EF Core TPH, JSON columns, generate and apply the migration. Unblocks all user stories.</div>
+          <ul class="task-list">
+            <li><span class="task-id">T014</span><span class="task-desc"><span class="task-file">AppDbContext.cs</span> — Remove DbSet&lt;Bid&gt;; add DbSet&lt;FormalResponse&gt;; configure HasDiscriminator&lt;string&gt;("ResponseType") + four HasValue() mappings; add OwnsMany(…).ToJson() for three subtypes; replace IX_Bid_… index; update FK to i.FormalResponses</span></li>
+            <li><span class="task-id">T015</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">SeedData.cs</span> — Replace all <code>new Bid { … }</code> with typed FormalResponse subtypes; include at least one of each financial type</span></li>
+            <li><span class="task-id">T016</span><span class="task-desc">Run <code>dotnet ef migrations add AddFormalResponseHierarchy</code> from <code>src/Innoventity.API/</code></span></li>
+            <li><span class="task-id">T017</span><span class="task-desc">⚠️ Human review — augment Up() with INSERT SQL copying Bids → FormalResponses (ActorType → ResponseType discriminator, empty <code>'[]'</code> for JSON columns); verify Down() reverses data movement</span></li>
+            <li><span class="task-id">T018</span><span class="task-desc">Run <code>dotnet ef database update</code></span></li>
+            <li><span class="task-id">T019</span><span class="task-desc">Run <code>dotnet build</code> — verify zero compilation errors across all consumer files</span></li>
+          </ul>
+          <div class="checkpoint"><strong>Checkpoint:</strong> FormalResponses table live, TPH configured, seeds updated. User story implementation can begin.</div>
+        </div>
+      </div>
+
+      <!-- Phase 3 -->
+      <div class="milestone">
+        <div class="milestone-meta">
+          <div class="milestone-phase">Phase 3 · US1</div>
+          <div class="milestone-title">Manufacturing Submission</div>
+          <span class="milestone-badge p1">P1</span> <span class="milestone-badge mvp">MVP</span>
+        </div>
+        <div class="milestone-content">
+          <div class="milestone-goal">Manufacturing actor submits typed response with yearly cost projections. Independent test: 3-year projection → 201 + discriminator stored.</div>
+          <ul class="task-list">
+            <li><span class="task-id">T020</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">SubmitManufacturingResponseTests.cs</span> — 8 tests: happy path 3-year → 201; wrong actor type → 403; owns innovation → 409; duplicate → 409; not Published → 404; rationale &lt; 20 chars → 422 with field name; non-contiguous years [1,3] → 422; year &gt; 10 → 422</span></li>
+            <li><span class="task-id">T021</span><span class="task-desc"><span class="task-file">SubmitManufacturingResponse.cs</span> — Guard chain: JWT → actor lookup → Manufacturing check (403) → innovation lookup (404) → Published check (404) → ownership (409) → duplicate (409) → year contiguity + max 10 (422) → rationale ≥ 20 chars with field name (422) → persist → 201</span></li>
+            <li><span class="task-id">T022</span><span class="task-desc"><span class="task-file">Program.cs</span> — <code>app.MapPost("/innovations/{id}/bids/manufacturing", …)</code></span></li>
+            <li><span class="task-id">T023</span><span class="task-desc">Run <code>dotnet test --filter SubmitManufacturingResponse</code> — verify all 8 pass</span></li>
+          </ul>
+          <div class="checkpoint"><strong>Checkpoint:</strong> Manufacturing actor can fully submit. US1 independently testable.</div>
+        </div>
+      </div>
+
+      <!-- Phase 4 -->
+      <div class="milestone">
+        <div class="milestone-meta">
+          <div class="milestone-phase">Phase 4 · US2</div>
+          <div class="milestone-title">SalesMarketing Submission</div>
+          <span class="milestone-badge p1">P1</span>
+        </div>
+        <div class="milestone-content">
+          <div class="milestone-goal">SalesMarketing actor submits typed response with yearly revenue projections. Independent test: 2-year YearlySales with all six rationale strings.</div>
+          <ul class="task-list">
+            <li><span class="task-id">T024</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">SubmitSalesMarketingResponseTests.cs</span> — 8 tests: same guard coverage as US1 (wrong type = Manufacturing → 403, owns → 409, duplicate → 409, not published → 404, UnitsSoldRationale &lt; 20 chars → 422, year gap → 422, year &gt; 10 → 422, happy path → 201)</span></li>
+            <li><span class="task-id">T025</span><span class="task-desc"><span class="task-file">SubmitSalesMarketingResponse.cs</span> — Same guard chain; actor type: SalesMarketing only; validate YearlySales contiguity + max 10 + rationale ≥ 20 chars; persist</span></li>
+            <li><span class="task-id">T026</span><span class="task-desc"><span class="task-file">Program.cs</span> — <code>app.MapPost("/innovations/{id}/bids/sales", …)</code></span></li>
+            <li><span class="task-id">T027</span><span class="task-desc">Run <code>dotnet test --filter SubmitSalesMarketingResponse</code> — verify all 8 pass</span></li>
+          </ul>
+          <div class="checkpoint"><strong>Checkpoint:</strong> SalesMarketing actor can submit. US2 independently testable alongside US1.</div>
+        </div>
+      </div>
+
+      <!-- Phase 5 -->
+      <div class="milestone">
+        <div class="milestone-meta">
+          <div class="milestone-phase">Phase 5 · US3</div>
+          <div class="milestone-title">R&amp;D Submission</div>
+          <span class="milestone-badge p1">P1</span>
+        </div>
+        <div class="milestone-content">
+          <div class="milestone-goal">R&amp;D actor submits typed response with ProductDevelopmentDuration + yearly development costs. Independent test: duration=2 + 2-year YearlyDevelopmentCosts stored.</div>
+          <ul class="task-list">
+            <li><span class="task-id">T028</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">SubmitResearchDevelopmentResponseTests.cs</span> — 8 tests: happy path → 201 + ProductDevelopmentDuration stored; wrong actor → 403; owns → 409; duplicate → 409; not published → 404; InfrastructureCostRationale &lt; 20 chars → 422; year gap → 422; ProductDevelopmentDuration = 0 → 422</span></li>
+            <li><span class="task-id">T029</span><span class="task-desc"><span class="task-file">SubmitResearchDevelopmentResponse.cs</span> — Same guard chain; actor type: RD only; validate ProductDevelopmentDuration 1–10; validate YearlyDevelopmentCosts contiguity + max 10 + rationale ≥ 20 chars; persist</span></li>
+            <li><span class="task-id">T030</span><span class="task-desc"><span class="task-file">Program.cs</span> — <code>app.MapPost("/innovations/{id}/bids/rd", …)</code></span></li>
+            <li><span class="task-id">T031</span><span class="task-desc">Run <code>dotnet test --filter SubmitResearchDevelopmentResponse</code> — verify all 8 pass</span></li>
+          </ul>
+          <div class="checkpoint"><strong>Checkpoint:</strong> All three financial response types operable. Core NPV data capture functional.</div>
+        </div>
+      </div>
+
+      <!-- Phase 6 -->
+      <div class="milestone">
+        <div class="milestone-meta">
+          <div class="milestone-phase">Phase 6 · US4</div>
+          <div class="milestone-title">Investor Submission</div>
+          <span class="milestone-badge">P2</span>
+        </div>
+        <div class="milestone-content">
+          <div class="milestone-goal">Investor actor submits lightweight feedback response distinguishable by ResponseType. Independent test: InvestorResponse stored with Feedback; no projection columns.</div>
+          <ul class="task-list">
+            <li><span class="task-id">T032</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">SubmitInvestorResponseTests.cs</span> — 5 tests: happy path → 201 + responseType=InvestorResponse; wrong actor type → 403; owns innovation → 409; feedback &lt; 50 chars → 422; feedback &gt; 2000 chars → 422</span></li>
+            <li><span class="task-id">T033</span><span class="task-desc"><span class="task-file">SubmitInvestorResponse.cs</span> — Same guard chain; actor type: Investor only; validate Feedback ≥ 50 ≤ 2000 chars (422); validate ParticipationProposal ≥ 100 chars (400); persist InvestorResponse</span></li>
+            <li><span class="task-id">T034</span><span class="task-desc"><span class="task-file">Program.cs</span> — <code>app.MapPost("/innovations/{id}/bids/investor", …)</code></span></li>
+            <li><span class="task-id">T035</span><span class="task-desc">Run <code>dotnet test --filter SubmitInvestorResponse</code> — verify all 5 pass</span></li>
+          </ul>
+          <div class="checkpoint"><strong>Checkpoint:</strong> All 4 response types implemented. Full polymorphic hierarchy operational.</div>
+        </div>
+      </div>
+
+      <!-- Phase 7 -->
+      <div class="milestone">
+        <div class="milestone-meta">
+          <div class="milestone-phase">Phase 7 · US5</div>
+          <div class="milestone-title">3-Tier Visibility</div>
+          <span class="milestone-badge p1">P1</span>
+        </div>
+        <div class="milestone-content">
+          <div class="milestone-goal">Owner sees full projection data; submitting actor sees own full response; others see only public summary. Independent test: seed 3 responses, call as (a) owner (b) submitter (c) third-party.</div>
+          <ul class="task-list">
+            <li><span class="task-id">T036</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">GetBidsTests.cs</span> — Add tests: (1) owner receives full projections for all types; (2) submitting actor gets own full + others redacted; (3) third-party gets only responseType/actorId/location/participationType/status/submittedAt; (4) ?type=manufacturing filter works; (5) responseType discriminator present in all views</span></li>
+            <li><span class="task-id">T037</span><span class="task-desc"><span class="task-file">GetBids.cs</span> — Query db.FormalResponses; determine caller identity (owner/submitter/other); build typed DTOs per discriminator; apply 3-tier visibility; apply ?type= filter (case-insensitive); return 200 with { innovationId, responses }</span></li>
+            <li><span class="task-id">T038</span><span class="task-desc">Run <code>dotnet test --filter GetBids</code> — verify all visibility tests pass</span></li>
+          </ul>
+          <div class="checkpoint"><strong>Checkpoint:</strong> Owner can compare all response types. 3-tier visibility enforced (SC-004).</div>
+        </div>
+      </div>
+
+      <!-- Phase 8 -->
+      <div class="milestone">
+        <div class="milestone-meta">
+          <div class="milestone-phase">Phase 8 · US6</div>
+          <div class="milestone-title">SelectPartners Compat.</div>
+          <span class="milestone-badge p1">P1</span>
+        </div>
+        <div class="milestone-content">
+          <div class="milestone-goal">Partner selection workflow operates with FormalResponse IDs and the renamed selectedResponseIds field. Old Bid code deleted.</div>
+          <ul class="task-list">
+            <li><span class="task-id">T039</span><span class="task-par">[P]</span><span class="task-desc">Delete <span class="task-file">SubmitBid.cs</span> and <span class="task-file">UpdateBid.cs</span></span></li>
+            <li><span class="task-id">T040</span><span class="task-par">[P]</span><span class="task-desc">Delete <span class="task-file">SubmitBidTests.cs</span> and <span class="task-file">UpdateBidTests.cs</span></span></li>
+            <li><span class="task-id">T041</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">SelectPartnersTests.cs</span> — Replace <code>new Bid { … }</code> seeds with typed FormalResponse subtypes; rename selectedBidIds → selectedResponseIds in all request bodies; verify 14 test cases semantically correct</span></li>
+            <li><span class="task-id">T042</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">SelectPartners.cs</span> — Rename SelectedBidIds → SelectedResponseIds; change innovation.Bids → innovation.FormalResponses; change BidStatus → ResponseStatus; update required-type validation</span></li>
+            <li><span class="task-id">T043</span><span class="task-desc"><span class="task-file">Program.cs</span> — Remove MapPost for SubmitBid and UpdateBid; verify all 4 new submit endpoints registered</span></li>
+            <li><span class="task-id">T044</span><span class="task-desc">Run <code>dotnet test --filter SelectPartners</code> — verify all 14 tests pass + zero regressions; run full <code>dotnet test</code></span></li>
+          </ul>
+          <div class="checkpoint"><strong>Checkpoint:</strong> Breaking migration complete. All 6 user stories functional. SelectPartners regression-free (SC-002).</div>
+        </div>
+      </div>
+
+      <!-- Phase 9 -->
+      <div class="milestone polish">
+        <div class="milestone-meta">
+          <div class="milestone-phase">Phase 9</div>
+          <div class="milestone-title">Polish &amp; Quality Gates</div>
+          <span class="milestone-badge">Final</span>
+        </div>
+        <div class="milestone-content">
+          <div class="milestone-goal">E2E journey, Stryker mutation testing, full quality gate validation.</div>
+          <ul class="task-list">
+            <li><span class="task-id">T045</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">Journey2_BiddingTests.cs</span> — Update full bidding journey: typed endpoints (/bids/manufacturing, /bids/sales, /bids/rd); replace selectedBidIds → selectedResponseIds; include projection data in payloads</span></li>
+            <li><span class="task-id">T046</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">stryker-config.json</span> — Add to mutate list: SubmitManufacturingResponse.cs, SubmitSalesMarketingResponse.cs, SubmitResearchDevelopmentResponse.cs, SubmitInvestorResponse.cs, GetBids.cs, SelectPartners.cs; remove SubmitBid.cs, UpdateBid.cs</span></li>
+            <li><span class="task-id">T047</span><span class="task-desc">Run <code>dotnet test</code> — verify ~161 tests pass (131 pre-existing + ~30 new); 3 pre-existing skips unchanged</span></li>
+            <li><span class="task-id">T048</span><span class="task-desc">Run <code>dotnet stryker</code> from <code>src/Innoventity.API/</code> — mutation score ≥ 80% across new feature files (SC-005)</span></li>
+            <li><span class="task-id">T049</span><span class="task-desc">Run <code>dotnet build -c Release --no-restore</code> — verify Release build is clean</span></li>
+          </ul>
+          <div class="checkpoint"><strong>Checkpoint:</strong> Feature complete. All quality gates satisfied. Ready for <code>/speckit-analyze</code>.</div>
+        </div>
+      </div>
+
+    </div><!-- /milestones -->
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════ SECTION 02: ARCHITECTURE -->
+  <section id="architecture">
+    <div class="section-label">Section 02</div>
+    <h2>Architecture &amp; Data Flow</h2>
+
+    <div class="diagram">
+      <svg viewBox="0 0 1100 560" xmlns="http://www.w3.org/2000/svg" font-family="'JetBrains Mono', monospace">
+        <defs>
+          <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#87867F"/>
+          </marker>
+          <marker id="arr-clay" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#D97757"/>
+          </marker>
+          <marker id="arr-olive" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#788C5D"/>
+          </marker>
+        </defs>
+
+        <!-- ── Labels ── -->
+        <text x="40" y="28" fill="#87867F" font-size="10" letter-spacing="1.5">HTTP LAYER</text>
+        <text x="320" y="28" fill="#87867F" font-size="10" letter-spacing="1.5">FEATURE HANDLERS (Vertical Slices)</text>
+        <text x="720" y="28" fill="#87867F" font-size="10" letter-spacing="1.5">DOMAIN (TPH)</text>
+
+        <!-- ── POST endpoints ── -->
+        <rect x="20" y="40" width="250" height="42" rx="4" fill="#1e1e1b" stroke="#D97757" stroke-width="1.5"/>
+        <text x="30" y="57" fill="#D97757" font-size="9" font-weight="bold">POST</text>
+        <text x="68" y="57" fill="#d4d0c8" font-size="10">/bids/manufacturing</text>
+        <text x="30" y="72" fill="#87867F" font-size="9">ActorType = Manufacturing</text>
+
+        <rect x="20" y="92" width="250" height="42" rx="4" fill="#1e1e1b" stroke="#D97757" stroke-width="1.5"/>
+        <text x="30" y="109" fill="#D97757" font-size="9" font-weight="bold">POST</text>
+        <text x="68" y="109" fill="#d4d0c8" font-size="10">/bids/sales</text>
+        <text x="30" y="124" fill="#87867F" font-size="9">ActorType = SalesMarketing</text>
+
+        <rect x="20" y="144" width="250" height="42" rx="4" fill="#1e1e1b" stroke="#D97757" stroke-width="1.5"/>
+        <text x="30" y="161" fill="#D97757" font-size="9" font-weight="bold">POST</text>
+        <text x="68" y="161" fill="#d4d0c8" font-size="10">/bids/rd</text>
+        <text x="30" y="176" fill="#87867F" font-size="9">ActorType = RD</text>
+
+        <rect x="20" y="196" width="250" height="42" rx="4" fill="#1e1e1b" stroke="#D97757" stroke-width="1.5"/>
+        <text x="30" y="213" fill="#D97757" font-size="9" font-weight="bold">POST</text>
+        <text x="68" y="213" fill="#d4d0c8" font-size="10">/bids/investor</text>
+        <text x="30" y="228" fill="#87867F" font-size="9">ActorType = Investor</text>
+
+        <!-- GET endpoint -->
+        <rect x="20" y="300" width="250" height="60" rx="4" fill="#1e1e1b" stroke="#788C5D" stroke-width="1.5"/>
+        <text x="30" y="317" fill="#788C5D" font-size="9" font-weight="bold">GET</text>
+        <text x="62" y="317" fill="#d4d0c8" font-size="10">/bids[?type=…]</text>
+        <text x="30" y="333" fill="#C9B98A" font-size="8">Tier 1 — Owner: full data</text>
+        <text x="30" y="346" fill="#C9B98A" font-size="8">Tier 2 — Submitter: own full + others public</text>
+        <text x="30" y="359" fill="#C9B98A" font-size="8">Tier 3 — Other actor: public summary only</text>
+
+        <!-- Arrows POST → handlers -->
+        <line x1="270" y1="61" x2="310" y2="90" stroke="#D97757" stroke-width="1.2" marker-end="url(#arr-clay)"/>
+        <line x1="270" y1="113" x2="310" y2="130" stroke="#D97757" stroke-width="1.2" marker-end="url(#arr-clay)"/>
+        <line x1="270" y1="165" x2="310" y2="170" stroke="#D97757" stroke-width="1.2" marker-end="url(#arr-clay)"/>
+        <line x1="270" y1="217" x2="310" y2="210" stroke="#D97757" stroke-width="1.2" marker-end="url(#arr-clay)"/>
+
+        <!-- ── Handlers ── -->
+        <rect x="310" y="60" width="210" height="30" rx="3" fill="#2a2a27" stroke="#3D3D3A"/>
+        <text x="320" y="79" fill="#C9B98A" font-size="10">SubmitManufacturingResponse</text>
+
+        <rect x="310" y="100" width="210" height="30" rx="3" fill="#2a2a27" stroke="#3D3D3A"/>
+        <text x="320" y="119" fill="#C9B98A" font-size="10">SubmitSalesMarketingResponse</text>
+
+        <rect x="310" y="140" width="210" height="30" rx="3" fill="#2a2a27" stroke="#3D3D3A"/>
+        <text x="320" y="159" fill="#C9B98A" font-size="10">SubmitResearchDevResponse</text>
+
+        <rect x="310" y="180" width="210" height="30" rx="3" fill="#2a2a27" stroke="#3D3D3A"/>
+        <text x="320" y="199" fill="#C9B98A" font-size="10">SubmitInvestorResponse</text>
+
+        <!-- Arrow GET → handler -->
+        <line x1="270" y1="330" x2="310" y2="310" stroke="#788C5D" stroke-width="1.2" marker-end="url(#arr-olive)"/>
+        <rect x="310" y="290" width="210" height="30" rx="3" fill="#2a2a27" stroke="#3D3D3A"/>
+        <text x="320" y="309" fill="#C9B98A" font-size="10">GetBids (3-tier visibility)</text>
+
+        <!-- SelectPartners -->
+        <rect x="20" y="410" width="250" height="42" rx="4" fill="#1e1e1b" stroke="#87867F" stroke-width="1.2"/>
+        <text x="30" y="428" fill="#D97757" font-size="9" font-weight="bold">POST</text>
+        <text x="68" y="428" fill="#d4d0c8" font-size="10">/select-partners</text>
+        <text x="30" y="443" fill="#87867F" font-size="9">selectedResponseIds (renamed)</text>
+        <line x1="270" y1="431" x2="310" y2="390" stroke="#87867F" stroke-width="1.2" marker-end="url(#arr)"/>
+        <rect x="310" y="370" width="210" height="30" rx="3" fill="#2a2a27" stroke="#3D3D3A"/>
+        <text x="320" y="389" fill="#C9B98A" font-size="10">SelectPartners (updated)</text>
+
+        <!-- ── Arrows handlers → domain ── -->
+        <line x1="520" y1="90" x2="690" y2="130" stroke="#3D3D3A" stroke-width="1" marker-end="url(#arr)"/>
+        <line x1="520" y1="120" x2="690" y2="180" stroke="#3D3D3A" stroke-width="1" marker-end="url(#arr)"/>
+        <line x1="520" y1="155" x2="690" y2="230" stroke="#3D3D3A" stroke-width="1" marker-end="url(#arr)"/>
+        <line x1="520" y1="200" x2="690" y2="280" stroke="#3D3D3A" stroke-width="1" marker-end="url(#arr)"/>
+        <line x1="520" y1="305" x2="690" y2="200" stroke="#3D3D3A" stroke-width="1" marker-end="url(#arr)"/>
+        <line x1="520" y1="385" x2="690" y2="300" stroke="#3D3D3A" stroke-width="1" marker-end="url(#arr)"/>
+
+        <!-- ── Domain entities ── -->
+        <!-- Abstract base -->
+        <rect x="690" y="40" width="380" height="70" rx="4" fill="#1e3a2a" stroke="#788C5D" stroke-width="1.5"/>
+        <text x="700" y="57" fill="#788C5D" font-size="9" font-weight="bold">«abstract»</text>
+        <text x="700" y="72" fill="#d4d0c8" font-size="11" font-weight="bold">FormalResponse : EntityOfGuid</text>
+        <text x="700" y="88" fill="#87867F" font-size="9">Id · InnovationId · ActorId · Location · ParticipationType · ParticipationProposal · Status · SubmittedAt</text>
+        <text x="700" y="102" fill="#87867F" font-size="9">TPH table: FormalResponses  Discriminator: ResponseType (string)</text>
+
+        <!-- Subtype boxes -->
+        <rect x="690" y="130" width="165" height="70" rx="3" fill="#1e2a1e" stroke="#3D3D3A"/>
+        <text x="700" y="148" fill="#C9B98A" font-size="10" font-weight="bold">ManufacturingResponse</text>
+        <text x="700" y="163" fill="#87867F" font-size="8">YearlyManufacturingCosts</text>
+        <text x="700" y="175" fill="#87867F" font-size="8">  └ Year · ProductionVolume · UnitCost</text>
+        <text x="700" y="187" fill="#87867F" font-size="8">  └ AvgDistributionExpense + 3 Rationale</text>
+
+        <rect x="690" y="210" width="165" height="60" rx="3" fill="#1e2a1e" stroke="#3D3D3A"/>
+        <text x="700" y="228" fill="#C9B98A" font-size="10" font-weight="bold">SalesMarketingResponse</text>
+        <text x="700" y="243" fill="#87867F" font-size="8">YearlySales</text>
+        <text x="700" y="255" fill="#87867F" font-size="8">  └ Year · UnitsSold · UnitPrice · SMExpense</text>
+        <text x="700" y="267" fill="#87867F" font-size="8">  └ 3 Rationale fields</text>
+
+        <rect x="690" y="285" width="165" height="65" rx="3" fill="#1e2a1e" stroke="#3D3D3A"/>
+        <text x="700" y="302" fill="#C9B98A" font-size="10" font-weight="bold">ResearchDevelopmentResponse</text>
+        <text x="700" y="316" fill="#87867F" font-size="8">ProductDevelopmentDuration (1–10)</text>
+        <text x="700" y="328" fill="#87867F" font-size="8">YearlyDevelopmentCosts</text>
+        <text x="700" y="340" fill="#87867F" font-size="8">  └ Year · InfrastructureCost · PeopleCost</text>
+
+        <rect x="690" y="365" width="165" height="50" rx="3" fill="#1e2a1e" stroke="#3D3D3A"/>
+        <text x="700" y="383" fill="#C9B98A" font-size="10" font-weight="bold">InvestorResponse</text>
+        <text x="700" y="398" fill="#87867F" font-size="8">Feedback (string, 50–2000 chars)</text>
+        <text x="700" y="410" fill="#87867F" font-size="8">No projection columns</text>
+
+        <!-- Inheritance arrows from base to subtypes -->
+        <line x1="772" y1="110" x2="772" y2="130" stroke="#788C5D" stroke-width="1" stroke-dasharray="4,2"/>
+        <line x1="772" y1="110" x2="772" y2="210" stroke="#788C5D" stroke-width="1" stroke-dasharray="4,2"/>
+        <line x1="772" y1="110" x2="772" y2="285" stroke="#788C5D" stroke-width="1" stroke-dasharray="4,2"/>
+        <line x1="772" y1="110" x2="772" y2="365" stroke="#788C5D" stroke-width="1" stroke-dasharray="4,2"/>
+
+        <!-- JSON column indicators -->
+        <rect x="875" y="130" width="175" height="70" rx="3" fill="#1a2a35" stroke="#3D3D3A"/>
+        <text x="885" y="148" fill="#8fbcbb" font-size="9" font-weight="bold">JSON Columns (OwnsMany ToJson)</text>
+        <text x="885" y="163" fill="#87867F" font-size="8">ManufacturingResponse.YearlyManufacturingCosts</text>
+        <text x="885" y="175" fill="#87867F" font-size="8">SalesMarketingResponse.YearlySales</text>
+        <text x="885" y="188" fill="#87867F" font-size="8">ResearchDevResponse.YearlyDevelopmentCosts</text>
+
+        <!-- 3-tier visibility box -->
+        <rect x="875" y="280" width="195" height="85" rx="3" fill="#1a2535" stroke="#3D3D3A"/>
+        <text x="885" y="298" fill="#C9B98A" font-size="9" font-weight="bold">3-Tier GET /bids Visibility</text>
+        <text x="885" y="313" fill="#788C5D" font-size="8">■ Tier 1 (owner)     → full data</text>
+        <text x="885" y="326" fill="#C9B98A" font-size="8">■ Tier 2 (submitter) → own full + public for others</text>
+        <text x="885" y="339" fill="#87867F" font-size="8">■ Tier 3 (other)     → public summary only</text>
+        <text x="885" y="355" fill="#87867F" font-size="8">  Fields: type · actorId · location · participationType</text>
+        <text x="885" y="368" fill="#87867F" font-size="8">          status · submittedAt</text>
+
+      </svg>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════ SECTION 03: API CONTRACTS -->
+  <section id="contracts">
+    <div class="section-label">Section 03</div>
+    <h2>API Contract Mockups</h2>
+
+    <div class="mocks">
+      <div class="mock-card">
+        <div class="mock-card-header">
+          <span class="method-badge method-post">POST</span>
+          /innovations/{id}/bids/manufacturing
+        </div>
+        <pre>{
+  "location": "Europe",
+  "participationType": "Manufacturing Partner",
+  "participationProposal": "We propose to handle EU
+    distribution leveraging our existing
+    logistics network across 12 countries…",
+  "yearlyManufacturingCosts": [
+    {
+      "year": 1,
+      "productionVolume": 10000,
+      "productionVolumeRationale": "Based on Q1
+        supplier capacity quotes confirmed for 2027.",
+      "unitCost": 5.50,
+      "unitCostRationale": "Materials $3.50, labor
+        $1.50, overhead $0.50 per BOM breakdown.",
+      "averageGlobalDistributionExpense": 1.20,
+      "avgDistributionExpenseRationale": "Weighted
+        by target market logistics index Q4 2025."
+    },
+    {
+      "year": 2,
+      "productionVolume": 18000,
+      "productionVolumeRationale": "Scale-up assumes
+        second supplier line coming online in Q2.",
+      "unitCost": 4.80,
+      "unitCostRationale": "Volume discount kicks in
+        above 15k units per supplier agreement.",
+      "averageGlobalDistributionExpense": 1.10,
+      "avgDistributionExpenseRationale": "Improved
+        LTL efficiency from consolidated shipments."
+    }
+  ]
+}
+
+→ 201 Created
+{
+  "responseId": "3f7a2b91-…",
+  "responseType": "ManufacturingResponse",
+  "innovationId": "a1b2c3d4-…",
+  "actorId": "e5f6a7b8-…",
+  "status": "Pending",
+  "submittedAt": "2026-06-07T14:32:00Z"
+}</pre>
+      </div>
+
+      <div class="mock-card">
+        <div class="mock-card-header">
+          <span class="method-badge method-post">POST</span>
+          /innovations/{id}/bids/investor
+        </div>
+        <pre>{
+  "location": "Americas",
+  "participationType": "Investment Partner",
+  "participationProposal": "Seed round of $2M in
+    exchange for 8% equity, structured as a SAFE
+    with a $25M cap and standard MFN clause.",
+  "feedback": "The innovation addresses a clear gap
+    in the industrial IoT space. Our due diligence
+    confirms the target market's TAM at $4.2B with
+    a 3-year CAGR of 18%. We see strong alignment
+    with our portfolio thesis around smart factory
+    infrastructure. Key concerns: IP moat depends
+    on patent #US2024-…; recommend accelerating
+    filing in EU/CN jurisdictions before launch."
+}
+
+→ 201 Created
+{
+  "responseId": "9c1d4e72-…",
+  "responseType": "InvestorResponse",
+  "innovationId": "a1b2c3d4-…",
+  "actorId": "f9e8d7c6-…",
+  "status": "Pending",
+  "submittedAt": "2026-06-07T15:01:00Z"
+}</pre>
+      </div>
+
+      <div class="mock-card">
+        <div class="mock-card-header">
+          <span class="method-badge method-get">GET</span>
+          /bids — Owner View (Tier 1)
+        </div>
+        <pre>{
+  "innovationId": "a1b2c3d4-…",
+  "responses": [
+    {
+      "responseId": "3f7a2b91-…",
+      "responseType": "ManufacturingResponse",
+      "actorId": "e5f6a7b8-…",
+      "location": "Europe",
+      "participationType": "Manufacturing Partner",
+      "participationProposal": "We propose to handle
+        EU distribution leveraging our existing…",
+      "status": "Pending",
+      "submittedAt": "2026-06-07T14:32:00Z",
+      "yearlyManufacturingCosts": [
+        { "year": 1, "productionVolume": 10000,
+          "productionVolumeRationale": "Based on Q1…",
+          "unitCost": 5.50,
+          "unitCostRationale": "Materials $3.50…",
+          "averageGlobalDistributionExpense": 1.20,
+          "avgDistributionExpenseRationale": "…" }
+      ]
+    }
+  ]
+}</pre>
+      </div>
+
+      <div class="mock-card">
+        <div class="mock-card-header">
+          <span class="method-badge method-get">GET</span>
+          /bids — Third-Party View (Tier 3)
+        </div>
+        <pre>{
+  "innovationId": "a1b2c3d4-…",
+  "responses": [
+    {
+      "responseId": "3f7a2b91-…",
+      "responseType": "ManufacturingResponse",
+      "actorId": "e5f6a7b8-…",
+      "location": "Europe",
+      "participationType": "Manufacturing Partner",
+      "status": "Pending",
+      "submittedAt": "2026-06-07T14:32:00Z"
+    },
+    {
+      "responseId": "9c1d4e72-…",
+      "responseType": "InvestorResponse",
+      "actorId": "f9e8d7c6-…",
+      "location": "Americas",
+      "participationType": "Investment Partner",
+      "status": "Pending",
+      "submittedAt": "2026-06-07T15:01:00Z"
+    }
+  ]
+}
+
+// participationProposal, feedback, yearlyManufacturing-
+// Costs, yearlySales, yearlyDevelopmentCosts — ALL
+// omitted for non-owner non-submitter actors (Tier 3)</pre>
+      </div>
+    </div>
+
+    <h3>Error Responses — All Submit Endpoints</h3>
+    <table class="risks-table" style="margin-top:0.5rem">
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Condition</th>
+          <th>Example Body</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>401</td><td>No / invalid JWT</td><td><code>{ "error": "Unauthorized" }</code></td></tr>
+        <tr><td>403</td><td>Actor is IdeaGenerator or wrong actor type</td><td><code>{ "error": "Forbidden", "detail": "Only Manufacturing actors may submit this response type." }</code></td></tr>
+        <tr><td>404</td><td>Innovation not found or not Published</td><td><code>{ "error": "NotFound" }</code></td></tr>
+        <tr><td>409</td><td>Actor already submitted for this innovation; or actor owns the innovation</td><td><code>{ "error": "Conflict", "detail": "A response already exists for this actor." }</code></td></tr>
+        <tr><td>422</td><td>Year contiguity gap, year &gt; 10, rationale &lt; 20 chars, Feedback out of range</td><td><code>{ "error": "UnprocessableEntity", "field": "yearlyManufacturingCosts[1].productionVolumeRationale", "detail": "Rationale must be at least 20 characters." }</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════ SECTION 04: KEY CODE -->
+  <section id="code">
+    <div class="section-label">Section 04</div>
+    <h2>Key Code Snippets</h2>
+
+    <div class="code-grid">
+      <!-- AppDbContext TPH + ToJson -->
+      <div class="code-block">
+        <div class="code-block-header">AppDbContext.cs — TPH + OwnsMany().ToJson()</div>
+        <pre><span class="cm">// T014 — replaces Bid config entirely</span>
+<span class="kw">public</span> DbSet&lt;<span class="nb">FormalResponse</span>&gt; FormalResponses { <span class="kw">get</span>; <span class="kw">set</span>; }
+
+modelBuilder.<span class="fn">Entity</span>&lt;<span class="nb">FormalResponse</span>&gt;(b =&gt;
+{
+    b.<span class="fn">HasDiscriminator</span>&lt;<span class="nb">string</span>&gt;(<span class="str">"ResponseType"</span>)
+     .<span class="fn">HasValue</span>&lt;<span class="nb">ManufacturingResponse</span>&gt;(
+         <span class="str">"ManufacturingResponse"</span>)
+     .<span class="fn">HasValue</span>&lt;<span class="nb">SalesMarketingResponse</span>&gt;(
+         <span class="str">"SalesMarketingResponse"</span>)
+     .<span class="fn">HasValue</span>&lt;<span class="nb">ResearchDevelopmentResponse</span>&gt;(
+         <span class="str">"ResearchDevelopmentResponse"</span>)
+     .<span class="fn">HasValue</span>&lt;<span class="nb">InvestorResponse</span>&gt;(
+         <span class="str">"InvestorResponse"</span>);
+
+    b.<span class="fn">HasOne</span>(r =&gt; r.Innovation)
+     .<span class="fn">WithMany</span>(i =&gt; i.FormalResponses)
+     .<span class="fn">HasForeignKey</span>(r =&gt; r.InnovationId)
+     .<span class="fn">OnDelete</span>(DeleteBehavior.Cascade);
+
+    b.<span class="fn">HasIndex</span>(r =&gt; <span class="kw">new</span> { r.ActorId, r.InnovationId })
+     .<span class="fn">IsUnique</span>()
+     .<span class="fn">HasDatabaseName</span>(
+         <span class="str">"IX_FormalResponse_ActorId_InnovationId"</span>);
+});
+
+modelBuilder.<span class="fn">Entity</span>&lt;<span class="nb">ManufacturingResponse</span>&gt;(b =&gt;
+    b.<span class="fn">OwnsMany</span>(r =&gt; r.YearlyManufacturingCosts)
+     .<span class="fn">ToJson</span>());
+
+modelBuilder.<span class="fn">Entity</span>&lt;<span class="nb">SalesMarketingResponse</span>&gt;(b =&gt;
+    b.<span class="fn">OwnsMany</span>(r =&gt; r.YearlySales)
+     .<span class="fn">ToJson</span>());
+
+modelBuilder.<span class="fn">Entity</span>&lt;<span class="nb">ResearchDevelopmentResponse</span>&gt;(b =&gt;
+    b.<span class="fn">OwnsMany</span>(r =&gt; r.YearlyDevelopmentCosts)
+     .<span class="fn">ToJson</span>());</pre>
+      </div>
+
+      <!-- SubmitManufacturingResponse guard chain -->
+      <div class="code-block">
+        <div class="code-block-header">SubmitManufacturingResponse.cs — Guard Chain (T021)</div>
+        <pre><span class="kw">public static async</span> Task&lt;IResult&gt; <span class="fn">Handle</span>(
+    Guid innovationId,
+    <span class="nb">SubmitManufacturingRequest</span> req,
+    <span class="nb">AppDbContext</span> db,
+    <span class="nb">ClaimsPrincipal</span> user)
+{
+    <span class="cm">// 1. JWT → actorId</span>
+    <span class="kw">var</span> actorId = user.<span class="fn">GetActorId</span>();
+
+    <span class="cm">// 2. Actor type guard</span>
+    <span class="kw">var</span> actor = <span class="kw">await</span> db.Actors
+        .<span class="fn">FindAsync</span>(actorId);
+    <span class="kw">if</span> (actor.<span class="fn">ActorType</span> != ActorType.Manufacturing)
+        <span class="kw">return</span> Results.<span class="fn">Forbid</span>();
+
+    <span class="cm">// 3. Innovation existence + Published guard</span>
+    <span class="kw">var</span> innovation = <span class="kw">await</span> db.Innovations
+        .<span class="fn">Include</span>(i =&gt; i.FormalResponses)
+        .<span class="fn">FirstOrDefaultAsync</span>(i =&gt; i.Id == innovationId);
+    <span class="kw">if</span> (innovation <span class="kw">is null</span> ||
+        innovation.Status != InnovationStatus.Published)
+        <span class="kw">return</span> Results.<span class="fn">NotFound</span>();
+
+    <span class="cm">// 4. Ownership conflict</span>
+    <span class="kw">if</span> (innovation.ActorId == actorId)
+        <span class="kw">return</span> Results.<span class="fn">Conflict</span>(<span class="str">"Owner cannot bid."</span>);
+
+    <span class="cm">// 5. Duplicate response</span>
+    <span class="kw">if</span> (innovation.FormalResponses
+        .<span class="fn">Any</span>(r =&gt; r.ActorId == actorId))
+        <span class="kw">return</span> Results.<span class="fn">Conflict</span>(<span class="str">"Already submitted."</span>);
+
+    <span class="cm">// 6. Year contiguity + max 10</span>
+    <span class="kw">var</span> years = req.YearlyManufacturingCosts
+        .<span class="fn">Select</span>(c =&gt; c.Year).<span class="fn">OrderBy</span>(y =&gt; y).<span class="fn">ToList</span>();
+    <span class="kw">if</span> (years[<span class="num">0</span>] != <span class="num">1</span> ||
+        years[^<span class="num">1</span>] != years.<span class="fn">Count</span> ||
+        years[^<span class="num">1</span>] &gt; <span class="num">10</span>)
+        <span class="kw">return</span> Results.<span class="fn">UnprocessableEntity</span>(
+            <span class="str">"Years must be contiguous 1-N, max 10."</span>);
+
+    <span class="cm">// 7. Rationale length validation</span>
+    <span class="kw">var</span> rErr = <span class="fn">ValidateRationale</span>(req.YearlyManufacturingCosts);
+    <span class="kw">if</span> (rErr <span class="kw">is not null</span>)
+        <span class="kw">return</span> Results.<span class="fn">UnprocessableEntity</span>(rErr);
+
+    <span class="cm">// 8. Persist</span>
+    <span class="kw">var</span> response = <span class="kw">new</span> ManufacturingResponse { ... };
+    db.FormalResponses.<span class="fn">Add</span>(response);
+    <span class="kw">await</span> db.<span class="fn">SaveChangesAsync</span>();
+    <span class="kw">return</span> Results.<span class="fn">Created</span>(<span class="str">$"/bids/{response.Id}"</span>,
+        <span class="kw">new</span> { response.Id, response.ResponseType, ... });
+}</pre>
+      </div>
+
+      <!-- GetBids 3-tier visibility -->
+      <div class="code-block">
+        <div class="code-block-header">GetBids.cs — 3-Tier Visibility Logic (T037)</div>
+        <pre><span class="kw">var</span> callerId = user.<span class="fn">GetActorId</span>();
+<span class="kw">var</span> isOwner = innovation.ActorId == callerId;
+
+<span class="kw">var</span> dtos = responses.<span class="fn">Select</span>(r =&gt;
+{
+    <span class="kw">bool</span> isOwn = r.ActorId == callerId;
+
+    <span class="cm">// Tier 1 — owner sees everything</span>
+    <span class="kw">if</span> (isOwner)
+        <span class="kw">return</span> <span class="fn">MapFullDto</span>(r);
+
+    <span class="cm">// Tier 2 — submitter sees own full response</span>
+    <span class="kw">if</span> (isOwn)
+        <span class="kw">return</span> <span class="fn">MapFullDto</span>(r);
+
+    <span class="cm">// Tier 3 — everyone else: public summary only</span>
+    <span class="kw">return</span> <span class="kw">new</span> FormalResponseSummaryDto
+    {
+        ResponseId        = r.Id,
+        ResponseType      = r.GetType().<span class="fn">Name</span>,
+        ActorId           = r.ActorId,
+        Location          = r.Location.<span class="fn">ToString</span>(),
+        ParticipationType = r.ParticipationType,
+        Status            = r.Status.<span class="fn">ToString</span>(),
+        SubmittedAt       = r.SubmittedAt
+        <span class="cm">// participationProposal, feedback,</span>
+        <span class="cm">// projections intentionally omitted</span>
+    };
+}).<span class="fn">ToList</span>();
+
+<span class="cm">// ?type= filter (case-insensitive)</span>
+<span class="kw">if</span> (typeFilter <span class="kw">is not null</span>)
+    dtos = dtos.<span class="fn">Where</span>(d =&gt;
+        d.ResponseType.<span class="fn">StartsWith</span>(typeFilter,
+            StringComparison.OrdinalIgnoreCase))
+        .<span class="fn">ToList</span>();
+
+<span class="kw">return</span> Results.<span class="fn">Ok</span>(<span class="kw">new</span> { InnovationId = innovationId,
+    Responses = dtos });</pre>
+      </div>
+
+      <!-- Migration SQL -->
+      <div class="code-block">
+        <div class="code-block-header">Migration Up() — Data Movement SQL (T017 human-reviewed)</div>
+        <pre><span class="cm">// Auto-generated: creates FormalResponses table</span>
+migrationBuilder.<span class="fn">CreateTable</span>(<span class="str">"FormalResponses"</span>, ...);
+
+<span class="cm">// ⚠️ Manually augmented: copy existing Bid rows</span>
+<span class="cm">// ActorType → ResponseType discriminator mapping:</span>
+<span class="cm">//   Manufacturing  → "ManufacturingResponse"</span>
+<span class="cm">//   SalesMarketing → "SalesMarketingResponse"</span>
+<span class="cm">//   RD             → "ResearchDevelopmentResponse"</span>
+<span class="cm">//   Investor       → "InvestorResponse"</span>
+migrationBuilder.<span class="fn">Sql</span>(<span class="str">@"
+INSERT INTO FormalResponses
+    (Id, ResponseType, InnovationId, ActorId,
+     Location, ParticipationType,
+     ParticipationProposal, Status,
+     SubmittedAt, UpdatedAt, AcceptedAt,
+     YearlyManufacturingCosts, YearlySales,
+     YearlyDevelopmentCosts, Feedback)
+SELECT
+    Id,
+    CASE ActorType
+        WHEN 'Manufacturing'
+             THEN 'ManufacturingResponse'
+        WHEN 'SalesMarketing'
+             THEN 'SalesMarketingResponse'
+        WHEN 'RD'
+             THEN 'ResearchDevelopmentResponse'
+        WHEN 'Investor'
+             THEN 'InvestorResponse'
+    END,
+    InnovationId, ActorId,
+    Location, ParticipationType,
+    ParticipationProposal,
+    Status, SubmittedAt, UpdatedAt, AcceptedAt,
+    '[]', '[]', '[]', NULL
+FROM Bids"</span>);
+
+migrationBuilder.<span class="fn">DropIndex</span>(
+    <span class="str">"IX_Bid_ActorId_InnovationId"</span>, <span class="str">"Bids"</span>);
+migrationBuilder.<span class="fn">DropTable</span>(<span class="str">"Bids"</span>);
+migrationBuilder.<span class="fn">CreateIndex</span>(
+    <span class="str">"IX_FormalResponse_ActorId_InnovationId"</span>,
+    <span class="str">"FormalResponses"</span>,
+    <span class="kw">new</span>[] { <span class="str">"ActorId"</span>, <span class="str">"InnovationId"</span> },
+    unique: <span class="kw">true</span>);</pre>
+      </div>
+    </div>
+
+    <!-- Year contiguity helper — full width -->
+    <div class="code-block-full code-block">
+      <div class="code-block-header">Year Contiguity + Rationale Validator — shared helper (T021/T025/T029)</div>
+      <pre><span class="kw">private static</span> <span class="nb">string</span>? <span class="fn">ValidateYearlyProjections</span>&lt;<span class="nb">T</span>&gt;(
+    IList&lt;<span class="nb">T</span>&gt; items,
+    <span class="nb">Func</span>&lt;<span class="nb">T</span>, <span class="nb">int</span>&gt; getYear,
+    <span class="nb">Func</span>&lt;<span class="nb">T</span>, <span class="nb">IEnumerable</span>&lt;(<span class="nb">string</span> fieldName, <span class="nb">string</span>? value)&gt;&gt; getRationales)
+{
+    <span class="kw">if</span> (!items.<span class="fn">Any</span>())
+        <span class="kw">return</span> <span class="str">"Projection list must not be empty."</span>;
+
+    <span class="kw">var</span> years = items.<span class="fn">Select</span>(getYear).<span class="fn">OrderBy</span>(y =&gt; y).<span class="fn">ToList</span>();
+    <span class="kw">for</span> (<span class="kw">var</span> i = <span class="num">0</span>; i &lt; years.<span class="fn">Count</span>; i++)
+        <span class="kw">if</span> (years[i] != i + <span class="num">1</span>)
+            <span class="kw">return</span> <span class="str">$"Years must start at 1 and be contiguous. "</span> +
+                   <span class="str">$"Found gap at index {i} (year {years[i]})."</span>;
+
+    <span class="kw">if</span> (years[^<span class="num">1</span>] &gt; <span class="num">10</span>)
+        <span class="kw">return</span> <span class="str">$"Maximum projection year is 10. Got {years[^1]}."</span>;
+
+    <span class="kw">foreach</span> (<span class="kw">var</span> item <span class="kw">in</span> items)
+        <span class="kw">foreach</span> (<span class="kw">var</span> (field, value) <span class="kw">in</span> <span class="fn">getRationales</span>(item))
+            <span class="kw">if</span> ((value?.Length ?? <span class="num">0</span>) &lt; <span class="num">20</span>)
+                <span class="kw">return</span> <span class="str">$"Field '{field}' rationale must be at least 20 characters."</span>;
+
+    <span class="kw">return null</span>; <span class="cm">// valid</span>
+}</pre>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════ SECTION 05: RISKS -->
+  <section id="risks">
+    <div class="section-label">Section 05</div>
+    <h2>Risks &amp; Mitigations</h2>
+
+    <table class="risks-table">
+      <thead>
+        <tr>
+          <th>Risk</th>
+          <th>Level</th>
+          <th>Description</th>
+          <th>Mitigation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>EF Core OwnsMany().ToJson() compatibility</strong></td>
+          <td><span class="risk-level risk-high">High</span></td>
+          <td>EF Core 8 JSON column support via <code>OwnsMany().ToJson()</code> is used for three subtype projection collections. If queries or projections using these JSON columns fail at runtime, the feature is broken.</td>
+          <td>T014 note: if <code>ToJson()</code> fails (e.g., SQL Server version incompatibility), fall back to <code>HasConversion&lt;string&gt;</code> with <code>System.Text.Json</code> manual serialization per plan.md Key Risk section. Test in integration tests before release.</td>
+        </tr>
+        <tr>
+          <td><strong>Data migration — Bids → FormalResponses</strong></td>
+          <td><span class="risk-level risk-high">High</span></td>
+          <td>T017 requires manual augmentation of the auto-generated migration to INSERT existing Bid rows. A mistake in the ActorType-to-discriminator mapping or JSON column defaults will corrupt live data or break Down() reversibility.</td>
+          <td>T017 is flagged as human-reviewed. Use exact CASE WHEN SQL. Test Down() migration in a clean sandbox DB before applying to shared envs. Include data-count assertions in migration (count before = count after).</td>
+        </tr>
+        <tr>
+          <td><strong>Breaking API change — selectedBidIds rename</strong></td>
+          <td><span class="risk-level risk-high">High</span></td>
+          <td>The SelectPartners request body field <code>selectedBidIds</code> is renamed to <code>selectedResponseIds</code>. Any client (web, mobile, or test) not updated will receive 400 errors after deployment.</td>
+          <td>Document as BREAKING CHANGE in commit footer. T041–T042 update all tests. T043 ensures old endpoint registrations are removed. Commit with <code>feat(bids)!:</code> prefix per Principle 8.</td>
+        </tr>
+        <tr>
+          <td><strong>3-tier visibility logic complexity</strong></td>
+          <td><span class="risk-level risk-medium">Medium</span></td>
+          <td>GetBids must correctly distinguish three caller roles (owner / submitting actor / other) and serialize different DTO shapes for the same list. A logic error could leak private data (proposals/projections) to unauthorized callers.</td>
+          <td>T036 test cases explicitly validate all three tiers. Ensure DTO serialization never includes null-checking shortcuts that might accidentally include fields. Code review focus: the MapFullDto vs summary DTO branch.</td>
+        </tr>
+        <tr>
+          <td><strong>Stryker mutation threshold regression</strong></td>
+          <td><span class="risk-level risk-medium">Medium</span></td>
+          <td>Stryker thresholds: break 60, low 70, high 80. Adding 4 new feature files to the mutate list while keeping existing ones may lower the aggregate score if new code has gaps in test coverage.</td>
+          <td>T048 verifies per-file mutation score. Ensure all guard branches (403/404/409/422) are covered by individual test cases. T020/T024/T028/T032 each have 5–8 tests specifically targeting guard conditions.</td>
+        </tr>
+        <tr>
+          <td><strong>EF TPH discriminator + index constraint</strong></td>
+          <td><span class="risk-level risk-low">Low</span></td>
+          <td>The unique index <code>IX_FormalResponse_ActorId_InnovationId</code> replaces the old <code>IX_Bid_ActorId_InnovationId</code>. If migration ordering is wrong, the old index may be dropped before data is moved.</td>
+          <td>T017 migration ordering: CREATE table → INSERT data → DROP old index → DROP Bids → CREATE new index. This exact order is specified in the blueprint and data-model.md.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════ SECTION 06: CLARIFICATIONS -->
+  <section id="clarifications">
+    <div class="section-label">Section 06</div>
+    <h2>Resolved Clarifications — Session 2026-06-07</h2>
+    <p style="font-size:0.85rem; color:var(--gray-500); margin-bottom:1.25rem;">All five questions from the <code>/speckit-clarify</code> session. Each answer is now reflected in spec.md, contracts/api-contracts.md, and data-model.md.</p>
+
+    <div class="qa-list">
+      <div class="qa-item">
+        <div class="qa-question">Should <code>participationProposal</code> be visible to non-owner actors in GET /bids?</div>
+        <div class="qa-answer"><strong>Option C</strong> — Visible only to the submitting actor (for their own response) and the innovation owner. All other actors receive only public summary fields. This established the 3-tier visibility model (Tier 1: owner / Tier 2: submitter / Tier 3: other) now formalized in FR-013 and the API contract.</div>
+      </div>
+      <div class="qa-item">
+        <div class="qa-question">Should <code>InvestorResponse.Feedback</code> follow the same 3-tier visibility rule as <code>participationProposal</code>?</div>
+        <div class="qa-answer"><strong>Option A — Yes.</strong> Feedback is visible to the submitting investor and the innovation owner only. Third-party actors do not see the Feedback field in the GET /bids response. Consistent with the Tier 2 rule that submitters see their own full data.</div>
+      </div>
+      <div class="qa-item">
+        <div class="qa-question">When a submitting actor calls GET /bids, should they see their own financial projections and rationale — not just <code>participationProposal</code>?</div>
+        <div class="qa-answer"><strong>Option A — Yes.</strong> Submitting actors see their full own response including projections and rationale. Only other actors' responses are redacted to public summary fields. This simplifies implementation: "return full DTO for own response, return summary DTO for all others."</div>
+      </div>
+      <div class="qa-item">
+        <div class="qa-question">Is <code>participationProposal</code> (≥100 chars) required for InvestorResponse even though it already has a dedicated <code>feedback</code> field?</div>
+        <div class="qa-answer"><strong>Option A — Yes, required for all four response types.</strong> The proposal and feedback serve distinct purposes: <code>participationProposal</code> is a structured statement of intent (investment terms, equity structure) while <code>feedback</code> is the investor's qualitative analysis of the innovation. Both are mandatory for InvestorResponse.</div>
+      </div>
+      <div class="qa-item">
+        <div class="qa-question">What is the maximum character limit for <code>InvestorResponse.Feedback</code>?</div>
+        <div class="qa-answer"><strong>2000 characters.</strong> Matches the DB column allocation <code>nvarchar(2000)</code> and is appropriate for written investment analysis. Reflected in data-model.md (<code>| Feedback | nvarchar(2000) | NULL (min 50 chars, max 2000 chars) |</code>) and the API contract POST /bids/investor request body.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════ BREAKING CHANGES -->
+  <section id="breaking">
+    <div class="section-label">Section 07</div>
+    <h2>Breaking Changes Summary</h2>
+
+    <table class="risks-table">
+      <thead>
+        <tr>
+          <th>Change</th>
+          <th>Type</th>
+          <th>Affected Consumers</th>
+          <th>Migration Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>POST /innovations/{id}/bids</code> removed</td>
+          <td>API removal</td>
+          <td>All clients submitting bids</td>
+          <td>Use typed endpoints: <code>/bids/manufacturing</code>, <code>/bids/sales</code>, <code>/bids/rd</code>, <code>/bids/investor</code></td>
+        </tr>
+        <tr>
+          <td><code>PUT /bids/{bidId}</code> removed</td>
+          <td>API removal</td>
+          <td>Clients editing bids</td>
+          <td>No replacement in this phase (UpdateBid out of scope)</td>
+        </tr>
+        <tr>
+          <td><code>selectedBidIds</code> → <code>selectedResponseIds</code></td>
+          <td>Field rename</td>
+          <td>SelectPartners callers</td>
+          <td>Update request body field name; semantics unchanged</td>
+        </tr>
+        <tr>
+          <td><code>Bids</code> DB table → <code>FormalResponses</code></td>
+          <td>DB schema</td>
+          <td>Direct SQL queries / reporting</td>
+          <td>Data migrated by AddFormalResponseHierarchy migration; update any direct SQL references</td>
+        </tr>
+        <tr>
+          <td><code>BidStatus</code> enum removed</td>
+          <td>Type removal</td>
+          <td>C# consumers referencing BidStatus</td>
+          <td>Use <code>ResponseStatus</code> (same values: Pending, Accepted, Rejected)</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ══════════════════════════════════════════ NEW FILE CONTENT (§08) -->
+  <section id="new-files">
+    <div class="section-label">Section 08</div>
+    <h2>Complete Content — Every New File</h2>
+    <p style="color:var(--gray-700);font-size:0.88rem;margin-bottom:1.5rem">All 14 new files ordered by dependency. Copy-paste ready. Domain entities first (T001–T010), then feature handlers (T021, T025, T029, T033).</p>
+
+    <!-- T001 -->
+    <div class="file-section">
+      <div class="file-hdr"><span class="file-badge fbadge-new">NEW</span><code>src/Innoventity.API/Domain/Entities/GeographicRegion.cs</code><span style="margin-left:auto;color:var(--gray-500)">T001</span></div>
+      <div class="diff-pane"><pre>namespace Innoventity.API.Domain.Entities;
+
+public enum GeographicRegion
+{
+    Asia,
+    Americas,
+    Europe,
+    Africa,
+    Oceania
+}</pre></div>
+    </div>
+
+    <!-- T002 -->
+    <div class="file-section">
+      <div class="file-hdr"><span class="file-badge fbadge-new">NEW</span><code>src/Innoventity.API/Domain/Entities/ResponseStatus.cs</code><span style="margin-left:auto;color:var(--gray-500)">T002</span></div>
+      <div class="diff-pane"><pre>namespace Innoventity.API.Domain.Entities;
+
+public enum ResponseStatus
+{
+    Pending  = 0,
+    Accepted = 1,
+    Rejected = 2
+}</pre></div>
+    </div>
+
+    <!-- T003 -->
+    <div class="file-section">
+      <div class="file-hdr"><span class="file-badge fbadge-new">NEW</span><code>src/Innoventity.API/Domain/Entities/YearlyManufacturingCost.cs</code><span style="margin-left:auto;color:var(--gray-500)">T003</span></div>
+      <div class="diff-pane"><pre>namespace Innoventity.API.Domain.Entities;
+
+public class YearlyManufacturingCost
+{
+    public int     Year                               { get; set; }
+    public int     ProductionVolume                   { get; set; }
+    public string  ProductionVolumeRationale          { get; set; } = string.Empty;
+    public decimal UnitCost                           { get; set; }
+    public string  UnitCostRationale                  { get; set; } = string.Empty;
+    public decimal AverageGlobalDistributionExpense   { get; set; }
+    public string  AvgDistributionExpenseRationale    { get; set; } = string.Empty;
+}</pre></div>
+    </div>
+
+    <!-- T004 -->
+    <div class="file-section">
+      <div class="file-hdr"><span class="file-badge fbadge-new">NEW</span><code>src/Innoventity.API/Domain/Entities/YearlySale.cs</code><span style="margin-left:auto;color:var(--gray-500)">T004</span></div>
+      <div class="diff-pane"><pre>namespace Innoventity.API.Domain.Entities;
+
+public class YearlySale
+{
+    public int     Year                          { get; set; }
+    public int     UnitsSold                     { get; set; }
+    public string  UnitsSoldRationale            { get; set; } = string.Empty;
+    public decimal UnitPrice                     { get; set; }
+    public string  UnitPriceRationale            { get; set; } = string.Empty;
+    public decimal SalesMarketingExpense         { get; set; }
+    public string  SalesMarketingExpenseRationale{ get; set; } = string.Empty;
+}</pre></div>
+    </div>
+
+    <!-- T005 -->
+    <div class="file-section">
+      <div class="file-hdr"><span class="file-badge fbadge-new">NEW</span><code>src/Innoventity.API/Domain/Entities/YearlyDevelopmentCost.cs</code><span style="margin-left:auto;color:var(--gray-500)">T005</span></div>
+      <div class="diff-pane"><pre>namespace Innoventity.API.Domain.Entities;
+
+public class YearlyDevelopmentCost
+{
+    public int     Year                          { get; set; }
+    public decimal InfrastructureCost            { get; set; }
+    public string  InfrastructureCostRationale   { get; set; } = string.Empty;
+    public decimal PeopleCost                    { get; set; }
+    public string  PeopleCostRationale           { get; set; } = string.Empty;
+}</pre></div>
+    </div>
+
+    <!-- T006 -->
+    <div class="file-section">
+      <div class="file-hdr"><span class="file-badge fbadge-new">NEW</span><code>src/Innoventity.API/Domain/Entities/FormalResponse.cs</code><span style="margin-left:auto;color:var(--gray-500)">T006</span></div>
+      <div class="diff-pane"><pre>using System.ComponentModel.DataAnnotations;
+using Innoventity.API.Domain.Common;
+
+namespace Innoventity.API.Domain.Entities;
+
+public abstract class FormalResponse : EntityOfGuid
+{
+    protected FormalResponse() : base() { }
+    protected FormalResponse(Guid id) : base(id) { }
+
+    public Guid        InnovationId        { get; set; }
+    public Innovation? Innovation          { get; set; }
+    public Guid        ActorId             { get; set; }
+    public Actor?      Actor               { get; set; }
+
+    [Required]
+    public GeographicRegion Location       { get; set; }
+
+    [Required][MaxLength(100)]
+    public string ParticipationType        { get; set; } = string.Empty;
+
+    [Required][MaxLength(5000)]
+    public string ParticipationProposal    { get; set; } = string.Empty;
+
+    [Required]
+    public ResponseStatus Status           { get; set; } = ResponseStatus.Pending;
+
+    [Required]
+    public DateTimeOffset SubmittedAt      { get; set; }
+    public DateTimeOffset? UpdatedAt       { get; set; }
+    public DateTimeOffset? AcceptedAt      { get; set; }
+}</pre></div>
+    </div>
+
+    <!-- T007 -->
+    <div class="file-section">
+      <div class="file-hdr"><span class="file-badge fbadge-new">NEW</span><code>src/Innoventity.API/Domain/Entities/ManufacturingResponse.cs</code><span style="margin-left:auto;color:var(--gray-500)">T007</span></div>
+      <div class="diff-pane"><pre>namespace Innoventity.API.Domain.Entities;
+
+public class ManufacturingResponse : FormalResponse
+{
+    public IList&lt;YearlyManufacturingCost&gt; YearlyManufacturingCosts { get; set; } = [];
+}</pre></div>
+    </div>
+
+    <!-- T008 -->
+    <div class="file-section">
+      <div class="file-hdr"><span class="file-badge fbadge-new">NEW</span><code>src/Innoventity.API/Domain/Entities/SalesMarketingResponse.cs</code><span style="margin-left:auto;color:var(--gray-500)">T008</span></div>
+      <div class="diff-pane"><pre>namespace Innoventity.API.Domain.Entities;
+
+public class SalesMarketingResponse : FormalResponse
+{
+    public IList&lt;YearlySale&gt; YearlySales { get; set; } = [];
+}</pre></div>
+    </div>
+
+    <!-- T009 -->
+    <div class="file-section">
+      <div class="file-hdr"><span class="file-badge fbadge-new">NEW</span><code>src/Innoventity.API/Domain/Entities/ResearchDevelopmentResponse.cs</code><span style="margin-left:auto;color:var(--gray-500)">T009</span></div>
+      <div class="diff-pane"><pre>namespace Innoventity.API.Domain.Entities;
+
+public class ResearchDevelopmentResponse : FormalResponse
+{
+    public int ProductDevelopmentDuration                          { get; set; }
+    public IList&lt;YearlyDevelopmentCost&gt; YearlyDevelopmentCosts   { get; set; } = [];
+}</pre></div>
+    </div>
+
+    <!-- T010 -->
+    <div class="file-section">
+      <div class="file-hdr"><span class="file-badge fbadge-new">NEW</span><code>src/Innoventity.API/Domain/Entities/InvestorResponse.cs</code><span style="margin-left:auto;color:var(--gray-500)">T010</span></div>
+      <div class="diff-pane"><pre>using System.ComponentModel.DataAnnotations;
+
+namespace Innoventity.API.Domain.Entities;
+
+public class InvestorResponse : FormalResponse
+{
+    [MaxLength(2000)]
+    public string? Feedback { get; set; }
+}</pre></div>
+    </div>
+
+    <!-- T021 -->
+    <div class="file-section">
+      <div class="file-hdr"><span class="file-badge fbadge-new">NEW</span><code>src/Innoventity.API/Features/Bids/SubmitManufacturingResponse.cs</code><span style="margin-left:auto;color:var(--gray-500)">T021</span></div>
+      <div class="diff-pane"><pre>using System.Security.Claims;
+using Innoventity.API.Domain.Entities;
+using Innoventity.API.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace Innoventity.API.Features.Bids;
+
+public static class SubmitManufacturingResponse
+{
+    public sealed record CostEntry(
+        int Year, int ProductionVolume, string ProductionVolumeRationale,
+        decimal UnitCost, string UnitCostRationale,
+        decimal AverageGlobalDistributionExpense, string AvgDistributionExpenseRationale);
+
+    public sealed record Request(
+        GeographicRegion Location,
+        string ParticipationType,
+        string ParticipationProposal,
+        IList&lt;CostEntry&gt; YearlyManufacturingCosts);
+
+    public sealed record SubmitResult(
+        Guid ResponseId, string ResponseType, string Status, DateTimeOffset SubmittedAt);
+
+    public static async Task&lt;IResult&gt; Handle(
+        Guid innovationId, Request request, ClaimsPrincipal user,
+        AppDbContext db, CancellationToken ct)
+    {
+        var sub = user.FindFirst("sub") ?? user.FindFirst(ClaimTypes.NameIdentifier);
+        if (sub is null || !Guid.TryParse(sub.Value, out var actorId))
+            return Results.Problem(statusCode: 401, title: "Unauthorized",
+                detail: "Invalid or missing subject claim.");
+
+        var actor = await db.Actors.FindAsync([actorId], ct);
+        if (actor?.ActorType != ActorType.Manufacturing)
+            return Results.Problem(statusCode: 403, title: "Forbidden",
+                detail: "Only Manufacturing actors may submit a Manufacturing response.");
+
+        var innovation = await db.Innovations.FindAsync([innovationId], ct);
+        if (innovation is null || innovation.Status != InnovationStatus.Published)
+            return Results.NotFound();
+
+        if (innovation.OwnerId == actorId)
+            return Results.Problem(statusCode: 409, title: "Conflict",
+                detail: "Innovation owners cannot submit responses to their own innovations.");
+
+        var existing = await db.FormalResponses
+            .FirstOrDefaultAsync(r =&gt; r.ActorId == actorId &amp;&amp; r.InnovationId == innovationId, ct);
+        if (existing is not null)
+            return Results.Problem(statusCode: 409, title: "Conflict",
+                detail: "A response from this actor already exists for this innovation.");
+
+        var err = ValidateCosts(request.YearlyManufacturingCosts);
+        if (err is not null)
+            return Results.Problem(statusCode: 422, title: "Unprocessable Entity", detail: err);
+
+        var response = new ManufacturingResponse
+        {
+            InnovationId = innovationId,
+            ActorId      = actorId,
+            Location     = request.Location,
+            ParticipationType     = request.ParticipationType,
+            ParticipationProposal = request.ParticipationProposal,
+            YearlyManufacturingCosts = request.YearlyManufacturingCosts
+                .Select(e =&gt; new YearlyManufacturingCost
+                {
+                    Year = e.Year, ProductionVolume = e.ProductionVolume,
+                    ProductionVolumeRationale = e.ProductionVolumeRationale,
+                    UnitCost = e.UnitCost, UnitCostRationale = e.UnitCostRationale,
+                    AverageGlobalDistributionExpense = e.AverageGlobalDistributionExpense,
+                    AvgDistributionExpenseRationale  = e.AvgDistributionExpenseRationale,
+                }).ToList(),
+            SubmittedAt = DateTimeOffset.UtcNow,
+        };
+
+        db.FormalResponses.Add(response);
+        await db.SaveChangesAsync(ct);
+
+        return Results.Created(
+            $"/innovations/{innovationId}/bids/{response.Id}",
+            new SubmitResult(response.Id, nameof(ManufacturingResponse),
+                response.Status.ToString(), response.SubmittedAt));
+    }
+
+    private static string? ValidateCosts(IList&lt;CostEntry&gt; costs)
+    {
+        if (costs is null || costs.Count == 0) return "YearlyManufacturingCosts must not be empty.";
+        var years = costs.Select(c =&gt; c.Year).OrderBy(y =&gt; y).ToList();
+        for (var i = 0; i &lt; years.Count; i++)
+            if (years[i] != i + 1)
+                return $"Years must be contiguous starting from 1. Gap before year {years[i]}.";
+        if (years[^1] &gt; 10) return $"Maximum projection year is 10 (got {years[^1]}).";
+        foreach (var c in costs)
+        {
+            if ((c.ProductionVolumeRationale?.Length ?? 0) &lt; 20)
+                return "ProductionVolumeRationale must be at least 20 characters.";
+            if ((c.UnitCostRationale?.Length ?? 0) &lt; 20)
+                return "UnitCostRationale must be at least 20 characters.";
+            if ((c.AvgDistributionExpenseRationale?.Length ?? 0) &lt; 20)
+                return "AvgDistributionExpenseRationale must be at least 20 characters.";
+        }
+        return null;
+    }
+
+    public static IEndpointRouteBuilder MapSubmitManufacturingResponse(this IEndpointRouteBuilder app)
+    {
+        app.MapPost("/innovations/{innovationId:guid}/bids/manufacturing", Handle)
+            .WithName(nameof(SubmitManufacturingResponse)).WithTags("Bids").WithOpenApi()
+            .RequireAuthorization()
+            .Produces&lt;SubmitResult&gt;(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+        return app;
+    }
+}</pre></div>
+    </div>
+
+    <!-- T025 -->
+    <div class="file-section">
+      <div class="file-hdr"><span class="file-badge fbadge-new">NEW</span><code>src/Innoventity.API/Features/Bids/SubmitSalesMarketingResponse.cs</code><span style="margin-left:auto;color:var(--gray-500)">T025</span></div>
+      <div class="diff-pane"><pre>using System.Security.Claims;
+using Innoventity.API.Domain.Entities;
+using Innoventity.API.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace Innoventity.API.Features.Bids;
+
+public static class SubmitSalesMarketingResponse
+{
+    public sealed record SaleEntry(
+        int Year, int UnitsSold, string UnitsSoldRationale,
+        decimal UnitPrice, string UnitPriceRationale,
+        decimal SalesMarketingExpense, string SalesMarketingExpenseRationale);
+
+    public sealed record Request(
+        GeographicRegion Location, string ParticipationType,
+        string ParticipationProposal, IList&lt;SaleEntry&gt; YearlySales);
+
+    public sealed record SubmitResult(
+        Guid ResponseId, string ResponseType, string Status, DateTimeOffset SubmittedAt);
+
+    public static async Task&lt;IResult&gt; Handle(
+        Guid innovationId, Request request, ClaimsPrincipal user,
+        AppDbContext db, CancellationToken ct)
+    {
+        var sub = user.FindFirst("sub") ?? user.FindFirst(ClaimTypes.NameIdentifier);
+        if (sub is null || !Guid.TryParse(sub.Value, out var actorId))
+            return Results.Problem(statusCode: 401, title: "Unauthorized",
+                detail: "Invalid or missing subject claim.");
+
+        var actor = await db.Actors.FindAsync([actorId], ct);
+        if (actor?.ActorType != ActorType.SalesMarketing)
+            return Results.Problem(statusCode: 403, title: "Forbidden",
+                detail: "Only SalesMarketing actors may submit a SalesMarketing response.");
+
+        var innovation = await db.Innovations.FindAsync([innovationId], ct);
+        if (innovation is null || innovation.Status != InnovationStatus.Published)
+            return Results.NotFound();
+
+        if (innovation.OwnerId == actorId)
+            return Results.Problem(statusCode: 409, title: "Conflict",
+                detail: "Innovation owners cannot submit responses to their own innovations.");
+
+        var existing = await db.FormalResponses
+            .FirstOrDefaultAsync(r =&gt; r.ActorId == actorId &amp;&amp; r.InnovationId == innovationId, ct);
+        if (existing is not null)
+            return Results.Problem(statusCode: 409, title: "Conflict",
+                detail: "A response from this actor already exists for this innovation.");
+
+        var err = ValidateSales(request.YearlySales);
+        if (err is not null)
+            return Results.Problem(statusCode: 422, title: "Unprocessable Entity", detail: err);
+
+        var response = new SalesMarketingResponse
+        {
+            InnovationId = innovationId, ActorId = actorId,
+            Location = request.Location, ParticipationType = request.ParticipationType,
+            ParticipationProposal = request.ParticipationProposal,
+            YearlySales = request.YearlySales
+                .Select(e =&gt; new YearlySale
+                {
+                    Year = e.Year, UnitsSold = e.UnitsSold,
+                    UnitsSoldRationale = e.UnitsSoldRationale,
+                    UnitPrice = e.UnitPrice, UnitPriceRationale = e.UnitPriceRationale,
+                    SalesMarketingExpense = e.SalesMarketingExpense,
+                    SalesMarketingExpenseRationale = e.SalesMarketingExpenseRationale,
+                }).ToList(),
+            SubmittedAt = DateTimeOffset.UtcNow,
+        };
+
+        db.FormalResponses.Add(response);
+        await db.SaveChangesAsync(ct);
+
+        return Results.Created(
+            $"/innovations/{innovationId}/bids/{response.Id}",
+            new SubmitResult(response.Id, nameof(SalesMarketingResponse),
+                response.Status.ToString(), response.SubmittedAt));
+    }
+
+    private static string? ValidateSales(IList&lt;SaleEntry&gt; sales)
+    {
+        if (sales is null || sales.Count == 0) return "YearlySales must not be empty.";
+        var years = sales.Select(s =&gt; s.Year).OrderBy(y =&gt; y).ToList();
+        for (var i = 0; i &lt; years.Count; i++)
+            if (years[i] != i + 1)
+                return $"Years must be contiguous starting from 1. Gap before year {years[i]}.";
+        if (years[^1] &gt; 10) return $"Maximum projection year is 10 (got {years[^1]}).";
+        foreach (var s in sales)
+        {
+            if ((s.UnitsSoldRationale?.Length ?? 0) &lt; 20)
+                return "UnitsSoldRationale must be at least 20 characters.";
+            if ((s.UnitPriceRationale?.Length ?? 0) &lt; 20)
+                return "UnitPriceRationale must be at least 20 characters.";
+            if ((s.SalesMarketingExpenseRationale?.Length ?? 0) &lt; 20)
+                return "SalesMarketingExpenseRationale must be at least 20 characters.";
+        }
+        return null;
+    }
+
+    public static IEndpointRouteBuilder MapSubmitSalesMarketingResponse(this IEndpointRouteBuilder app)
+    {
+        app.MapPost("/innovations/{innovationId:guid}/bids/sales", Handle)
+            .WithName(nameof(SubmitSalesMarketingResponse)).WithTags("Bids").WithOpenApi()
+            .RequireAuthorization()
+            .Produces&lt;SubmitResult&gt;(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+        return app;
+    }
+}</pre></div>
+    </div>
+
+    <!-- T029 -->
+    <div class="file-section">
+      <div class="file-hdr"><span class="file-badge fbadge-new">NEW</span><code>src/Innoventity.API/Features/Bids/SubmitResearchDevelopmentResponse.cs</code><span style="margin-left:auto;color:var(--gray-500)">T029</span></div>
+      <div class="diff-pane"><pre>using System.Security.Claims;
+using Innoventity.API.Domain.Entities;
+using Innoventity.API.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace Innoventity.API.Features.Bids;
+
+public static class SubmitResearchDevelopmentResponse
+{
+    public sealed record DevCostEntry(
+        int Year, decimal InfrastructureCost, string InfrastructureCostRationale,
+        decimal PeopleCost, string PeopleCostRationale);
+
+    public sealed record Request(
+        GeographicRegion Location, string ParticipationType,
+        string ParticipationProposal,
+        int ProductDevelopmentDuration,
+        IList&lt;DevCostEntry&gt; YearlyDevelopmentCosts);
+
+    public sealed record SubmitResult(
+        Guid ResponseId, string ResponseType, string Status, DateTimeOffset SubmittedAt);
+
+    public static async Task&lt;IResult&gt; Handle(
+        Guid innovationId, Request request, ClaimsPrincipal user,
+        AppDbContext db, CancellationToken ct)
+    {
+        var sub = user.FindFirst("sub") ?? user.FindFirst(ClaimTypes.NameIdentifier);
+        if (sub is null || !Guid.TryParse(sub.Value, out var actorId))
+            return Results.Problem(statusCode: 401, title: "Unauthorized",
+                detail: "Invalid or missing subject claim.");
+
+        var actor = await db.Actors.FindAsync([actorId], ct);
+        if (actor?.ActorType != ActorType.RD)
+            return Results.Problem(statusCode: 403, title: "Forbidden",
+                detail: "Only R&amp;D actors may submit a ResearchDevelopment response.");
+
+        var innovation = await db.Innovations.FindAsync([innovationId], ct);
+        if (innovation is null || innovation.Status != InnovationStatus.Published)
+            return Results.NotFound();
+
+        if (innovation.OwnerId == actorId)
+            return Results.Problem(statusCode: 409, title: "Conflict",
+                detail: "Innovation owners cannot submit responses to their own innovations.");
+
+        var existing = await db.FormalResponses
+            .FirstOrDefaultAsync(r =&gt; r.ActorId == actorId &amp;&amp; r.InnovationId == innovationId, ct);
+        if (existing is not null)
+            return Results.Problem(statusCode: 409, title: "Conflict",
+                detail: "A response from this actor already exists for this innovation.");
+
+        if (request.ProductDevelopmentDuration &lt; 1 || request.ProductDevelopmentDuration &gt; 10)
+            return Results.Problem(statusCode: 422, title: "Unprocessable Entity",
+                detail: "ProductDevelopmentDuration must be between 1 and 10.");
+
+        var err = ValidateCosts(request.YearlyDevelopmentCosts);
+        if (err is not null)
+            return Results.Problem(statusCode: 422, title: "Unprocessable Entity", detail: err);
+
+        var response = new ResearchDevelopmentResponse
+        {
+            InnovationId = innovationId, ActorId = actorId,
+            Location = request.Location, ParticipationType = request.ParticipationType,
+            ParticipationProposal = request.ParticipationProposal,
+            ProductDevelopmentDuration = request.ProductDevelopmentDuration,
+            YearlyDevelopmentCosts = request.YearlyDevelopmentCosts
+                .Select(e =&gt; new YearlyDevelopmentCost
+                {
+                    Year = e.Year,
+                    InfrastructureCost = e.InfrastructureCost,
+                    InfrastructureCostRationale = e.InfrastructureCostRationale,
+                    PeopleCost = e.PeopleCost,
+                    PeopleCostRationale = e.PeopleCostRationale,
+                }).ToList(),
+            SubmittedAt = DateTimeOffset.UtcNow,
+        };
+
+        db.FormalResponses.Add(response);
+        await db.SaveChangesAsync(ct);
+
+        return Results.Created(
+            $"/innovations/{innovationId}/bids/{response.Id}",
+            new SubmitResult(response.Id, nameof(ResearchDevelopmentResponse),
+                response.Status.ToString(), response.SubmittedAt));
+    }
+
+    private static string? ValidateCosts(IList&lt;DevCostEntry&gt; costs)
+    {
+        if (costs is null || costs.Count == 0) return "YearlyDevelopmentCosts must not be empty.";
+        var years = costs.Select(c =&gt; c.Year).OrderBy(y =&gt; y).ToList();
+        for (var i = 0; i &lt; years.Count; i++)
+            if (years[i] != i + 1)
+                return $"Years must be contiguous starting from 1. Gap before year {years[i]}.";
+        if (years[^1] &gt; 10) return $"Maximum projection year is 10 (got {years[^1]}).";
+        foreach (var c in costs)
+        {
+            if ((c.InfrastructureCostRationale?.Length ?? 0) &lt; 20)
+                return "InfrastructureCostRationale must be at least 20 characters.";
+            if ((c.PeopleCostRationale?.Length ?? 0) &lt; 20)
+                return "PeopleCostRationale must be at least 20 characters.";
+        }
+        return null;
+    }
+
+    public static IEndpointRouteBuilder MapSubmitResearchDevelopmentResponse(this IEndpointRouteBuilder app)
+    {
+        app.MapPost("/innovations/{innovationId:guid}/bids/rd", Handle)
+            .WithName(nameof(SubmitResearchDevelopmentResponse)).WithTags("Bids").WithOpenApi()
+            .RequireAuthorization()
+            .Produces&lt;SubmitResult&gt;(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+        return app;
+    }
+}</pre></div>
+    </div>
+
+    <!-- T033 -->
+    <div class="file-section">
+      <div class="file-hdr"><span class="file-badge fbadge-new">NEW</span><code>src/Innoventity.API/Features/Bids/SubmitInvestorResponse.cs</code><span style="margin-left:auto;color:var(--gray-500)">T033</span></div>
+      <div class="diff-pane"><pre>using System.Security.Claims;
+using Innoventity.API.Domain.Entities;
+using Innoventity.API.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace Innoventity.API.Features.Bids;
+
+public static class SubmitInvestorResponse
+{
+    public sealed record Request(
+        GeographicRegion Location,
+        string ParticipationType,
+        string ParticipationProposal,
+        string Feedback);
+
+    public sealed record SubmitResult(
+        Guid ResponseId, string ResponseType, string Status, DateTimeOffset SubmittedAt);
+
+    public static async Task&lt;IResult&gt; Handle(
+        Guid innovationId, Request request, ClaimsPrincipal user,
+        AppDbContext db, CancellationToken ct)
+    {
+        var sub = user.FindFirst("sub") ?? user.FindFirst(ClaimTypes.NameIdentifier);
+        if (sub is null || !Guid.TryParse(sub.Value, out var actorId))
+            return Results.Problem(statusCode: 401, title: "Unauthorized",
+                detail: "Invalid or missing subject claim.");
+
+        var actor = await db.Actors.FindAsync([actorId], ct);
+        if (actor?.ActorType != ActorType.Investor)
+            return Results.Problem(statusCode: 403, title: "Forbidden",
+                detail: "Only Investor actors may submit an Investor response.");
+
+        var innovation = await db.Innovations.FindAsync([innovationId], ct);
+        if (innovation is null || innovation.Status != InnovationStatus.Published)
+            return Results.NotFound();
+
+        if (innovation.OwnerId == actorId)
+            return Results.Problem(statusCode: 409, title: "Conflict",
+                detail: "Innovation owners cannot submit responses to their own innovations.");
+
+        var existing = await db.FormalResponses
+            .FirstOrDefaultAsync(r =&gt; r.ActorId == actorId &amp;&amp; r.InnovationId == innovationId, ct);
+        if (existing is not null)
+            return Results.Problem(statusCode: 409, title: "Conflict",
+                detail: "A response from this actor already exists for this innovation.");
+
+        var feedbackLen = request.Feedback?.Length ?? 0;
+        if (feedbackLen &lt; 50)
+            return Results.Problem(statusCode: 422, title: "Unprocessable Entity",
+                detail: "Feedback must be at least 50 characters.");
+        if (feedbackLen &gt; 2000)
+            return Results.Problem(statusCode: 422, title: "Unprocessable Entity",
+                detail: "Feedback must not exceed 2000 characters.");
+
+        if ((request.ParticipationProposal?.Length ?? 0) &lt; 100)
+            return Results.Problem(statusCode: 400, title: "Bad Request",
+                detail: "ParticipationProposal must be at least 100 characters.");
+
+        var response = new InvestorResponse
+        {
+            InnovationId = innovationId, ActorId = actorId,
+            Location = request.Location, ParticipationType = request.ParticipationType,
+            ParticipationProposal = request.ParticipationProposal,
+            Feedback = request.Feedback,
+            SubmittedAt = DateTimeOffset.UtcNow,
+        };
+
+        db.FormalResponses.Add(response);
+        await db.SaveChangesAsync(ct);
+
+        return Results.Created(
+            $"/innovations/{innovationId}/bids/{response.Id}",
+            new SubmitResult(response.Id, nameof(InvestorResponse),
+                response.Status.ToString(), response.SubmittedAt));
+    }
+
+    public static IEndpointRouteBuilder MapSubmitInvestorResponse(this IEndpointRouteBuilder app)
+    {
+        app.MapPost("/innovations/{innovationId:guid}/bids/investor", Handle)
+            .WithName(nameof(SubmitInvestorResponse)).WithTags("Bids").WithOpenApi()
+            .RequireAuthorization()
+            .Produces&lt;SubmitResult&gt;(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+        return app;
+    }
+}</pre></div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════ DIFFS (§09) -->
+  <section id="diffs">
+    <div class="section-label">Section 09</div>
+    <h2>Before / After Diffs — Every Modified File</h2>
+    <p style="color:var(--gray-700);font-size:0.88rem;margin-bottom:1.5rem">Five files modified in-place. Line numbers reference the <em>original</em> file before changes. Red = removed, green = added, grey = context.</p>
+
+    <!-- Innovation.cs — T011 -->
+    <div class="file-section">
+      <div class="file-hdr"><span class="file-badge fbadge-mod">MOD</span><code>src/Innoventity.API/Domain/Entities/Innovation.cs</code><span style="margin-left:auto;color:var(--gray-500)">T011 · 1 property rename</span></div>
+      <div class="diff-pane"><pre><div class="dl dl-h"><span class="dl-ln">@@</span><span class="dl-sg">@@</span><span class="dl-cd"> @@ -185,10 +185,10 @@ public class Innovation : EntityOfGuid</span></div>
+<div class="dl"><span class="dl-ln">185</span><span class="dl-sg"> </span><span class="dl-cd">        public DateTimeOffset? PartnersSelectedAt { get; set; }</span></div>
+<div class="dl"><span class="dl-ln">186</span><span class="dl-sg"> </span><span class="dl-cd"> </span></div>
+<div class="dl"><span class="dl-ln">187</span><span class="dl-sg"> </span><span class="dl-cd">        /// &lt;summary&gt;</span></div>
+<div class="dl dl-r"><span class="dl-ln">188</span><span class="dl-sg">-</span><span class="dl-cd">        /// Bids submitted to this innovation.</span></div>
+<div class="dl dl-a"><span class="dl-ln">188</span><span class="dl-sg">+</span><span class="dl-cd">        /// FormalResponses submitted to this innovation.</span></div>
+<div class="dl"><span class="dl-ln">189</span><span class="dl-sg"> </span><span class="dl-cd">        /// &lt;/summary&gt;</span></div>
+<div class="dl dl-r"><span class="dl-ln">192</span><span class="dl-sg">-</span><span class="dl-cd">        public ICollection&lt;Bid&gt; Bids { get; set; } = [];</span></div>
+<div class="dl dl-a"><span class="dl-ln">192</span><span class="dl-sg">+</span><span class="dl-cd">        public ICollection&lt;FormalResponse&gt; FormalResponses { get; set; } = [];</span></div>
+</pre></div>
+    </div>
+
+    <!-- AppDbContext.cs — T014 -->
+    <div class="file-section">
+      <div class="file-hdr"><span class="file-badge fbadge-mod">MOD</span><code>src/Innoventity.API/Infrastructure/Persistence/AppDbContext.cs</code><span style="margin-left:auto;color:var(--gray-500)">T014 · DbSet rename + TPH config</span></div>
+      <div class="diff-pane"><pre><div class="dl dl-h"><span class="dl-ln">@@</span><span class="dl-sg">@@</span><span class="dl-cd"> @@ -31,2 +31,2 @@ public class AppDbContext : DbContext</span></div>
+<div class="dl dl-r"><span class="dl-ln"> 31</span><span class="dl-sg">-</span><span class="dl-cd">    public DbSet&lt;Bid&gt; Bids =&gt; Set&lt;Bid&gt;();</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 31</span><span class="dl-sg">+</span><span class="dl-cd">    public DbSet&lt;FormalResponse&gt; FormalResponses =&gt; Set&lt;FormalResponse&gt;();</span></div>
+<div class="dl dl-h"><span class="dl-ln">@@</span><span class="dl-sg">@@</span><span class="dl-cd"> @@ -258,40 +258,45 @@ protected override void OnModelCreating</span></div>
+<div class="dl dl-r"><span class="dl-ln">258</span><span class="dl-sg">-</span><span class="dl-cd">    modelBuilder.Entity&lt;Bid&gt;(entity =&gt;</span></div>
+<div class="dl dl-r"><span class="dl-ln">259</span><span class="dl-sg">-</span><span class="dl-cd">    {</span></div>
+<div class="dl dl-r"><span class="dl-ln">260</span><span class="dl-sg">-</span><span class="dl-cd">        entity.HasKey(b =&gt; b.Id);</span></div>
+<div class="dl dl-r"><span class="dl-ln">261</span><span class="dl-sg">-</span><span class="dl-cd">        entity.Property(b =&gt; b.Location).IsRequired().HasMaxLength(200);</span></div>
+<div class="dl dl-r"><span class="dl-ln">262</span><span class="dl-sg">-</span><span class="dl-cd">        entity.Property(b =&gt; b.Status).IsRequired().HasConversion&lt;string&gt;();</span></div>
+<div class="dl dl-r"><span class="dl-ln">263</span><span class="dl-sg">-</span><span class="dl-cd">        // ... (remaining Bid config, lines 264–297)</span></div>
+<div class="dl dl-r"><span class="dl-ln">298</span><span class="dl-sg">-</span><span class="dl-cd">    });</span></div>
+<div class="dl dl-a"><span class="dl-ln">258</span><span class="dl-sg">+</span><span class="dl-cd">    modelBuilder.Entity&lt;FormalResponse&gt;(entity =&gt;</span></div>
+<div class="dl dl-a"><span class="dl-ln">259</span><span class="dl-sg">+</span><span class="dl-cd">    {</span></div>
+<div class="dl dl-a"><span class="dl-ln">260</span><span class="dl-sg">+</span><span class="dl-cd">        entity.HasDiscriminator&lt;string&gt;("ResponseType")</span></div>
+<div class="dl dl-a"><span class="dl-ln">261</span><span class="dl-sg">+</span><span class="dl-cd">              .HasValue&lt;ManufacturingResponse&gt;("ManufacturingResponse")</span></div>
+<div class="dl dl-a"><span class="dl-ln">262</span><span class="dl-sg">+</span><span class="dl-cd">              .HasValue&lt;SalesMarketingResponse&gt;("SalesMarketingResponse")</span></div>
+<div class="dl dl-a"><span class="dl-ln">263</span><span class="dl-sg">+</span><span class="dl-cd">              .HasValue&lt;ResearchDevelopmentResponse&gt;("ResearchDevelopmentResponse")</span></div>
+<div class="dl dl-a"><span class="dl-ln">264</span><span class="dl-sg">+</span><span class="dl-cd">              .HasValue&lt;InvestorResponse&gt;("InvestorResponse");</span></div>
+<div class="dl dl-a"><span class="dl-ln">265</span><span class="dl-sg">+</span><span class="dl-cd"> </span></div>
+<div class="dl dl-a"><span class="dl-ln">266</span><span class="dl-sg">+</span><span class="dl-cd">        entity.Property(r =&gt; r.Location).HasConversion&lt;string&gt;();</span></div>
+<div class="dl dl-a"><span class="dl-ln">267</span><span class="dl-sg">+</span><span class="dl-cd">        entity.Property(r =&gt; r.Status).IsRequired().HasConversion&lt;string&gt;();</span></div>
+<div class="dl dl-a"><span class="dl-ln">268</span><span class="dl-sg">+</span><span class="dl-cd">        entity.Property(r =&gt; r.ParticipationType).IsRequired().HasMaxLength(100);</span></div>
+<div class="dl dl-a"><span class="dl-ln">269</span><span class="dl-sg">+</span><span class="dl-cd">        entity.Property(r =&gt; r.ParticipationProposal).IsRequired().HasMaxLength(5000);</span></div>
+<div class="dl dl-a"><span class="dl-ln">270</span><span class="dl-sg">+</span><span class="dl-cd"> </span></div>
+<div class="dl dl-a"><span class="dl-ln">271</span><span class="dl-sg">+</span><span class="dl-cd">        entity.HasOne(r =&gt; r.Innovation).WithMany(i =&gt; i.FormalResponses)</span></div>
+<div class="dl dl-a"><span class="dl-ln">272</span><span class="dl-sg">+</span><span class="dl-cd">              .HasForeignKey(r =&gt; r.InnovationId).OnDelete(DeleteBehavior.Cascade);</span></div>
+<div class="dl dl-a"><span class="dl-ln">273</span><span class="dl-sg">+</span><span class="dl-cd">        entity.HasOne(r =&gt; r.Actor).WithMany()</span></div>
+<div class="dl dl-a"><span class="dl-ln">274</span><span class="dl-sg">+</span><span class="dl-cd">              .HasForeignKey(r =&gt; r.ActorId).OnDelete(DeleteBehavior.Restrict);</span></div>
+<div class="dl dl-a"><span class="dl-ln">275</span><span class="dl-sg">+</span><span class="dl-cd">        entity.HasIndex(r =&gt; new { r.ActorId, r.InnovationId }).IsUnique()</span></div>
+<div class="dl dl-a"><span class="dl-ln">276</span><span class="dl-sg">+</span><span class="dl-cd">              .HasDatabaseName("IX_FormalResponse_ActorId_InnovationId");</span></div>
+<div class="dl dl-a"><span class="dl-ln">277</span><span class="dl-sg">+</span><span class="dl-cd">    });</span></div>
+<div class="dl dl-a"><span class="dl-ln">278</span><span class="dl-sg">+</span><span class="dl-cd"> </span></div>
+<div class="dl dl-a"><span class="dl-ln">279</span><span class="dl-sg">+</span><span class="dl-cd">    modelBuilder.Entity&lt;ManufacturingResponse&gt;(b =&gt;</span></div>
+<div class="dl dl-a"><span class="dl-ln">280</span><span class="dl-sg">+</span><span class="dl-cd">        b.OwnsMany(r =&gt; r.YearlyManufacturingCosts).ToJson());</span></div>
+<div class="dl dl-a"><span class="dl-ln">281</span><span class="dl-sg">+</span><span class="dl-cd">    modelBuilder.Entity&lt;SalesMarketingResponse&gt;(b =&gt;</span></div>
+<div class="dl dl-a"><span class="dl-ln">282</span><span class="dl-sg">+</span><span class="dl-cd">        b.OwnsMany(r =&gt; r.YearlySales).ToJson());</span></div>
+<div class="dl dl-a"><span class="dl-ln">283</span><span class="dl-sg">+</span><span class="dl-cd">    modelBuilder.Entity&lt;ResearchDevelopmentResponse&gt;(b =&gt;</span></div>
+<div class="dl dl-a"><span class="dl-ln">284</span><span class="dl-sg">+</span><span class="dl-cd">        b.OwnsMany(r =&gt; r.YearlyDevelopmentCosts).ToJson());</span></div>
+</pre></div>
+    </div>
+
+    <!-- GetBids.cs — T037 (full rewrite) -->
+    <div class="file-section">
+      <div class="file-hdr"><span class="file-badge fbadge-mod">MOD</span><code>src/Innoventity.API/Features/Bids/GetBids.cs</code><span style="margin-left:auto;color:var(--gray-500)">T037 · Full rewrite — 3-tier visibility</span></div>
+      <div class="diff-pane"><pre><div class="dl dl-h"><span class="dl-ln">@@</span><span class="dl-sg">@@</span><span class="dl-cd"> @@ BEFORE — owner-only, Bids table, { bids, totalCount } shape @@</span></div>
+<div class="dl dl-r"><span class="dl-ln">  1</span><span class="dl-sg">-</span><span class="dl-cd">// 204 lines removed — key differences summarised below</span></div>
+<div class="dl dl-r"><span class="dl-ln"> 25</span><span class="dl-sg">-</span><span class="dl-cd">    if (innovation.OwnerId != callerId)                    // 403 for non-owners</span></div>
+<div class="dl dl-r"><span class="dl-ln"> 26</span><span class="dl-sg">-</span><span class="dl-cd">        return Results.Problem(statusCode: 403, ...);</span></div>
+<div class="dl dl-r"><span class="dl-ln"> 45</span><span class="dl-sg">-</span><span class="dl-cd">    var bids = await db.Bids.Include(b =&gt; b.Actor)         // Bids table, actor join</span></div>
+<div class="dl dl-r"><span class="dl-ln"> 46</span><span class="dl-sg">-</span><span class="dl-cd">        .Where(b =&gt; b.InnovationId == innovationId).ToListAsync(ct);</span></div>
+<div class="dl dl-r"><span class="dl-ln"> 60</span><span class="dl-sg">-</span><span class="dl-cd">    return Results.Ok(new { bids = dtos, totalCount = dtos.Count });  // old shape</span></div>
+<div class="dl dl-h"><span class="dl-ln">@@</span><span class="dl-sg">@@</span><span class="dl-cd"> @@ AFTER — 3-tier visibility, FormalResponses, typed DTOs @@</span></div>
+<div class="dl dl-a"><span class="dl-ln">  1</span><span class="dl-sg">+</span><span class="dl-cd">using System.Security.Claims;</span></div>
+<div class="dl dl-a"><span class="dl-ln">  2</span><span class="dl-sg">+</span><span class="dl-cd">using Innoventity.API.Domain.Entities;</span></div>
+<div class="dl dl-a"><span class="dl-ln">  3</span><span class="dl-sg">+</span><span class="dl-cd">using Innoventity.API.Infrastructure.Persistence;</span></div>
+<div class="dl dl-a"><span class="dl-ln">  4</span><span class="dl-sg">+</span><span class="dl-cd">using Microsoft.EntityFrameworkCore;</span></div>
+<div class="dl dl-a"><span class="dl-ln">  5</span><span class="dl-sg">+</span><span class="dl-cd"> </span></div>
+<div class="dl dl-a"><span class="dl-ln">  6</span><span class="dl-sg">+</span><span class="dl-cd">namespace Innoventity.API.Features.Bids;</span></div>
+<div class="dl dl-a"><span class="dl-ln">  7</span><span class="dl-sg">+</span><span class="dl-cd"> </span></div>
+<div class="dl dl-a"><span class="dl-ln">  8</span><span class="dl-sg">+</span><span class="dl-cd">public static class GetBids</span></div>
+<div class="dl dl-a"><span class="dl-ln">  9</span><span class="dl-sg">+</span><span class="dl-cd">{</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 10</span><span class="dl-sg">+</span><span class="dl-cd">    // Tier 2/3 summary — no private fields</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 11</span><span class="dl-sg">+</span><span class="dl-cd">    public sealed record ResponseSummaryDto(</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 12</span><span class="dl-sg">+</span><span class="dl-cd">        Guid ResponseId, string ResponseType, Guid ActorId,</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 13</span><span class="dl-sg">+</span><span class="dl-cd">        string Location, string ParticipationType, string Status, DateTimeOffset SubmittedAt);</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 14</span><span class="dl-sg">+</span><span class="dl-cd"> </span></div>
+<div class="dl dl-a"><span class="dl-ln"> 15</span><span class="dl-sg">+</span><span class="dl-cd">    // Tier 1 / own full DTOs (include ParticipationProposal + projections)</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 16</span><span class="dl-sg">+</span><span class="dl-cd">    public sealed record ManufacturingFullDto(</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 17</span><span class="dl-sg">+</span><span class="dl-cd">        Guid ResponseId, string ResponseType, Guid ActorId, string Location,</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 18</span><span class="dl-sg">+</span><span class="dl-cd">        string ParticipationType, string ParticipationProposal, string Status,</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 19</span><span class="dl-sg">+</span><span class="dl-cd">        DateTimeOffset SubmittedAt, DateTimeOffset? AcceptedAt,</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 20</span><span class="dl-sg">+</span><span class="dl-cd">        IList&lt;YearlyManufacturingCost&gt; YearlyManufacturingCosts);</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 21</span><span class="dl-sg">+</span><span class="dl-cd">    public sealed record SalesMarketingFullDto(</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 22</span><span class="dl-sg">+</span><span class="dl-cd">        Guid ResponseId, string ResponseType, Guid ActorId, string Location,</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 23</span><span class="dl-sg">+</span><span class="dl-cd">        string ParticipationType, string ParticipationProposal, string Status,</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 24</span><span class="dl-sg">+</span><span class="dl-cd">        DateTimeOffset SubmittedAt, DateTimeOffset? AcceptedAt,</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 25</span><span class="dl-sg">+</span><span class="dl-cd">        IList&lt;YearlySale&gt; YearlySales);</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 26</span><span class="dl-sg">+</span><span class="dl-cd">    public sealed record RDFullDto(</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 27</span><span class="dl-sg">+</span><span class="dl-cd">        Guid ResponseId, string ResponseType, Guid ActorId, string Location,</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 28</span><span class="dl-sg">+</span><span class="dl-cd">        string ParticipationType, string ParticipationProposal, string Status,</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 29</span><span class="dl-sg">+</span><span class="dl-cd">        DateTimeOffset SubmittedAt, DateTimeOffset? AcceptedAt,</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 30</span><span class="dl-sg">+</span><span class="dl-cd">        int ProductDevelopmentDuration, IList&lt;YearlyDevelopmentCost&gt; YearlyDevelopmentCosts);</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 31</span><span class="dl-sg">+</span><span class="dl-cd">    public sealed record InvestorFullDto(</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 32</span><span class="dl-sg">+</span><span class="dl-cd">        Guid ResponseId, string ResponseType, Guid ActorId, string Location,</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 33</span><span class="dl-sg">+</span><span class="dl-cd">        string ParticipationType, string ParticipationProposal, string Status,</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 34</span><span class="dl-sg">+</span><span class="dl-cd">        DateTimeOffset SubmittedAt, DateTimeOffset? AcceptedAt, string? Feedback);</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 35</span><span class="dl-sg">+</span><span class="dl-cd"> </span></div>
+<div class="dl dl-a"><span class="dl-ln"> 36</span><span class="dl-sg">+</span><span class="dl-cd">    public sealed record GetBidsResult(Guid InnovationId, IList&lt;object&gt; Responses);</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 37</span><span class="dl-sg">+</span><span class="dl-cd"> </span></div>
+<div class="dl dl-a"><span class="dl-ln"> 38</span><span class="dl-sg">+</span><span class="dl-cd">    public static async Task&lt;IResult&gt; Handle(</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 39</span><span class="dl-sg">+</span><span class="dl-cd">        Guid innovationId, string? type, ClaimsPrincipal user,</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 40</span><span class="dl-sg">+</span><span class="dl-cd">        AppDbContext db, CancellationToken ct)</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 41</span><span class="dl-sg">+</span><span class="dl-cd">    {</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 42</span><span class="dl-sg">+</span><span class="dl-cd">        var sub = user.FindFirst("sub") ?? user.FindFirst(ClaimTypes.NameIdentifier);</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 43</span><span class="dl-sg">+</span><span class="dl-cd">        if (sub is null || !Guid.TryParse(sub.Value, out var callerId))</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 44</span><span class="dl-sg">+</span><span class="dl-cd">            return Results.Problem(statusCode: 401, title: "Unauthorized",</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 45</span><span class="dl-sg">+</span><span class="dl-cd">                detail: "Invalid or missing subject claim.");</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 46</span><span class="dl-sg">+</span><span class="dl-cd"> </span></div>
+<div class="dl dl-a"><span class="dl-ln"> 47</span><span class="dl-sg">+</span><span class="dl-cd">        var innovationExists = await db.Innovations.AnyAsync(i =&gt; i.Id == innovationId, ct);</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 48</span><span class="dl-sg">+</span><span class="dl-cd">        if (!innovationExists) return Results.NotFound();</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 49</span><span class="dl-sg">+</span><span class="dl-cd"> </span></div>
+<div class="dl dl-a"><span class="dl-ln"> 50</span><span class="dl-sg">+</span><span class="dl-cd">        var isOwner = await db.Innovations</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 51</span><span class="dl-sg">+</span><span class="dl-cd">            .AnyAsync(i =&gt; i.Id == innovationId &amp;&amp; i.OwnerId == callerId, ct);</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 52</span><span class="dl-sg">+</span><span class="dl-cd"> </span></div>
+<div class="dl dl-a"><span class="dl-ln"> 53</span><span class="dl-sg">+</span><span class="dl-cd">        IQueryable&lt;FormalResponse&gt; query = db.FormalResponses</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 54</span><span class="dl-sg">+</span><span class="dl-cd">            .Where(r =&gt; r.InnovationId == innovationId);</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 55</span><span class="dl-sg">+</span><span class="dl-cd"> </span></div>
+<div class="dl dl-a"><span class="dl-ln"> 56</span><span class="dl-sg">+</span><span class="dl-cd">        if (!string.IsNullOrWhiteSpace(type))</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 57</span><span class="dl-sg">+</span><span class="dl-cd">        {</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 58</span><span class="dl-sg">+</span><span class="dl-cd">            var disc = type.Trim().ToLowerInvariant() switch</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 59</span><span class="dl-sg">+</span><span class="dl-cd">            {</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 60</span><span class="dl-sg">+</span><span class="dl-cd">                "manufacturing"              =&gt; "ManufacturingResponse",</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 61</span><span class="dl-sg">+</span><span class="dl-cd">                "sales" or "salesmarketing"  =&gt; "SalesMarketingResponse",</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 62</span><span class="dl-sg">+</span><span class="dl-cd">                "rd" or "research"           =&gt; "ResearchDevelopmentResponse",</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 63</span><span class="dl-sg">+</span><span class="dl-cd">                "investor"                   =&gt; "InvestorResponse",</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 64</span><span class="dl-sg">+</span><span class="dl-cd">                _                            =&gt; type,</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 65</span><span class="dl-sg">+</span><span class="dl-cd">            };</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 66</span><span class="dl-sg">+</span><span class="dl-cd">            query = query.Where(r =&gt; EF.Property&lt;string&gt;(r, "ResponseType") == disc);</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 67</span><span class="dl-sg">+</span><span class="dl-cd">        }</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 68</span><span class="dl-sg">+</span><span class="dl-cd"> </span></div>
+<div class="dl dl-a"><span class="dl-ln"> 69</span><span class="dl-sg">+</span><span class="dl-cd">        var responses = await query.ToListAsync(ct);</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 70</span><span class="dl-sg">+</span><span class="dl-cd"> </span></div>
+<div class="dl dl-a"><span class="dl-ln"> 71</span><span class="dl-sg">+</span><span class="dl-cd">        var dtos = responses.Select(r =&gt;</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 72</span><span class="dl-sg">+</span><span class="dl-cd">        {</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 73</span><span class="dl-sg">+</span><span class="dl-cd">            var isOwn = r.ActorId == callerId;</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 74</span><span class="dl-sg">+</span><span class="dl-cd">            if (!isOwner &amp;&amp; !isOwn) return (object)ToSummary(r);</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 75</span><span class="dl-sg">+</span><span class="dl-cd">            return r switch</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 76</span><span class="dl-sg">+</span><span class="dl-cd">            {</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 77</span><span class="dl-sg">+</span><span class="dl-cd">                ManufacturingResponse m =&gt; (object)new ManufacturingFullDto(</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 78</span><span class="dl-sg">+</span><span class="dl-cd">                    m.Id, nameof(ManufacturingResponse), m.ActorId, m.Location.ToString(),</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 79</span><span class="dl-sg">+</span><span class="dl-cd">                    m.ParticipationType, m.ParticipationProposal, m.Status.ToString(),</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 80</span><span class="dl-sg">+</span><span class="dl-cd">                    m.SubmittedAt, m.AcceptedAt, m.YearlyManufacturingCosts),</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 81</span><span class="dl-sg">+</span><span class="dl-cd">                SalesMarketingResponse sm =&gt; new SalesMarketingFullDto(</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 82</span><span class="dl-sg">+</span><span class="dl-cd">                    sm.Id, nameof(SalesMarketingResponse), sm.ActorId, sm.Location.ToString(),</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 83</span><span class="dl-sg">+</span><span class="dl-cd">                    sm.ParticipationType, sm.ParticipationProposal, sm.Status.ToString(),</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 84</span><span class="dl-sg">+</span><span class="dl-cd">                    sm.SubmittedAt, sm.AcceptedAt, sm.YearlySales),</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 85</span><span class="dl-sg">+</span><span class="dl-cd">                ResearchDevelopmentResponse rd =&gt; new RDFullDto(</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 86</span><span class="dl-sg">+</span><span class="dl-cd">                    rd.Id, nameof(ResearchDevelopmentResponse), rd.ActorId, rd.Location.ToString(),</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 87</span><span class="dl-sg">+</span><span class="dl-cd">                    rd.ParticipationType, rd.ParticipationProposal, rd.Status.ToString(),</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 88</span><span class="dl-sg">+</span><span class="dl-cd">                    rd.SubmittedAt, rd.AcceptedAt, rd.ProductDevelopmentDuration, rd.YearlyDevelopmentCosts),</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 89</span><span class="dl-sg">+</span><span class="dl-cd">                InvestorResponse iv =&gt; new InvestorFullDto(</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 90</span><span class="dl-sg">+</span><span class="dl-cd">                    iv.Id, nameof(InvestorResponse), iv.ActorId, iv.Location.ToString(),</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 91</span><span class="dl-sg">+</span><span class="dl-cd">                    iv.ParticipationType, iv.ParticipationProposal, iv.Status.ToString(),</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 92</span><span class="dl-sg">+</span><span class="dl-cd">                    iv.SubmittedAt, iv.AcceptedAt, iv.Feedback),</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 93</span><span class="dl-sg">+</span><span class="dl-cd">                _ =&gt; (object)ToSummary(r)</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 94</span><span class="dl-sg">+</span><span class="dl-cd">            };</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 95</span><span class="dl-sg">+</span><span class="dl-cd">        }).ToList();</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 96</span><span class="dl-sg">+</span><span class="dl-cd"> </span></div>
+<div class="dl dl-a"><span class="dl-ln"> 97</span><span class="dl-sg">+</span><span class="dl-cd">        return Results.Ok(new GetBidsResult(innovationId, dtos));</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 98</span><span class="dl-sg">+</span><span class="dl-cd">    }</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 99</span><span class="dl-sg">+</span><span class="dl-cd"> </span></div>
+<div class="dl dl-a"><span class="dl-ln">100</span><span class="dl-sg">+</span><span class="dl-cd">    private static ResponseSummaryDto ToSummary(FormalResponse r) =&gt;</span></div>
+<div class="dl dl-a"><span class="dl-ln">101</span><span class="dl-sg">+</span><span class="dl-cd">        new(r.Id, r.GetType().Name, r.ActorId, r.Location.ToString(),</span></div>
+<div class="dl dl-a"><span class="dl-ln">102</span><span class="dl-sg">+</span><span class="dl-cd">            r.ParticipationType, r.Status.ToString(), r.SubmittedAt);</span></div>
+<div class="dl dl-a"><span class="dl-ln">103</span><span class="dl-sg">+</span><span class="dl-cd"> </span></div>
+<div class="dl dl-a"><span class="dl-ln">104</span><span class="dl-sg">+</span><span class="dl-cd">    public static IEndpointRouteBuilder MapGetBids(this IEndpointRouteBuilder app)</span></div>
+<div class="dl dl-a"><span class="dl-ln">105</span><span class="dl-sg">+</span><span class="dl-cd">    {</span></div>
+<div class="dl dl-a"><span class="dl-ln">106</span><span class="dl-sg">+</span><span class="dl-cd">        app.MapGet("/innovations/{innovationId:guid}/bids", Handle)</span></div>
+<div class="dl dl-a"><span class="dl-ln">107</span><span class="dl-sg">+</span><span class="dl-cd">            .WithName(nameof(GetBids)).WithTags("Bids").WithOpenApi()</span></div>
+<div class="dl dl-a"><span class="dl-ln">108</span><span class="dl-sg">+</span><span class="dl-cd">            .RequireAuthorization()</span></div>
+<div class="dl dl-a"><span class="dl-ln">109</span><span class="dl-sg">+</span><span class="dl-cd">            .Produces&lt;GetBidsResult&gt;(StatusCodes.Status200OK)</span></div>
+<div class="dl dl-a"><span class="dl-ln">110</span><span class="dl-sg">+</span><span class="dl-cd">            .ProducesProblem(StatusCodes.Status404NotFound);</span></div>
+<div class="dl dl-a"><span class="dl-ln">111</span><span class="dl-sg">+</span><span class="dl-cd">        return app;</span></div>
+<div class="dl dl-a"><span class="dl-ln">112</span><span class="dl-sg">+</span><span class="dl-cd">    }</span></div>
+<div class="dl dl-a"><span class="dl-ln">113</span><span class="dl-sg">+</span><span class="dl-cd">}</span></div>
+</pre></div>
+    </div>
+
+    <!-- SelectPartners.cs — T042 -->
+    <div class="file-section">
+      <div class="file-hdr"><span class="file-badge fbadge-mod">MOD</span><code>src/Innoventity.API/Features/Bids/SelectPartners.cs</code><span style="margin-left:auto;color:var(--gray-500)">T042 · 8 targeted changes</span></div>
+      <div class="diff-pane"><pre><div class="dl dl-h"><span class="dl-ln">@@</span><span class="dl-sg">@@</span><span class="dl-cd"> @@ -17,5 +17,5 @@ static class SelectPartners — required type check @@</span></div>
+<div class="dl dl-r"><span class="dl-ln"> 17</span><span class="dl-sg">-</span><span class="dl-cd">    private static readonly ActorType[] RequiredActorTypes =</span></div>
+<div class="dl dl-r"><span class="dl-ln"> 18</span><span class="dl-sg">-</span><span class="dl-cd">        [ActorType.Manufacturing, ActorType.SalesMarketing, ActorType.RD];</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 17</span><span class="dl-sg">+</span><span class="dl-cd">    private static readonly Type[] RequiredResponseTypes =</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 18</span><span class="dl-sg">+</span><span class="dl-cd">        [typeof(ManufacturingResponse), typeof(SalesMarketingResponse), typeof(ResearchDevelopmentResponse)];</span></div>
+<div class="dl dl-h"><span class="dl-ln">@@</span><span class="dl-sg">@@</span><span class="dl-cd"> @@ -75,2 +75,2 @@ — innovation include @@</span></div>
+<div class="dl dl-r"><span class="dl-ln"> 75</span><span class="dl-sg">-</span><span class="dl-cd">        .Include(i =&gt; i.Bids!).ThenInclude(b =&gt; b.Actor)</span></div>
+<div class="dl dl-a"><span class="dl-ln"> 75</span><span class="dl-sg">+</span><span class="dl-cd">        .Include(i =&gt; i.FormalResponses!)</span></div>
+<div class="dl dl-h"><span class="dl-ln">@@</span><span class="dl-sg">@@</span><span class="dl-cd"> @@ -115,8 +115,8 @@ — pending check + required-type guard @@</span></div>
+<div class="dl dl-r"><span class="dl-ln">116</span><span class="dl-sg">-</span><span class="dl-cd">        var allBids = innovation.Bids;</span></div>
+<div class="dl dl-a"><span class="dl-ln">116</span><span class="dl-sg">+</span><span class="dl-cd">        var allResponses = innovation.FormalResponses.ToList();</span></div>
+<div class="dl dl-r"><span class="dl-ln">117</span><span class="dl-sg">-</span><span class="dl-cd">        var pendingByType = RequiredActorTypes.ToDictionary(t =&gt; t,</span></div>
+<div class="dl dl-r"><span class="dl-ln">118</span><span class="dl-sg">-</span><span class="dl-cd">            t =&gt; allBids.Where(b =&gt; b.Status == BidStatus.Pending</span></div>
+<div class="dl dl-r"><span class="dl-ln">119</span><span class="dl-sg">-</span><span class="dl-cd">                           &amp;&amp; b.Actor?.ActorType == t).ToList());</span></div>
+<div class="dl dl-a"><span class="dl-ln">117</span><span class="dl-sg">+</span><span class="dl-cd">        var pendingByType = RequiredResponseTypes.ToDictionary(t =&gt; t,</span></div>
+<div class="dl dl-a"><span class="dl-ln">118</span><span class="dl-sg">+</span><span class="dl-cd">            t =&gt; allResponses.Where(r =&gt; r.Status == ResponseStatus.Pending</span></div>
+<div class="dl dl-a"><span class="dl-ln">119</span><span class="dl-sg">+</span><span class="dl-cd">                              &amp;&amp; r.GetType() == t).ToList());</span></div>
+<div class="dl dl-h"><span class="dl-ln">@@</span><span class="dl-sg">@@</span><span class="dl-cd"> @@ -133,2 +133,2 @@ — selectedIds field rename @@</span></div>
+<div class="dl dl-r"><span class="dl-ln">133</span><span class="dl-sg">-</span><span class="dl-cd">        var selectedIds = request.SelectedBidIds ?? [];</span></div>
+<div class="dl dl-a"><span class="dl-ln">133</span><span class="dl-sg">+</span><span class="dl-cd">        var selectedIds = request.SelectedResponseIds ?? [];</span></div>
+<div class="dl dl-h"><span class="dl-ln">@@</span><span class="dl-sg">@@</span><span class="dl-cd"> @@ -164,8 +164,8 @@ — per-ID type validation @@</span></div>
+<div class="dl dl-r"><span class="dl-ln">165</span><span class="dl-sg">-</span><span class="dl-cd">            if (!RequiredActorTypes.Any(t =&gt; candidate.Actor?.ActorType == t))</span></div>
+<div class="dl dl-r"><span class="dl-ln">166</span><span class="dl-sg">-</span><span class="dl-cd">                validationErrors["SelectedBidIds"] = $"Bid {id} is not from a required actor type.";</span></div>
+<div class="dl dl-a"><span class="dl-ln">165</span><span class="dl-sg">+</span><span class="dl-cd">            if (!RequiredResponseTypes.Any(t =&gt; candidate.GetType() == t))</span></div>
+<div class="dl dl-a"><span class="dl-ln">166</span><span class="dl-sg">+</span><span class="dl-cd">                validationErrors["SelectedResponseIds"] = $"Response {id} is not a required response type.";</span></div>
+<div class="dl dl-h"><span class="dl-ln">@@</span><span class="dl-sg">@@</span><span class="dl-cd"> @@ -192,4 +192,4 @@ — accept status update @@</span></div>
+<div class="dl dl-r"><span class="dl-ln">192</span><span class="dl-sg">-</span><span class="dl-cd">            bid.Status = BidStatus.Accepted;</span></div>
+<div class="dl dl-r"><span class="dl-ln">193</span><span class="dl-sg">-</span><span class="dl-cd">            bid.AcceptedAt = DateTimeOffset.UtcNow;</span></div>
+<div class="dl dl-a"><span class="dl-ln">192</span><span class="dl-sg">+</span><span class="dl-cd">            response.Status = ResponseStatus.Accepted;</span></div>
+<div class="dl dl-a"><span class="dl-ln">193</span><span class="dl-sg">+</span><span class="dl-cd">            response.AcceptedAt = DateTimeOffset.UtcNow;</span></div>
+<div class="dl dl-h"><span class="dl-ln">@@</span><span class="dl-sg">@@</span><span class="dl-cd"> @@ -230,2 +230,2 @@ — request + response DTO field names @@</span></div>
+<div class="dl dl-r"><span class="dl-ln">230</span><span class="dl-sg">-</span><span class="dl-cd">    public Guid[]? SelectedBidIds { get; init; }</span></div>
+<div class="dl dl-a"><span class="dl-ln">230</span><span class="dl-sg">+</span><span class="dl-cd">    public Guid[]? SelectedResponseIds { get; init; }</span></div>
+<div class="dl dl-r"><span class="dl-ln">251</span><span class="dl-sg">-</span><span class="dl-cd">    public required IReadOnlyList&lt;AcceptedBidSummary&gt; AcceptedBids { get; init; }</span></div>
+<div class="dl dl-a"><span class="dl-ln">251</span><span class="dl-sg">+</span><span class="dl-cd">    public required IReadOnlyList&lt;AcceptedResponseSummary&gt; AcceptedResponses { get; init; }</span></div>
+<div class="dl dl-r"><span class="dl-ln">256</span><span class="dl-sg">-</span><span class="dl-cd">    public record AcceptedBidSummary(Guid BidId, Guid ActorId, string ActorType);</span></div>
+<div class="dl dl-a"><span class="dl-ln">256</span><span class="dl-sg">+</span><span class="dl-cd">    public record AcceptedResponseSummary(Guid ResponseId, Guid ActorId, string ResponseType);</span></div>
+</pre></div>
+    </div>
+
+    <!-- Program.cs — T043 -->
+    <div class="file-section">
+      <div class="file-hdr"><span class="file-badge fbadge-mod">MOD</span><code>src/Innoventity.API/Program.cs</code><span style="margin-left:auto;color:var(--gray-500)">T043 · endpoint registrations</span></div>
+      <div class="diff-pane"><pre><div class="dl dl-h"><span class="dl-ln">@@</span><span class="dl-sg">@@</span><span class="dl-cd"> @@ -178,5 +178,7 @@ — minimal API route registrations @@</span></div>
+<div class="dl dl-r"><span class="dl-ln">178</span><span class="dl-sg">-</span><span class="dl-cd">app.MapSubmitBid();    // POST /innovations/{id}/bids</span></div>
+<div class="dl dl-r"><span class="dl-ln">179</span><span class="dl-sg">-</span><span class="dl-cd">app.MapGetBids();      // GET  /innovations/{id}/bids (owner only)</span></div>
+<div class="dl dl-r"><span class="dl-ln">180</span><span class="dl-sg">-</span><span class="dl-cd">app.MapUpdateBid();    // PUT  /bids/{bidId}</span></div>
+<div class="dl dl-r"><span class="dl-ln">181</span><span class="dl-sg">-</span><span class="dl-cd">app.MapSelectPartners();</span></div>
+<div class="dl dl-a"><span class="dl-ln">178</span><span class="dl-sg">+</span><span class="dl-cd">app.MapGetBids();                       // GET  /innovations/{id}/bids (3-tier)</span></div>
+<div class="dl dl-a"><span class="dl-ln">179</span><span class="dl-sg">+</span><span class="dl-cd">app.MapSubmitManufacturingResponse();   // POST /innovations/{id}/bids/manufacturing</span></div>
+<div class="dl dl-a"><span class="dl-ln">180</span><span class="dl-sg">+</span><span class="dl-cd">app.MapSubmitSalesMarketingResponse();  // POST /innovations/{id}/bids/sales</span></div>
+<div class="dl dl-a"><span class="dl-ln">181</span><span class="dl-sg">+</span><span class="dl-cd">app.MapSubmitResearchDevelopmentResponse(); // POST /innovations/{id}/bids/rd</span></div>
+<div class="dl dl-a"><span class="dl-ln">182</span><span class="dl-sg">+</span><span class="dl-cd">app.MapSubmitInvestorResponse();        // POST /innovations/{id}/bids/investor</span></div>
+<div class="dl dl-a"><span class="dl-ln">183</span><span class="dl-sg">+</span><span class="dl-cd">app.MapSelectPartners();</span></div>
+</pre></div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════ TRACEABILITY (§10) -->
+  <section id="traceability">
+    <div class="section-label">Section 10</div>
+    <h2>Requirement Traceability — FR-xxx → Task IDs</h2>
+    <table class="trace-table">
+      <thead>
+        <tr>
+          <th>Requirement</th>
+          <th>Description</th>
+          <th>User Story</th>
+          <th>Task IDs</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="fr-tag">FR-001</span></td><td>Manufacturing / SalesMarketing / RD / Investor actors can submit formal responses</td><td>US1–US4</td><td><span class="t-tag">T021</span><span class="t-tag">T025</span><span class="t-tag">T029</span><span class="t-tag">T033</span></td></tr>
+        <tr><td><span class="fr-tag">FR-002</span></td><td>Each actor type maps to a distinct typed endpoint</td><td>US1–US4</td><td><span class="t-tag">T022</span><span class="t-tag">T026</span><span class="t-tag">T030</span><span class="t-tag">T034</span><span class="t-tag">T043</span></td></tr>
+        <tr><td><span class="fr-tag">FR-003</span></td><td>Yearly financial projections required; every metric field paired with a Rationale field</td><td>US1–US3</td><td><span class="t-tag">T003</span><span class="t-tag">T004</span><span class="t-tag">T005</span><span class="t-tag">T021</span><span class="t-tag">T025</span><span class="t-tag">T029</span></td></tr>
+        <tr><td><span class="fr-tag">FR-004</span></td><td>Projection year keys contiguous 1, 2, 3 … N; max 10 years</td><td>US1–US3</td><td><span class="t-tag">T021</span><span class="t-tag">T025</span><span class="t-tag">T029</span></td></tr>
+        <tr><td><span class="fr-tag">FR-005</span></td><td>Rationale field values ≥ 20 characters; field name in error response</td><td>US1–US3</td><td><span class="t-tag">T021</span><span class="t-tag">T025</span><span class="t-tag">T029</span></td></tr>
+        <tr><td><span class="fr-tag">FR-006</span></td><td>InvestorResponse.Feedback 50–2000 chars; ParticipationProposal required (≥ 100 chars)</td><td>US4</td><td><span class="t-tag">T010</span><span class="t-tag">T033</span></td></tr>
+        <tr><td><span class="fr-tag">FR-007</span></td><td>SelectPartners request field renamed <code>selectedBidIds</code> → <code>selectedResponseIds</code></td><td>US6</td><td><span class="t-tag">T042</span><span class="t-tag">T041</span></td></tr>
+        <tr><td><span class="fr-tag">FR-008</span></td><td>GET /bids supports 3-tier visibility based on caller identity</td><td>US5</td><td><span class="t-tag">T036</span><span class="t-tag">T037</span></td></tr>
+        <tr><td><span class="fr-tag">FR-009</span></td><td>Innovation owner receives full data for all response types</td><td>US5</td><td><span class="t-tag">T037</span></td></tr>
+        <tr><td><span class="fr-tag">FR-010</span></td><td>Submitting actor receives own full response + public summary for others</td><td>US5</td><td><span class="t-tag">T037</span></td></tr>
+        <tr><td><span class="fr-tag">FR-011</span></td><td>Other authenticated actors receive only the public summary for all responses</td><td>US5</td><td><span class="t-tag">T037</span></td></tr>
+        <tr><td><span class="fr-tag">FR-012</span></td><td>GET /bids supports <code>?type=</code> case-insensitive filter</td><td>US5</td><td><span class="t-tag">T037</span></td></tr>
+        <tr><td><span class="fr-tag">FR-013</span></td><td>Location field changed from free-text to <code>GeographicRegion</code> enum</td><td>—</td><td><span class="t-tag">T001</span><span class="t-tag">T006</span><span class="t-tag">T014</span></td></tr>
+        <tr><td><span class="fr-tag">FR-014</span></td><td>EF Core TPH with <code>ResponseType</code> string discriminator; JSON columns for projections</td><td>—</td><td><span class="t-tag">T006</span><span class="t-tag">T007</span><span class="t-tag">T008</span><span class="t-tag">T009</span><span class="t-tag">T010</span><span class="t-tag">T014</span></td></tr>
+        <tr><td><span class="fr-tag">FR-015</span></td><td>Single migration <code>AddFormalResponseHierarchy</code> copies Bid rows; reversible</td><td>—</td><td><span class="t-tag">T016</span><span class="t-tag">T017</span><span class="t-tag">T018</span></td></tr>
+        <tr><td><span class="fr-tag">FR-016</span></td><td>SelectPartners requires exactly one ManufacturingResponse + SalesMarketingResponse + ResearchDevelopmentResponse</td><td>US6</td><td><span class="t-tag">T042</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ══════════════════════════════════════════ CHECKLIST (§11) -->
+  <section id="checklist">
+    <div class="section-label">Section 11</div>
+    <h2>Implementation Checklist</h2>
+    <p style="color:var(--gray-700);font-size:0.88rem;margin-bottom:0.75rem">49 tasks · 9 phases · progress saved in <code>localStorage</code></p>
+
+    <div class="progress-wrap">
+      <div class="progress-track"><div id="progress-fill"></div></div>
+      <div id="progress-text">0 / 49 tasks complete</div>
+    </div>
+
+    <!-- Phase 1 -->
+    <div class="cl-phase">
+      <div class="cl-ph"><span class="cl-ph-num">Phase 1</span><span class="cl-ph-name">Foundational — Domain Layer</span></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T001"><span class="cl-tid">T001</span><label for="cb-T001">Add <code>GeographicRegion</code> enum (Asia, Americas, Europe, Africa, Oceania) — stored as string</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T002"><span class="cl-tid">T002</span><label for="cb-T002">Add <code>ResponseStatus</code> enum (Pending=0, Accepted=1, Rejected=2) — stored as string</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T003"><span class="cl-tid">T003</span><label for="cb-T003">Add <code>YearlyManufacturingCost</code> value object — 7 fields incl. 3 rationale strings</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T004"><span class="cl-tid">T004</span><label for="cb-T004">Add <code>YearlySale</code> value object — 7 fields incl. 3 rationale strings</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T005"><span class="cl-tid">T005</span><label for="cb-T005">Add <code>YearlyDevelopmentCost</code> value object — 5 fields incl. 2 rationale strings</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T006"><span class="cl-tid">T006</span><label for="cb-T006">Add abstract <code>FormalResponse : EntityOfGuid</code> — InnovationId, ActorId, Location, ParticipationType[100], ParticipationProposal[5000], Status, SubmittedAt, UpdatedAt?, AcceptedAt?</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T007"><span class="cl-tid">T007</span><span class="cl-par">after T006</span><label for="cb-T007">Add <code>ManufacturingResponse : FormalResponse</code> — adds <code>IList&lt;YearlyManufacturingCost&gt;</code></label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T008"><span class="cl-tid">T008</span><span class="cl-par">after T006</span><label for="cb-T008">Add <code>SalesMarketingResponse : FormalResponse</code> — adds <code>IList&lt;YearlySale&gt;</code></label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T009"><span class="cl-tid">T009</span><span class="cl-par">after T006</span><label for="cb-T009">Add <code>ResearchDevelopmentResponse : FormalResponse</code> — adds <code>ProductDevelopmentDuration</code> + <code>IList&lt;YearlyDevelopmentCost&gt;</code></label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T010"><span class="cl-tid">T010</span><span class="cl-par">after T006</span><label for="cb-T010">Add <code>InvestorResponse : FormalResponse</code> — adds <code>Feedback?</code> [MaxLength(2000)]</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T011"><span class="cl-tid">T011</span><label for="cb-T011">Modify <code>Innovation.cs</code> line 192 — <code>ICollection&lt;Bid&gt; Bids</code> → <code>ICollection&lt;FormalResponse&gt; FormalResponses</code></label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T012"><span class="cl-tid">T012</span><label for="cb-T012">Delete <code>Bid.cs</code> and <code>BidStatus.cs</code></label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T013"><span class="cl-tid">T013</span><label for="cb-T013">Run <code>dotnet build</code> — expect errors ONLY in consumers; Domain/Entities/ must compile cleanly</label></div>
+    </div>
+
+    <!-- Phase 2 -->
+    <div class="cl-phase">
+      <div class="cl-ph"><span class="cl-ph-num">Phase 2</span><span class="cl-ph-name">Foundational — Persistence Layer</span></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T014"><span class="cl-tid">T014</span><label for="cb-T014">Update <code>AppDbContext.cs</code> — remove <code>DbSet&lt;Bid&gt;</code>; add <code>DbSet&lt;FormalResponse&gt;</code>; configure TPH with <code>HasDiscriminator&lt;string&gt;("ResponseType")</code>; add <code>OwnsMany().ToJson()</code> for all three financial types</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T015"><span class="cl-tid">T015</span><label for="cb-T015">Update <code>SeedData.cs</code> — replace <code>new Bid {…}</code> with typed FormalResponse subtypes; include ≥1 representative of each financial type</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T016"><span class="cl-tid">T016</span><label for="cb-T016">Generate migration: <code>dotnet ef migrations add AddFormalResponseHierarchy</code></label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T017"><span class="cl-tid">T017</span><label for="cb-T017">Review generated migration — augment <code>Up()</code> with INSERT INTO FormalResponses SELECT from Bids (map ActorType → discriminator); verify <code>Down()</code> restores Bids table</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T018"><span class="cl-tid">T018</span><label for="cb-T018">Apply migration: <code>dotnet ef database update</code></label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T019"><span class="cl-tid">T019</span><label for="cb-T019">Run <code>dotnet build</code> — verify zero compilation errors across all consumer files</label></div>
+    </div>
+
+    <!-- Phase 3 -->
+    <div class="cl-phase">
+      <div class="cl-ph"><span class="cl-ph-num">Phase 3</span><span class="cl-ph-name">US1 — Manufacturing Response Submission <span class="cl-us">P1 MVP</span></span></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T020"><span class="cl-tid">T020</span><label for="cb-T020">Write <code>SubmitManufacturingResponseTests.cs</code> — 8 tests: happy path 201 + stored discriminator; wrong actor 403; owns innovation 409; duplicate 409; not Published 404; rationale &lt;20 chars 422; non-contiguous years 422; year &gt;10 422</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T021"><span class="cl-tid">T021</span><label for="cb-T021">Implement <code>SubmitManufacturingResponse.cs</code> — full guard chain; year contiguity + max-10; rationale ≥20 per field; persist <code>ManufacturingResponse</code>; return 201 with responseId/responseType/status/submittedAt</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T022"><span class="cl-tid">T022</span><label for="cb-T022">Register endpoint in <code>Program.cs</code>: <code>app.MapSubmitManufacturingResponse()</code></label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T023"><span class="cl-tid">T023</span><label for="cb-T023">Run <code>dotnet test --filter SubmitManufacturingResponse</code> — verify all 8 tests pass</label></div>
+    </div>
+
+    <!-- Phase 4 -->
+    <div class="cl-phase">
+      <div class="cl-ph"><span class="cl-ph-num">Phase 4</span><span class="cl-ph-name">US2 — SalesMarketing Response Submission <span class="cl-us">P1</span></span></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T024"><span class="cl-tid">T024</span><label for="cb-T024">Write <code>SubmitSalesMarketingResponseTests.cs</code> — 8 tests (same coverage as US1 with SalesMarketing actor type)</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T025"><span class="cl-tid">T025</span><label for="cb-T025">Implement <code>SubmitSalesMarketingResponse.cs</code> — same guard chain; SalesMarketing actor type check; validate YearlySales; persist <code>SalesMarketingResponse</code></label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T026"><span class="cl-tid">T026</span><label for="cb-T026">Register endpoint: <code>app.MapSubmitSalesMarketingResponse()</code></label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T027"><span class="cl-tid">T027</span><label for="cb-T027">Run <code>dotnet test --filter SubmitSalesMarketingResponse</code> — all 8 pass</label></div>
+    </div>
+
+    <!-- Phase 5 -->
+    <div class="cl-phase">
+      <div class="cl-ph"><span class="cl-ph-num">Phase 5</span><span class="cl-ph-name">US3 — R&amp;D Response Submission <span class="cl-us">P1</span></span></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T028"><span class="cl-tid">T028</span><label for="cb-T028">Write <code>SubmitResearchDevelopmentResponseTests.cs</code> — 8 tests including ProductDevelopmentDuration=0 → 422</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T029"><span class="cl-tid">T029</span><label for="cb-T029">Implement <code>SubmitResearchDevelopmentResponse.cs</code> — RD actor type; ProductDevelopmentDuration 1–10; validate YearlyDevelopmentCosts; persist <code>ResearchDevelopmentResponse</code></label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T030"><span class="cl-tid">T030</span><label for="cb-T030">Register endpoint: <code>app.MapSubmitResearchDevelopmentResponse()</code></label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T031"><span class="cl-tid">T031</span><label for="cb-T031">Run <code>dotnet test --filter SubmitResearchDevelopmentResponse</code> — all 8 pass</label></div>
+    </div>
+
+    <!-- Phase 6 -->
+    <div class="cl-phase">
+      <div class="cl-ph"><span class="cl-ph-num">Phase 6</span><span class="cl-ph-name">US4 — Investor Response Submission <span class="cl-us">P2</span></span></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T032"><span class="cl-tid">T032</span><label for="cb-T032">Write <code>SubmitInvestorResponseTests.cs</code> — 5 tests: happy path 201; wrong actor 403; owns innovation 409; Feedback &lt;50 chars 422; Feedback &gt;2000 chars 422</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T033"><span class="cl-tid">T033</span><label for="cb-T033">Implement <code>SubmitInvestorResponse.cs</code> — Investor actor type; Feedback 50–2000 chars; ParticipationProposal ≥100 chars; persist <code>InvestorResponse</code></label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T034"><span class="cl-tid">T034</span><label for="cb-T034">Register endpoint: <code>app.MapSubmitInvestorResponse()</code></label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T035"><span class="cl-tid">T035</span><label for="cb-T035">Run <code>dotnet test --filter SubmitInvestorResponse</code> — all 5 pass</label></div>
+    </div>
+
+    <!-- Phase 7 -->
+    <div class="cl-phase">
+      <div class="cl-ph"><span class="cl-ph-num">Phase 7</span><span class="cl-ph-name">US5 — Response Retrieval / 3-Tier Visibility <span class="cl-us">P1</span></span></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T036"><span class="cl-tid">T036</span><label for="cb-T036">Update <code>GetBidsTests.cs</code> — add tests: owner sees full projections for all types; submitting actor sees own full + others redacted; third-party sees summary only; ?type= filter; responseType in all views</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T037"><span class="cl-tid">T037</span><label for="cb-T037">Rewrite <code>GetBids.cs</code> — remove 403 for non-owners; query <code>db.FormalResponses</code>; build typed DTOs; apply 3-tier visibility; ?type= switch-mapped filter; return <code>{ innovationId, responses }</code></label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T038"><span class="cl-tid">T038</span><label for="cb-T038">Run <code>dotnet test --filter GetBids</code> — all visibility tests pass</label></div>
+    </div>
+
+    <!-- Phase 8 -->
+    <div class="cl-phase">
+      <div class="cl-ph"><span class="cl-ph-num">Phase 8</span><span class="cl-ph-name">US6 — SelectPartners Compatibility <span class="cl-us">P1</span></span></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T039"><span class="cl-tid">T039</span><label for="cb-T039">Delete <code>SubmitBid.cs</code> and <code>UpdateBid.cs</code></label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T040"><span class="cl-tid">T040</span><label for="cb-T040">Delete <code>SubmitBidTests.cs</code> and <code>UpdateBidTests.cs</code></label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T041"><span class="cl-tid">T041</span><label for="cb-T041">Update <code>SelectPartnersTests.cs</code> — replace <code>new Bid {…}</code> seeds with typed FormalResponse subtypes; rename <code>selectedBidIds</code> → <code>selectedResponseIds</code> throughout (14 test cases)</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T042"><span class="cl-tid">T042</span><label for="cb-T042">Update <code>SelectPartners.cs</code> — rename <code>SelectedBidIds</code> → <code>SelectedResponseIds</code>; change <code>innovation.Bids</code> → <code>FormalResponses</code>; replace <code>BidStatus</code> → <code>ResponseStatus</code>; use <code>r.GetType()</code> for type checks; rename <code>AcceptedBidSummary</code> → <code>AcceptedResponseSummary</code></label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T043"><span class="cl-tid">T043</span><label for="cb-T043">Update <code>Program.cs</code> — remove <code>MapSubmitBid()</code> + <code>MapUpdateBid()</code>; add 4 new typed submit registrations</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T044"><span class="cl-tid">T044</span><label for="cb-T044">Run <code>dotnet test --filter SelectPartners</code> — all 14 pass; run <code>dotnet test</code> — zero regressions</label></div>
+    </div>
+
+    <!-- Phase 9 -->
+    <div class="cl-phase">
+      <div class="cl-ph"><span class="cl-ph-num">Phase 9</span><span class="cl-ph-name">Polish &amp; Cross-Cutting Concerns</span></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T045"><span class="cl-tid">T045</span><label for="cb-T045">Update <code>Journey2_BiddingTests.cs</code> — typed endpoints + <code>selectedResponseIds</code> + projection data in payloads</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T046"><span class="cl-tid">T046</span><label for="cb-T046">Update <code>stryker-config.json</code> — add 4 new handler files to <code>mutate</code>; remove <code>SubmitBid.cs</code> / <code>UpdateBid.cs</code></label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T047"><span class="cl-tid">T047</span><label for="cb-T047">Run <code>dotnet test</code> — verify ≈161 tests pass (131 pre-existing + ≈30 new); 3 pre-existing skips unchanged</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T048"><span class="cl-tid">T048</span><label for="cb-T048">Run <code>dotnet stryker</code> from <code>src/Innoventity.API/</code> — mutation score ≥ 80% on new feature files</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T049"><span class="cl-tid">T049</span><label for="cb-T049">Run <code>dotnet build -c Release --no-restore</code> — Release build clean</label></div>
+    </div>
+  </section>
+
+<script>
+(function () {
+  const TOTAL = 49;
+  function updateProgress() {
+    const n = document.querySelectorAll('#checklist input[type=checkbox]:checked').length;
+    document.getElementById('progress-fill').style.width = (n / TOTAL * 100) + '%';
+    document.getElementById('progress-text').textContent = n + ' / ' + TOTAL + ' tasks complete (' + Math.round(n / TOTAL * 100) + '%)';
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('#checklist input[type=checkbox]').forEach(function (cb) {
+      if (localStorage.getItem('fr-' + cb.id) === '1') {
+        cb.checked = true;
+        cb.closest('.cl-item').classList.add('done');
+      }
+      cb.addEventListener('change', function () {
+        localStorage.setItem('fr-' + cb.id, cb.checked ? '1' : '0');
+        cb.closest('.cl-item').classList.toggle('done', cb.checked);
+        updateProgress();
+      });
+    });
+    updateProgress();
+  });
+})();
+</script>
+
+</main>
+
+<footer style="background:var(--slate); color:var(--gray-500); padding:1.5rem 4rem; font-size:0.75rem; font-family:var(--mono); display:flex; justify-content:space-between; align-items:center;">
+  <span>FormalResponse Polymorphic Hierarchy — Blueprint</span>
+  <span>Branch: 005-formalresponse-hierarchy · 49 tasks · 9 phases · 11 sections · Generated 2026-06-08</span>
+</footer>
+
+</body>
+</html>
