@@ -1,8 +1,7 @@
-using System.Security.Claims;
 using Innoventity.API.Domain.Entities;
+using Innoventity.API.Infrastructure.Authentication;
 using Innoventity.API.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,7 +25,7 @@ public static class UpdateBid
     /// </remarks>
     /// <param name="bidId">The bid to update</param>
     /// <param name="request">Updated bid details</param>
-    /// <param name="user">Authenticated user principal (injected by ASP.NET Core)</param>
+    /// <param name="httpContext">HTTP context — actor resolved by ActorResolutionFilter</param>
     /// <param name="db">Database context (injected by ASP.NET Core)</param>
     /// <response code="200">Bid successfully updated</response>
     /// <response code="400">Validation errors (proposal too short, invalid data)</response>
@@ -38,15 +37,10 @@ public static class UpdateBid
     public static async Task<IResult> Handle(
         Guid bidId,
         UpdateBidRequest request,
-        ClaimsPrincipal user,
+        HttpContext httpContext,
         AppDbContext db)
     {
-        // Extract actor ID from JWT claims
-        var actorIdClaim = user.FindFirst("sub") ?? user.FindFirst(ClaimTypes.NameIdentifier);
-        if (actorIdClaim == null || !Guid.TryParse(actorIdClaim.Value, out var actorId))
-        {
-            return Results.Unauthorized();
-        }
+        var actorId = httpContext.GetCurrentActor().Id;
 
         // Query bid with actor details
         var bid = await db.Bids
@@ -140,6 +134,7 @@ public static class UpdateBid
     {
         app.MapPut("/bids/{bidId:guid}", Handle)
             .RequireAuthorization()
+            .AddEndpointFilter<ActorResolutionFilter>()
             .WithTags("Bids")
             .WithName("UpdateBid")
             .WithOpenApi()

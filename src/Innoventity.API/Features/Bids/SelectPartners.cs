@@ -1,5 +1,5 @@
-using System.Security.Claims;
 using Innoventity.API.Domain.Entities;
+using Innoventity.API.Infrastructure.Authentication;
 using Innoventity.API.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -36,7 +36,7 @@ public static class SelectPartners
     /// </remarks>
     /// <param name="innovationId">The innovation to complete partner selection for</param>
     /// <param name="request">Array of selected bid IDs (one per required actor type)</param>
-    /// <param name="user">Authenticated user principal</param>
+    /// <param name="httpContext">HTTP context — actor resolved by ActorResolutionFilter</param>
     /// <param name="db">Database context</param>
     /// <response code="200">Partner selection completed</response>
     /// <response code="401">Unauthorized - authentication required</response>
@@ -48,27 +48,10 @@ public static class SelectPartners
     public static async Task<IResult> Handle(
         Guid innovationId,
         SelectPartnersRequest request,
-        ClaimsPrincipal user,
+        HttpContext httpContext,
         AppDbContext db)
     {
-        // Step 1 & 2: Authenticate caller
-        var actorIdClaim = user.FindFirst("sub") ?? user.FindFirst(ClaimTypes.NameIdentifier);
-        if (actorIdClaim == null || !Guid.TryParse(actorIdClaim.Value, out var actorId))
-        {
-            return Results.Problem(
-                statusCode: StatusCodes.Status401Unauthorized,
-                title: "Unauthorized",
-                detail: "A valid authenticated identity is required.");
-        }
-
-        var actor = await db.Actors.FindAsync(actorId);
-        if (actor == null)
-        {
-            return Results.Problem(
-                statusCode: StatusCodes.Status401Unauthorized,
-                title: "Unauthorized",
-                detail: "The authenticated identity does not correspond to a known actor.");
-        }
+        var actorId = httpContext.GetCurrentActor().Id;
 
         // Step 3: Load innovation with all bids and their actors
         var innovation = await db.Innovations
@@ -266,6 +249,7 @@ public static class SelectPartners
             .WithTags("Bids")
             .WithOpenApi()
             .RequireAuthorization()
+            .AddEndpointFilter<ActorResolutionFilter>()
             .Produces<SelectPartnersResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden)

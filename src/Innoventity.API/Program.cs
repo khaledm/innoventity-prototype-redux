@@ -132,6 +132,7 @@ builder.Services.AddAuthorization();
 // Register services
 builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddSingleton<PasswordHasher>();
+builder.Services.AddScoped<ICurrentActorService, CurrentActorService>();
 
 var app = builder.Build();
 

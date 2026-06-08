@@ -854,8 +854,8 @@ public class SelectPartnersTests : IDisposable
     }
 
     /// <summary>
-    /// JWT with a valid signature but a non-Guid 'sub' claim returns 401 Problem Details (Step 1–2 guard).
-    /// Covers the Guid.TryParse failure branch inside the handler.
+    /// JWT with a valid signature but a non-Guid 'sub' claim returns 401 Problem Details.
+    /// Claim parsing fails in ActorResolutionFilter before the handler is reached.
     /// </summary>
     [Fact]
     public async Task SelectPartners_InvalidSubClaim_Returns401ProblemDetails()
@@ -873,12 +873,12 @@ public class SelectPartnersTests : IDisposable
 
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains("Unauthorized", body, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("authenticated identity", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("resolved", body, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
-    /// JWT with a valid Guid 'sub' that does not match any Actor row returns 401 Problem Details (Step 2 guard).
-    /// Covers the db.Actors.FindAsync == null branch inside the handler.
+    /// JWT with a valid Guid 'sub' that does not match any Actor row returns 401 Problem Details.
+    /// DB lookup returns null in ActorResolutionFilter before the handler is reached.
     /// </summary>
     [Fact]
     public async Task SelectPartners_UnknownActor_Returns401ProblemDetails()
@@ -896,7 +896,7 @@ public class SelectPartnersTests : IDisposable
 
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains("Unauthorized", body, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("known actor", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("resolved", body, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

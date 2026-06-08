@@ -1,5 +1,5 @@
-using System.Security.Claims;
 using Innoventity.API.Domain.Entities;
+using Innoventity.API.Infrastructure.Authentication;
 using Innoventity.API.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +27,7 @@ public static class SubmitBid
     /// </remarks>
     /// <param name="innovationId">The innovation to bid on</param>
     /// <param name="request">Bid submission details</param>
-    /// <param name="user">Authenticated user principal (injected by ASP.NET Core)</param>
+    /// <param name="httpContext">HTTP context — actor resolved by ActorResolutionFilter</param>
     /// <param name="db">Database context (injected by ASP.NET Core)</param>
     /// <response code="201">Bid successfully submitted</response>
     /// <response code="400">Validation errors (proposal too short, missing required fields)</response>
@@ -39,22 +39,10 @@ public static class SubmitBid
     public static async Task<IResult> Handle(
         Guid innovationId,
         SubmitBidRequest request,
-        ClaimsPrincipal user,
+        HttpContext httpContext,
         AppDbContext db)
     {
-        // Extract actor ID from JWT claims
-        var actorIdClaim = user.FindFirst("sub") ?? user.FindFirst(ClaimTypes.NameIdentifier);
-        if (actorIdClaim == null || !Guid.TryParse(actorIdClaim.Value, out var actorId))
-        {
-            return Results.Unauthorized();
-        }
-
-        // Validate actor exists and get ActorType
-        var actor = await db.Actors.FindAsync(actorId);
-        if (actor == null)
-        {
-            return Results.Unauthorized();
-        }
+        var actor = httpContext.GetCurrentActor();
 
         // R4.1: Idea Generators cannot submit bids
         if (actor.ActorType == ActorType.IdeaGenerator)
@@ -82,7 +70,7 @@ public static class SubmitBid
         }
 
         // R4.1: Actor cannot bid on their own innovation
-        if (innovation.OwnerId == actorId)
+        if (innovation.OwnerId == actor.Id)
         {
             return Results.Problem(
                 statusCode: StatusCodes.Status409Conflict,
@@ -92,7 +80,7 @@ public static class SubmitBid
 
         // R4.1: Check for duplicate bid
         var existingBid = await db.Bids
-            .FirstOrDefaultAsync(b => b.ActorId == actorId && b.InnovationId == innovationId);
+            .FirstOrDefaultAsync(b => b.ActorId == actor.Id && b.InnovationId == innovationId);
 
         if (existingBid != null)
         {
@@ -133,7 +121,7 @@ public static class SubmitBid
         var bid = new Bid(Guid.NewGuid())
         {
             InnovationId = innovationId,
-            ActorId = actorId,
+            ActorId = actor.Id,
             Location = request.Location,
             ParticipationType = request.ParticipationType,
             ParticipationProposal = request.ParticipationProposal,
@@ -220,6 +208,7 @@ public static class SubmitBid
             .WithTags("Bids")
             .WithOpenApi()
             .RequireAuthorization()
+            .AddEndpointFilter<ActorResolutionFilter>()
             .Produces<SubmitBidResponse>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
