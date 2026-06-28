@@ -26,9 +26,10 @@ public class AppDbContext : DbContext
     public DbSet<Industry> Industries => Set<Industry>();
 
     /// <summary>
-    /// Bids (partnership proposals) submitted by actors for innovations
+    /// Formal responses (typed partnership proposals) submitted by actors for innovations.
+    /// TPH hierarchy: Manufacturing / SalesMarketing / ResearchDevelopment / Investor (Spec 005).
     /// </summary>
-    public DbSet<Bid> Bids => Set<Bid>();
+    public DbSet<FormalResponse> FormalResponses => Set<FormalResponse>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -255,46 +256,66 @@ public class AppDbContext : DbContext
             );
         });
 
-        // Configure Bid entity
-        modelBuilder.Entity<Bid>(entity =>
+        // Configure FormalResponse TPH hierarchy (Spec 005)
+        modelBuilder.Entity<FormalResponse>(entity =>
         {
-            entity.HasKey(b => b.Id);
+            entity.HasKey(r => r.Id);
 
-            entity.Property(b => b.Location)
+            // TPH: single FormalResponses table with a string discriminator.
+            // Discriminator configured before subtype registrations (plan.md constraint).
+            entity.HasDiscriminator<string>("ResponseType")
+                  .HasValue<ManufacturingResponse>(nameof(ManufacturingResponse))
+                  .HasValue<SalesMarketingResponse>(nameof(SalesMarketingResponse))
+                  .HasValue<ResearchDevelopmentResponse>(nameof(ResearchDevelopmentResponse))
+                  .HasValue<InvestorResponse>(nameof(InvestorResponse));
+
+            entity.Property(r => r.Location)
                   .IsRequired()
-                  .HasMaxLength(200);
+                  .HasConversion<string>()
+                  .HasMaxLength(20);
 
-            entity.Property(b => b.ParticipationType)
+            entity.Property(r => r.ParticipationType)
                   .IsRequired()
                   .HasMaxLength(100);
 
-            entity.Property(b => b.ParticipationProposal)
+            entity.Property(r => r.ParticipationProposal)
                   .IsRequired()
                   .HasMaxLength(5000);
 
-            entity.Property(b => b.Status)
+            entity.Property(r => r.Status)
                   .IsRequired()
                   .HasConversion<string>();
 
-            entity.Property(b => b.SubmittedAt)
+            entity.Property(r => r.SubmittedAt)
                   .IsRequired();
 
-            // Configure relationship with Innovation (inverse: Innovation.Bids)
-            entity.HasOne(b => b.Innovation)
-                  .WithMany(i => i.Bids)
-                  .HasForeignKey(b => b.InnovationId)
+            // Configure relationship with Innovation (inverse: Innovation.FormalResponses)
+            entity.HasOne(r => r.Innovation)
+                  .WithMany(i => i.FormalResponses)
+                  .HasForeignKey(r => r.InnovationId)
                   .OnDelete(DeleteBehavior.Cascade);
 
-            // Configure relationship with Actor (bidder)
-            entity.HasOne(b => b.Actor)
+            // Configure relationship with Actor (responder)
+            entity.HasOne(r => r.Actor)
                   .WithMany()
-                  .HasForeignKey(b => b.ActorId)
+                  .HasForeignKey(r => r.ActorId)
                   .OnDelete(DeleteBehavior.Restrict);
 
-            // R4.1: Unique constraint - one bid per actor per innovation
-            entity.HasIndex(b => new { b.ActorId, b.InnovationId })
+            // R4.1: Unique constraint - one response per actor per innovation
+            entity.HasIndex(r => new { r.ActorId, r.InnovationId })
                   .IsUnique()
-                  .HasDatabaseName("IX_Bid_ActorId_InnovationId");
+                  .HasDatabaseName("IX_FormalResponse_ActorId_InnovationId");
         });
+
+        // Yearly projection collections persisted as JSON columns (EF Core 8 OwnsMany().ToJson()).
+        // Value objects are keyless — EF manages an implicit ordinal key inside the JSON document.
+        modelBuilder.Entity<ManufacturingResponse>()
+            .OwnsMany(r => r.YearlyManufacturingCosts, b => b.ToJson());
+
+        modelBuilder.Entity<SalesMarketingResponse>()
+            .OwnsMany(r => r.YearlySales, b => b.ToJson());
+
+        modelBuilder.Entity<ResearchDevelopmentResponse>()
+            .OwnsMany(r => r.YearlyDevelopmentCosts, b => b.ToJson());
     }
 }
