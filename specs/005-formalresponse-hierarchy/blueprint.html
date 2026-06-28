@@ -564,7 +564,7 @@
         <div class="milestone-content">
           <div class="milestone-goal">Manufacturing actor submits typed response with yearly cost projections. Independent test: 3-year projection → 201 + discriminator stored.</div>
           <ul class="task-list">
-            <li><span class="task-id">T020</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">SubmitManufacturingResponseTests.cs</span> — 8 tests: happy path 3-year → 201; wrong actor type → 403; owns innovation → 409; duplicate → 409; not Published → 404; rationale &lt; 20 chars → 422 with field name; non-contiguous years [1,3] → 422; year &gt; 10 → 422</span></li>
+            <li><span class="task-id">T020</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">SubmitManufacturingResponseTests.cs</span> — 11 tests: happy path 3-year → 201; wrong actor type → 403; owns innovation → 403; duplicate → 409; not Published → 404; rationale &lt; 20 chars → 422 with field name; non-contiguous years [1,3] → 422; year &gt; 10 → 422; proposal &lt; 100 chars → 400; rationale &gt; 500 chars → 422; partial projection entry (metric without paired rationale) → 422</span></li>
             <li><span class="task-id">T021</span><span class="task-desc"><span class="task-file">SubmitManufacturingResponse.cs</span> — Guard chain: JWT → actor lookup → Manufacturing check (403) → innovation lookup (404) → Published check (404) → ownership (409) → duplicate (409) → year contiguity + max 10 (422) → rationale ≥ 20 chars with field name (422) → persist → 201</span></li>
             <li><span class="task-id">T022</span><span class="task-desc"><span class="task-file">Program.cs</span> — <code>app.MapPost("/innovations/{id}/bids/manufacturing", …)</code></span></li>
             <li><span class="task-id">T023</span><span class="task-desc">Run <code>dotnet test --filter SubmitManufacturingResponse</code> — verify all 8 pass</span></li>
@@ -583,7 +583,7 @@
         <div class="milestone-content">
           <div class="milestone-goal">SalesMarketing actor submits typed response with yearly revenue projections. Independent test: 2-year YearlySales with all six rationale strings.</div>
           <ul class="task-list">
-            <li><span class="task-id">T024</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">SubmitSalesMarketingResponseTests.cs</span> — 8 tests: same guard coverage as US1 (wrong type = Manufacturing → 403, owns → 409, duplicate → 409, not published → 404, UnitsSoldRationale &lt; 20 chars → 422, year gap → 422, year &gt; 10 → 422, happy path → 201)</span></li>
+            <li><span class="task-id">T024</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">SubmitSalesMarketingResponseTests.cs</span> — 9 tests: same guard coverage as US1 (wrong type = Manufacturing → 403, owns → 403, duplicate → 409, not published → 404, UnitsSoldRationale &lt; 20 chars → 422, year gap → 422, year &gt; 10 → 422, proposal &lt; 100 chars → 400, happy path → 201)</span></li>
             <li><span class="task-id">T025</span><span class="task-desc"><span class="task-file">SubmitSalesMarketingResponse.cs</span> — Same guard chain; actor type: SalesMarketing only; validate YearlySales contiguity + max 10 + rationale ≥ 20 chars; persist</span></li>
             <li><span class="task-id">T026</span><span class="task-desc"><span class="task-file">Program.cs</span> — <code>app.MapPost("/innovations/{id}/bids/sales", …)</code></span></li>
             <li><span class="task-id">T027</span><span class="task-desc">Run <code>dotnet test --filter SubmitSalesMarketingResponse</code> — verify all 8 pass</span></li>
@@ -602,7 +602,7 @@
         <div class="milestone-content">
           <div class="milestone-goal">R&amp;D actor submits typed response with ProductDevelopmentDuration + yearly development costs. Independent test: duration=2 + 2-year YearlyDevelopmentCosts stored.</div>
           <ul class="task-list">
-            <li><span class="task-id">T028</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">SubmitResearchDevelopmentResponseTests.cs</span> — 8 tests: happy path → 201 + ProductDevelopmentDuration stored; wrong actor → 403; owns → 409; duplicate → 409; not published → 404; InfrastructureCostRationale &lt; 20 chars → 422; year gap → 422; ProductDevelopmentDuration = 0 → 422</span></li>
+            <li><span class="task-id">T028</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">SubmitResearchDevelopmentResponseTests.cs</span> — 9 tests: happy path → 201 + ProductDevelopmentDuration stored; wrong actor → 403; owns → 403; duplicate → 409; not published → 404; InfrastructureCostRationale &lt; 20 chars → 422; year gap → 422; ProductDevelopmentDuration = 0 → 422; proposal &lt; 100 chars → 400</span></li>
             <li><span class="task-id">T029</span><span class="task-desc"><span class="task-file">SubmitResearchDevelopmentResponse.cs</span> — Same guard chain; actor type: RD only; validate ProductDevelopmentDuration 1–10; validate YearlyDevelopmentCosts contiguity + max 10 + rationale ≥ 20 chars; persist</span></li>
             <li><span class="task-id">T030</span><span class="task-desc"><span class="task-file">Program.cs</span> — <code>app.MapPost("/innovations/{id}/bids/rd", …)</code></span></li>
             <li><span class="task-id">T031</span><span class="task-desc">Run <code>dotnet test --filter SubmitResearchDevelopmentResponse</code> — verify all 8 pass</span></li>
@@ -621,7 +621,7 @@
         <div class="milestone-content">
           <div class="milestone-goal">Investor actor submits lightweight feedback response distinguishable by ResponseType. Independent test: InvestorResponse stored with Feedback; no projection columns.</div>
           <ul class="task-list">
-            <li><span class="task-id">T032</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">SubmitInvestorResponseTests.cs</span> — 5 tests: happy path → 201 + responseType=InvestorResponse; wrong actor type → 403; owns innovation → 409; feedback &lt; 50 chars → 422; feedback &gt; 2000 chars → 422</span></li>
+            <li><span class="task-id">T032</span><span class="task-par">[P]</span><span class="task-desc"><span class="task-file">SubmitInvestorResponseTests.cs</span> — 6 tests: happy path → 201 + responseType=InvestorResponse; wrong actor type → 403; owns innovation → 403; duplicate → 409; feedback &lt; 50 chars → 422; feedback &gt; 2000 chars → 422</span></li>
             <li><span class="task-id">T033</span><span class="task-desc"><span class="task-file">SubmitInvestorResponse.cs</span> — Same guard chain; actor type: Investor only; validate Feedback ≥ 50 ≤ 2000 chars (422); validate ParticipationProposal ≥ 100 chars (400); persist InvestorResponse</span></li>
             <li><span class="task-id">T034</span><span class="task-desc"><span class="task-file">Program.cs</span> — <code>app.MapPost("/innovations/{id}/bids/investor", …)</code></span></li>
             <li><span class="task-id">T035</span><span class="task-desc">Run <code>dotnet test --filter SubmitInvestorResponse</code> — verify all 5 pass</span></li>
@@ -1009,9 +1009,9 @@
       </thead>
       <tbody>
         <tr><td>401</td><td>No / invalid JWT</td><td><code>{ "error": "Unauthorized" }</code></td></tr>
-        <tr><td>403</td><td>Actor is IdeaGenerator or wrong actor type</td><td><code>{ "error": "Forbidden", "detail": "Only Manufacturing actors may submit this response type." }</code></td></tr>
+        <tr><td>403</td><td>Actor is IdeaGenerator or wrong actor type; or actor owns the innovation</td><td><code>{ "error": "Forbidden", "detail": "Only Manufacturing actors may submit this response type." }</code></td></tr>
         <tr><td>404</td><td>Innovation not found or not Published</td><td><code>{ "error": "NotFound" }</code></td></tr>
-        <tr><td>409</td><td>Actor already submitted for this innovation; or actor owns the innovation</td><td><code>{ "error": "Conflict", "detail": "A response already exists for this actor." }</code></td></tr>
+        <tr><td>409</td><td>Actor already submitted for this innovation</td><td><code>{ "error": "Conflict", "detail": "A response already exists for this actor." }</code></td></tr>
         <tr><td>422</td><td>Year contiguity gap, year &gt; 10, rationale &lt; 20 chars, Feedback out of range</td><td><code>{ "error": "UnprocessableEntity", "field": "yearlyManufacturingCosts[1].productionVolumeRationale", "detail": "Rationale must be at least 20 characters." }</code></td></tr>
       </tbody>
     </table>
@@ -2333,7 +2333,7 @@ public static class SubmitInvestorResponse
     <!-- Phase 3 -->
     <div class="cl-phase">
       <div class="cl-ph"><span class="cl-ph-num">Phase 3</span><span class="cl-ph-name">US1 — Manufacturing Response Submission <span class="cl-us">P1 MVP</span></span></div>
-      <div class="cl-item"><input type="checkbox" id="cb-T020"><span class="cl-tid">T020</span><label for="cb-T020">Write <code>SubmitManufacturingResponseTests.cs</code> — 8 tests: happy path 201 + stored discriminator; wrong actor 403; owns innovation 409; duplicate 409; not Published 404; rationale &lt;20 chars 422; non-contiguous years 422; year &gt;10 422</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T020"><span class="cl-tid">T020</span><label for="cb-T020">Write <code>SubmitManufacturingResponseTests.cs</code> — 11 tests: happy path 201 + stored discriminator; wrong actor 403; owns innovation 403; duplicate 409; not Published 404; rationale &lt;20 chars 422; non-contiguous years 422; year &gt;10 422; proposal &lt;100 chars 400; rationale &gt;500 chars 422; partial projection entry 422</label></div>
       <div class="cl-item"><input type="checkbox" id="cb-T021"><span class="cl-tid">T021</span><label for="cb-T021">Implement <code>SubmitManufacturingResponse.cs</code> — full guard chain; year contiguity + max-10; rationale ≥20 per field; persist <code>ManufacturingResponse</code>; return 201 with responseId/responseType/status/submittedAt</label></div>
       <div class="cl-item"><input type="checkbox" id="cb-T022"><span class="cl-tid">T022</span><label for="cb-T022">Register endpoint in <code>Program.cs</code>: <code>app.MapSubmitManufacturingResponse()</code></label></div>
       <div class="cl-item"><input type="checkbox" id="cb-T023"><span class="cl-tid">T023</span><label for="cb-T023">Run <code>dotnet test --filter SubmitManufacturingResponse</code> — verify all 8 tests pass</label></div>
@@ -2360,7 +2360,7 @@ public static class SubmitInvestorResponse
     <!-- Phase 6 -->
     <div class="cl-phase">
       <div class="cl-ph"><span class="cl-ph-num">Phase 6</span><span class="cl-ph-name">US4 — Investor Response Submission <span class="cl-us">P2</span></span></div>
-      <div class="cl-item"><input type="checkbox" id="cb-T032"><span class="cl-tid">T032</span><label for="cb-T032">Write <code>SubmitInvestorResponseTests.cs</code> — 5 tests: happy path 201; wrong actor 403; owns innovation 409; Feedback &lt;50 chars 422; Feedback &gt;2000 chars 422</label></div>
+      <div class="cl-item"><input type="checkbox" id="cb-T032"><span class="cl-tid">T032</span><label for="cb-T032">Write <code>SubmitInvestorResponseTests.cs</code> — 6 tests: happy path 201; wrong actor 403; owns innovation 403; duplicate 409; Feedback &lt;50 chars 422; Feedback &gt;2000 chars 422</label></div>
       <div class="cl-item"><input type="checkbox" id="cb-T033"><span class="cl-tid">T033</span><label for="cb-T033">Implement <code>SubmitInvestorResponse.cs</code> — Investor actor type; Feedback 50–2000 chars; ParticipationProposal ≥100 chars; persist <code>InvestorResponse</code></label></div>
       <div class="cl-item"><input type="checkbox" id="cb-T034"><span class="cl-tid">T034</span><label for="cb-T034">Register endpoint: <code>app.MapSubmitInvestorResponse()</code></label></div>
       <div class="cl-item"><input type="checkbox" id="cb-T035"><span class="cl-tid">T035</span><label for="cb-T035">Run <code>dotnet test --filter SubmitInvestorResponse</code> — all 5 pass</label></div>

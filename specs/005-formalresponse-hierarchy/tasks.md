@@ -67,8 +67,8 @@
 
 > **⚠️ Write tests FIRST — verify they FAIL before implementing the handler (Principle 5)**
 
-- [ ] T020 [P] [US1] Write `SubmitManufacturingResponseTests.cs` in `tests/Innoventity.API.Tests/Integration/Features/Bids/SubmitManufacturingResponseTests.cs` — 8 tests: (1) happy path 3-year projection → 201 + stored discriminator; (2) wrong actor type (SalesMarketing) → 403; (3) actor owns innovation → 409; (4) duplicate response → 409; (5) innovation not Published (Draft) → 404; (6) rationale field under 20 chars → 422 with field name in error; (7) non-contiguous years [1,3] → 422; (8) year > 10 → 422
-- [ ] T021 [US1] Implement `SubmitManufacturingResponse.cs` handler in `src/Innoventity.API/Features/Bids/SubmitManufacturingResponse.cs` — guard chain: extract actorId from JWT → look up Actor → reject non-Manufacturing (403) → look up Innovation → reject non-Published (404) → reject if actor owns innovation (409) → reject duplicate (409) → validate year contiguity + max 10 (422) → validate all rationale fields ≥ 20 chars with field name in error (422) → persist ManufacturingResponse → return 201 with responseId/responseType/status/submittedAt
+- [ ] T020 [P] [US1] Write `SubmitManufacturingResponseTests.cs` in `tests/Innoventity.API.Tests/Integration/Features/Bids/SubmitManufacturingResponseTests.cs` — 11 tests: (1) happy path 3-year projection → 201 + stored discriminator; (2) wrong actor type (SalesMarketing) → 403; (3) actor owns innovation → 403; (4) duplicate response → 409; (5) innovation not Published (Draft) → 404; (6) rationale field under 20 chars → 422 with field name in error; (7) non-contiguous years [1,3] → 422; (8) year > 10 → 422; (9) participationProposal under 100 chars → 400; (10) rationale field over 500 chars → 422 with field name in error; (11) partial projection entry (a year supplying a metric but omitting its paired rationale, or vice versa) → 422 (rejected as a unit)
+- [ ] T021 [US1] Implement `SubmitManufacturingResponse.cs` handler in `src/Innoventity.API/Features/Bids/SubmitManufacturingResponse.cs` — guard chain: extract actorId from JWT → look up Actor → reject non-Manufacturing (403) → look up Innovation → reject non-Published (404) → reject if actor owns innovation (403) → reject duplicate (409) → validate ParticipationProposal ≥ 100 chars (400) → validate year contiguity + max 10 (422) → reject any partial projection entry as a unit (every metric must be paired with its rationale) (422) → validate all rationale fields are 20–500 chars with field name in error (422) → persist ManufacturingResponse → return 201 with responseId/responseType/status/submittedAt
 - [ ] T022 [US1] Register endpoint in `src/Innoventity.API/Program.cs` — `app.MapPost("/innovations/{innovationId}/bids/manufacturing", SubmitManufacturingResponse.Handle).RequireAuthorization()`
 - [ ] T023 [US1] Run `dotnet test --filter SubmitManufacturingResponse` — verify all 8 tests pass
 
@@ -84,8 +84,8 @@
 
 > **⚠️ Write tests FIRST — verify they FAIL before implementing the handler**
 
-- [ ] T024 [P] [US2] Write `SubmitSalesMarketingResponseTests.cs` in `tests/Innoventity.API.Tests/Integration/Features/Bids/SubmitSalesMarketingResponseTests.cs` — 8 tests: same guard coverage as US1 (wrong type = Manufacturing actor → 403, owns innovation → 409, duplicate → 409, not published → 404, UnitsSoldRationale under 20 chars → 422 with field name, year gap → 422, year > 10 → 422, happy path → 201)
-- [ ] T025 [US2] Implement `SubmitSalesMarketingResponse.cs` handler in `src/Innoventity.API/Features/Bids/SubmitSalesMarketingResponse.cs` — same guard chain as US1; actor type check: SalesMarketing only; validate YearlySales contiguity + max 10 + all rationale ≥ 20 chars; persist SalesMarketingResponse
+- [ ] T024 [P] [US2] Write `SubmitSalesMarketingResponseTests.cs` in `tests/Innoventity.API.Tests/Integration/Features/Bids/SubmitSalesMarketingResponseTests.cs` — 9 tests: same guard coverage as US1 (wrong type = Manufacturing actor → 403, owns innovation → 403, duplicate → 409, not published → 404, UnitsSoldRationale under 20 chars → 422 with field name, year gap → 422, year > 10 → 422, participationProposal under 100 chars → 400, happy path → 201)
+- [ ] T025 [US2] Implement `SubmitSalesMarketingResponse.cs` handler in `src/Innoventity.API/Features/Bids/SubmitSalesMarketingResponse.cs` — same guard chain as US1; actor type check: SalesMarketing only; validate ParticipationProposal ≥ 100 chars (400); validate YearlySales contiguity + max 10 + all rationale ≥ 20 chars; persist SalesMarketingResponse
 - [ ] T026 [US2] Register endpoint in `src/Innoventity.API/Program.cs` — `app.MapPost("/innovations/{innovationId}/bids/sales", SubmitSalesMarketingResponse.Handle).RequireAuthorization()`
 - [ ] T027 [US2] Run `dotnet test --filter SubmitSalesMarketingResponse` — verify all 8 tests pass
 
@@ -101,8 +101,8 @@
 
 > **⚠️ Write tests FIRST — verify they FAIL before implementing the handler**
 
-- [ ] T028 [P] [US3] Write `SubmitResearchDevelopmentResponseTests.cs` in `tests/Innoventity.API.Tests/Integration/Features/Bids/SubmitResearchDevelopmentResponseTests.cs` — 8 tests: happy path → 201 + ProductDevelopmentDuration stored; wrong actor type → 403; owns innovation → 409; duplicate → 409; not published → 404; InfrastructureCostRationale under 20 chars → 422 with field name; year gap → 422; ProductDevelopmentDuration = 0 → 422
-- [ ] T029 [US3] Implement `SubmitResearchDevelopmentResponse.cs` handler in `src/Innoventity.API/Features/Bids/SubmitResearchDevelopmentResponse.cs` — same guard chain; actor type check: RD only; validate ProductDevelopmentDuration 1–10 (422); validate YearlyDevelopmentCosts contiguity + max 10 + all rationale ≥ 20 chars; persist ResearchDevelopmentResponse
+- [ ] T028 [P] [US3] Write `SubmitResearchDevelopmentResponseTests.cs` in `tests/Innoventity.API.Tests/Integration/Features/Bids/SubmitResearchDevelopmentResponseTests.cs` — 9 tests: happy path → 201 + ProductDevelopmentDuration stored; wrong actor type → 403; owns innovation → 403; duplicate → 409; not published → 404; InfrastructureCostRationale under 20 chars → 422 with field name; year gap → 422; ProductDevelopmentDuration = 0 → 422; participationProposal under 100 chars → 400
+- [ ] T029 [US3] Implement `SubmitResearchDevelopmentResponse.cs` handler in `src/Innoventity.API/Features/Bids/SubmitResearchDevelopmentResponse.cs` — same guard chain; actor type check: RD only; validate ParticipationProposal ≥ 100 chars (400); validate ProductDevelopmentDuration 1–10 (422); validate YearlyDevelopmentCosts contiguity + max 10 + all rationale ≥ 20 chars; persist ResearchDevelopmentResponse
 - [ ] T030 [US3] Register endpoint in `src/Innoventity.API/Program.cs` — `app.MapPost("/innovations/{innovationId}/bids/rd", SubmitResearchDevelopmentResponse.Handle).RequireAuthorization()`
 - [ ] T031 [US3] Run `dotnet test --filter SubmitResearchDevelopmentResponse` — verify all 8 tests pass
 
@@ -118,7 +118,7 @@
 
 > **⚠️ Write tests FIRST — verify they FAIL before implementing the handler**
 
-- [ ] T032 [P] [US4] Write `SubmitInvestorResponseTests.cs` in `tests/Innoventity.API.Tests/Integration/Features/Bids/SubmitInvestorResponseTests.cs` — 5 tests: happy path → 201 with responseType = InvestorResponse; wrong actor type (Manufacturing) → 403; owns innovation → 409; feedback under 50 chars → 422; feedback over 2000 chars → 422
+- [ ] T032 [P] [US4] Write `SubmitInvestorResponseTests.cs` in `tests/Innoventity.API.Tests/Integration/Features/Bids/SubmitInvestorResponseTests.cs` — 6 tests: happy path → 201 with responseType = InvestorResponse; wrong actor type (Manufacturing) → 403; owns innovation → 403; duplicate response → 409; feedback under 50 chars → 422; feedback over 2000 chars → 422
 - [ ] T033 [US4] Implement `SubmitInvestorResponse.cs` handler in `src/Innoventity.API/Features/Bids/SubmitInvestorResponse.cs` — same guard chain; actor type check: Investor only; validate Feedback ≥ 50 chars ≤ 2000 chars (422); validate ParticipationProposal ≥ 100 chars (400); persist InvestorResponse
 - [ ] T034 [US4] Register endpoint in `src/Innoventity.API/Program.cs` — `app.MapPost("/innovations/{innovationId}/bids/investor", SubmitInvestorResponse.Handle).RequireAuthorization()`
 - [ ] T035 [US4] Run `dotnet test --filter SubmitInvestorResponse` — verify all 5 tests pass
@@ -168,7 +168,7 @@
 
 - [ ] T045 [P] Update `Journey2_BiddingTests.cs` in `tests/Innoventity.API.Tests/E2E/Journeys/Journey2_BiddingTests.cs` — update full bidding journey to use typed endpoints (`/bids/manufacturing`, `/bids/sales`, `/bids/rd`), replace `selectedBidIds` with `selectedResponseIds`, include projection data in submission payloads
 - [ ] T046 [P] Update `stryker-config.json` in `src/Innoventity.API/stryker-config.json` — add to mutate list: `SubmitManufacturingResponse.cs`, `SubmitSalesMarketingResponse.cs`, `SubmitResearchDevelopmentResponse.cs`, `SubmitInvestorResponse.cs`, `GetBids.cs`, `SelectPartners.cs`; remove `SubmitBid.cs`, `UpdateBid.cs`
-- [ ] T047 Run `dotnet test` from repo root — verify ~161 tests pass (131 pre-existing + ~30 new), 3 pre-existing skips unchanged (SC-006)
+- [ ] T047 Run `dotnet test` from repo root — verify ~166 tests pass (131 pre-existing + ~35 new), 3 pre-existing skips unchanged (SC-006)
 - [ ] T048 Run `dotnet stryker` from `src/Innoventity.API/` — verify mutation score ≥ 80% across new feature files (SC-005)
 - [ ] T049 Run `dotnet build -c Release --no-restore` from repo root — verify Release build is clean
 

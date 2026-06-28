@@ -97,9 +97,9 @@ Pending | Accepted | Rejected
 |--------|------|
 | 400 | Missing required fields, proposal too short |
 | 401 | No/invalid JWT |
-| 403 | Actor is IdeaGenerator or wrong actor type (non-Manufacturing) |
+| 403 | Actor is IdeaGenerator or wrong actor type (non-Manufacturing); or actor owns the innovation |
 | 404 | Innovation not found or not Published |
-| 409 | Actor already submitted a response for this innovation; or actor owns the innovation |
+| 409 | Actor already submitted a response for this innovation |
 | 422 | Projection validation failure (year gap, missing rationale, rationale too short) |
 
 ---

@@ -26,7 +26,7 @@ Replace the flat `Bid` entity (free-text proposal only) with a polymorphic `Form
 
 **Storage**: SQL Server via EF Core — single migration creates `FormalResponses` table (TPH with `ResponseType` discriminator column + JSON columns for projection data), drops `Bids` table. `Innovations` table navigation renamed (FK column unchanged).
 
-**Testing**: xUnit integration tests via `WebApplicationFactory<Program>` with EF Core InMemory. ~30 new tests for 4 typed submission endpoints (happy path + validation + authorization per type) + updated SelectPartners tests (field rename + typed seed data).
+**Testing**: xUnit integration tests via `WebApplicationFactory<Program>` with EF Core InMemory. ~35 new tests for 4 typed submission endpoints (happy path + validation + authorization per type) + updated SelectPartners tests (field rename + typed seed data).
 
 **Target Platform**: Azure App Service (.NET 8 runtime — unchanged)
 
@@ -41,7 +41,7 @@ Replace the flat `Bid` entity (free-text proposal only) with a polymorphic `Form
 - Year contiguity check must be server-side (cannot be expressed as a data annotation)
 - Rationale minimum length (20 chars) is a business rule — enforce in endpoint handler, not just data annotations
 
-**Scale/Scope**: 4 new endpoints + updates to 3 existing; ~30 new tests + updates to ~25 existing tests; one EF Core migration.
+**Scale/Scope**: 4 new endpoints + updates to 3 existing; ~35 new tests + updates to ~25 existing tests; one EF Core migration.
 
 ---
 
@@ -53,7 +53,7 @@ Replace the flat `Bid` entity (free-text proposal only) with a polymorphic `Form
 
 **✅ Principle 1 — User Experience First**: Each actor type gets a dedicated endpoint with a request schema tailored to their data (no generic blob). Validation errors identify the specific field and year entry that failed — actors get actionable error messages. The `type` filter on `GET /bids` lets owners quickly compare all manufacturers without scrolling through unrelated responses.
 
-**✅ Principle 2 — Quality is Non-Negotiable**: ~30 new integration tests cover all four submit endpoints (happy path, wrong actor type, duplicate, rationale too short, year gap, innovation not published, owns the innovation). Stryker added for all new feature files. Mutation thresholds maintained at break: 60, low: 70, high: 80.
+**✅ Principle 2 — Quality is Non-Negotiable**: ~35 new integration tests cover all four submit endpoints (happy path, wrong actor type, duplicate, rationale too short, year gap, innovation not published, owns the innovation). Stryker added for all new feature files. Mutation thresholds maintained at break: 60, low: 70, high: 80.
 
 **✅ Principle 3 — Simplicity Over Cleverness**: TPH (single table) is simpler than TPT (joins). `OwnsMany().ToJson()` is the idiomatic EF Core 8 approach. Year contiguity check is 3 lines of LINQ. No mediator, no pipeline abstractions.
 
@@ -202,7 +202,9 @@ Wire EF Core TPH, JSON columns, generate and apply the migration.
 ### Phase 3 — New Endpoints
 
 Add 4 typed submission handlers. Each follows the guard-clause pattern from `SubmitBid.cs`:
-1. JWT claim extraction → actor lookup → type check (403) → innovation lookup (404) → ownership guard (409) → duplicate guard (409) → payload validation (422) → persist → 201
+1. JWT claim extraction → actor lookup → type check (403) → innovation lookup (404) → ownership guard (403) → duplicate guard (409) → proposal length validation (400) → projection validation (422) → persist → 201
+
+**Actor identity resolution is centralized**: the JWT-claim → `Actor` lookup (formerly inline in each handler) is performed by `ActorResolutionFilter` (an `IEndpointFilter`, covered by `tests/Innoventity.API.Tests/Integration/Features/Bids/ActorResolutionFilterTests.cs`). Each submission handler receives the resolved `Actor` and performs only the type/ownership/duplicate guards — it does not re-parse the token. Task descriptions that say "extract actorId from JWT → look up Actor" refer to consuming this filter's result, not re-implementing it per handler.
 
 Files: `SubmitManufacturingResponse.cs`, `SubmitSalesMarketingResponse.cs`, `SubmitResearchDevelopmentResponse.cs`, `SubmitInvestorResponse.cs`
 
@@ -232,7 +234,7 @@ Files: `SubmitManufacturingResponse.cs`, `SubmitSalesMarketingResponse.cs`, `Sub
 
 ### Phase 6 — Quality Gate
 
-1. `dotnet test` — all tests pass (target: ~161 total, 3 pre-existing skips)
+1. `dotnet test` — all tests pass (target: ~166 total, 3 pre-existing skips)
 2. `dotnet stryker` — mutation score ≥ 80%
 3. `dotnet build -c Release --no-restore`
 
