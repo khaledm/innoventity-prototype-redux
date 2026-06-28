@@ -187,9 +187,10 @@ public class Innovation : EntityOfGuid
     public ICollection<Industry> TargetIndustries { get; set; } = new List<Industry>();
 
     /// <summary>
-    /// Bids submitted for this innovation (one-to-many inverse navigation)
+    /// Formal responses submitted for this innovation (one-to-many inverse navigation).
+    /// Replaces the former <c>Bids</c> collection (Spec 005).
     /// </summary>
-    public ICollection<Bid> Bids { get; set; } = [];
+    public ICollection<FormalResponse> FormalResponses { get; set; } = [];
 
     /// <summary>
     /// Partners needed: RD, Manufacturing, SalesMarketing, Investor (Spec §US3 R2.1)
