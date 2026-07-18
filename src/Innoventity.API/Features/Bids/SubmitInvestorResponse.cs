@@ -106,7 +106,7 @@ public static class SubmitInvestorResponse
         db.FormalResponses.Add(response);
         await db.SaveChangesAsync();
 
-        return Results.Created($"/innovations/{innovationId}/bids/investor/{response.Id}", new SubmitManufacturingResponse.SubmitResponseResult
+        return Results.Created($"/innovations/{innovationId}/bids/investor/{response.Id}", new SubmitResponseResult
         {
             ResponseId = response.Id,
             ResponseType = nameof(InvestorResponse),
@@ -139,7 +139,7 @@ public static class SubmitInvestorResponse
             .WithOpenApi()
             .RequireAuthorization()
             .AddEndpointFilter<ActorResolutionFilter>()
-            .Produces<SubmitManufacturingResponse.SubmitResponseResult>(StatusCodes.Status201Created)
+            .Produces<SubmitResponseResult>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden)
