@@ -699,4 +699,36 @@ public class SubmitResearchDevelopmentResponseTests : IDisposable
         Assert.Contains("YearlyDevelopmentCosts[0].InfrastructureCost", errors.Keys);
         Assert.Contains("YearlyDevelopmentCosts[0].PeopleCost", errors.Keys);
     }
+
+    /// <summary>
+    /// ValidateProjection should report duplicate projection years explicitly.
+    /// </summary>
+    [Fact]
+    public void ValidateProjection_DuplicateYears_ReturnsDuplicateYearError()
+    {
+        var entries = new List<Innoventity.API.Features.Bids.SubmitResearchDevelopmentResponse.YearlyDevelopmentCostRequest>
+        {
+            new()
+            {
+                Year = 1,
+                InfrastructureCost = 50000.00m,
+                InfrastructureCostRationale = "Cloud hosting, lab tooling, and software licenses for the year.",
+                PeopleCost = 200000.00m,
+                PeopleCostRationale = "Engineers and a project manager allocated to this workstream for the year."
+            },
+            new()
+            {
+                Year = 1,
+                InfrastructureCost = 55000.00m,
+                InfrastructureCostRationale = "Expanded cloud hosting, lab tooling, and software licenses for the year.",
+                PeopleCost = 210000.00m,
+                PeopleCostRationale = "Expanded engineering allocation and project leadership for the year."
+            }
+        };
+
+        var errors = InvokeValidateProjection(entries);
+
+        Assert.Contains("YearlyDevelopmentCosts", errors.Keys);
+        Assert.Contains("duplicate year(s): 1", errors["YearlyDevelopmentCosts"][0], StringComparison.OrdinalIgnoreCase);
+    }
 }

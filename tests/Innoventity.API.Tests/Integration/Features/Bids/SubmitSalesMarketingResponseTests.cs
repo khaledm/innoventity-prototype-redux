@@ -664,4 +664,40 @@ public class SubmitSalesMarketingResponseTests : IDisposable
         Assert.Contains("YearlySales[0].UnitPrice", errors.Keys);
         Assert.Contains("YearlySales[0].SalesMarketingExpense", errors.Keys);
     }
+
+    /// <summary>
+    /// ValidateProjection should report duplicate projection years explicitly.
+    /// </summary>
+    [Fact]
+    public void ValidateProjection_DuplicateYears_ReturnsDuplicateYearError()
+    {
+        var entries = new List<Innoventity.API.Features.Bids.SubmitSalesMarketingResponse.YearlySaleRequest>
+        {
+            new()
+            {
+                Year = 1,
+                UnitsSold = 5000,
+                UnitsSoldRationale = "Conservative estimate based on comparable product launches in this segment.",
+                UnitPrice = 49.99m,
+                UnitPriceRationale = "Market pricing analysis shows strong demand at this price point currently.",
+                SalesMarketingExpense = 25000.00m,
+                SalesMarketingExpenseRationale = "Channel costs plus digital marketing spend for the launch quarter."
+            },
+            new()
+            {
+                Year = 1,
+                UnitsSold = 5500,
+                UnitsSoldRationale = "Updated estimate based on comparable product launches in this segment.",
+                UnitPrice = 52.00m,
+                UnitPriceRationale = "Refined market pricing analysis still shows strong demand.",
+                SalesMarketingExpense = 26000.00m,
+                SalesMarketingExpenseRationale = "Channel costs plus digital marketing spend for the expanded launch quarter."
+            }
+        };
+
+        var errors = InvokeValidateProjection(entries);
+
+        Assert.Contains("YearlySales", errors.Keys);
+        Assert.Contains("duplicate year(s): 1", errors["YearlySales"][0], StringComparison.OrdinalIgnoreCase);
+    }
 }

@@ -142,13 +142,33 @@ public static class SubmitSalesMarketingResponse
         }
 
         var years = entries.Select(e => e.Year).OrderBy(y => y).ToList();
-        var expectedYears = Enumerable.Range(1, years.Count).ToList();
-        if (!years.SequenceEqual(expectedYears))
+        var distinctYears = years.Distinct().OrderBy(y => y).ToList();
+        var invalidYears = distinctYears.Where(y => y < 1).ToList();
+        var duplicateYears = years
+            .GroupBy(y => y)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .OrderBy(y => y)
+            .ToList();
+
+        if (invalidYears.Count > 0)
         {
-            var missingYears = expectedYears.Except(years).OrderBy(y => y).ToList();
-            errors["YearlySales"] = missingYears.Count > 0
-                ? [$"Projection years must be contiguous starting from year 1 — missing year(s): {string.Join(", ", missingYears)}."]
-                : ["Projection years must be contiguous starting from year 1, with no gaps or duplicates."];
+            errors["YearlySales"] = [$"Projection years must be contiguous starting from year 1 — invalid year(s): {string.Join(", ", invalidYears)}."];
+        }
+        else if (duplicateYears.Count > 0)
+        {
+            errors["YearlySales"] = [$"Projection years must be contiguous starting from year 1, with no duplicates — duplicate year(s): {string.Join(", ", duplicateYears)}."];
+        }
+        else
+        {
+            var expectedYears = Enumerable.Range(1, distinctYears.Count).ToList();
+            if (!distinctYears.SequenceEqual(expectedYears))
+            {
+                var missingYears = expectedYears.Except(distinctYears).OrderBy(y => y).ToList();
+                errors["YearlySales"] = missingYears.Count > 0
+                    ? [$"Projection years must be contiguous starting from year 1 — missing year(s): {string.Join(", ", missingYears)}."]
+                    : ["Projection years must be contiguous starting from year 1, with no gaps or duplicates."];
+            }
         }
 
         if (years.Max() > 10)

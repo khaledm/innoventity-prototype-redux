@@ -728,6 +728,68 @@ public class SubmitManufacturingResponseTests : IDisposable
     }
 
     /// <summary>
+    /// ValidateProjection should report duplicate projection years explicitly.
+    /// </summary>
+    [Fact]
+    public void ValidateProjection_DuplicateYears_ReturnsDuplicateYearError()
+    {
+        var entries = new List<Innoventity.API.Features.Bids.SubmitManufacturingResponse.YearlyManufacturingCostRequest>
+        {
+            new()
+            {
+                Year = 1,
+                ProductionVolume = 10000,
+                ProductionVolumeRationale = "Based on Q1 supplier capacity quotes and pilot line throughput estimates.",
+                UnitCost = 5.50m,
+                UnitCostRationale = "Materials, labor, and overhead costed against current supplier agreements.",
+                AverageGlobalDistributionExpense = 1.20m,
+                AvgDistributionExpenseRationale = "Weighted by target market logistics rates across regions."
+            },
+            new()
+            {
+                Year = 1,
+                ProductionVolume = 12000,
+                ProductionVolumeRationale = "Based on Q2 supplier capacity quotes and pilot line throughput estimates.",
+                UnitCost = 5.10m,
+                UnitCostRationale = "Materials, labor, and overhead costed against updated supplier agreements.",
+                AverageGlobalDistributionExpense = 1.10m,
+                AvgDistributionExpenseRationale = "Weighted by updated target market logistics rates across regions."
+            }
+        };
+
+        var errors = InvokeValidateProjection(entries);
+
+        Assert.Contains("YearlyManufacturingCosts", errors.Keys);
+        Assert.Contains("duplicate year(s): 1", errors["YearlyManufacturingCosts"][0], StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// ValidateProjection should report invalid years explicitly instead of masking them as gaps.
+    /// </summary>
+    [Fact]
+    public void ValidateProjection_InvalidYears_ReturnsInvalidYearError()
+    {
+        var entries = new List<Innoventity.API.Features.Bids.SubmitManufacturingResponse.YearlyManufacturingCostRequest>
+        {
+            new()
+            {
+                Year = 0,
+                ProductionVolume = 10000,
+                ProductionVolumeRationale = "Based on Q1 supplier capacity quotes and pilot line throughput estimates.",
+                UnitCost = 5.50m,
+                UnitCostRationale = "Materials, labor, and overhead costed against current supplier agreements.",
+                AverageGlobalDistributionExpense = 1.20m,
+                AvgDistributionExpenseRationale = "Weighted by target market logistics rates across regions."
+            }
+        };
+
+        var errors = InvokeValidateProjection(entries);
+
+        Assert.Contains("YearlyManufacturingCosts", errors.Keys);
+        Assert.Contains("invalid year(s): 0", errors["YearlyManufacturingCosts"][0], StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
     /// Unauthenticated request returns 401.
     /// </summary>
     [Fact]
