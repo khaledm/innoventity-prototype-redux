@@ -28,6 +28,7 @@ public class SubmitResearchDevelopmentResponseTests : IDisposable
     private readonly Guid _publishedId = new Guid("f6000001-0000-0000-0000-000000000000");
     private readonly Guid _draftId = new Guid("f6000002-0000-0000-0000-000000000000");
     private readonly Guid _withExistingResponseId = new Guid("f6000003-0000-0000-0000-000000000000");
+    private readonly Guid _ownedByRdId = new Guid("f6000004-0000-0000-0000-000000000000");
 
     public SubmitResearchDevelopmentResponseTests()
     {
@@ -90,9 +91,9 @@ public class SubmitResearchDevelopmentResponseTests : IDisposable
 
         db.Actors.AddRange(owner, rdActor, mfgActor, existingResponder);
 
-        Innovation MakeInnovation(Guid id, InnovationStatus status) => new(id)
+        Innovation MakeInnovation(Guid id, InnovationStatus status, Guid? ownerId = null) => new(id)
         {
-            OwnerId = _ownerId,
+            OwnerId = ownerId ?? _ownerId,
             IdeaToken = Guid.NewGuid(),
             Title = $"Test Innovation {id:N}",
             ProductType = "Technology",
@@ -117,8 +118,9 @@ public class SubmitResearchDevelopmentResponseTests : IDisposable
         var published = MakeInnovation(_publishedId, InnovationStatus.Published);
         var draft = MakeInnovation(_draftId, InnovationStatus.Draft);
         var withExisting = MakeInnovation(_withExistingResponseId, InnovationStatus.Published);
+        var ownedByRd = MakeInnovation(_ownedByRdId, InnovationStatus.Published, ownerId: _rdActorId);
 
-        db.Innovations.AddRange(published, draft, withExisting);
+        db.Innovations.AddRange(published, draft, withExisting, ownedByRd);
 
         db.FormalResponses.Add(new ResearchDevelopmentResponse(Guid.NewGuid())
         {
@@ -220,6 +222,54 @@ public class SubmitResearchDevelopmentResponseTests : IDisposable
             JsonContent.Create(MakeValidRequest()), token);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("R&D actors", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SubmitResearchDevelopmentResponse_ActorOwnsInnovation_Returns403()
+    {
+        var token = await GetAccessToken("rd@submitrd.test", "RD");
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_ownedByRdId}/bids/rd",
+            JsonContent.Create(MakeValidRequest()), token);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("own innovation", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task SubmitResearchDevelopmentResponse_InnovationNotFound_Returns404()
+    {
+        var token = await GetAccessToken("rd@submitrd.test", "RD");
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{Guid.NewGuid()}/bids/rd",
+            JsonContent.Create(MakeValidRequest()), token);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SubmitResearchDevelopmentResponse_InvalidLocation_Returns400()
+    {
+        var token = await GetAccessToken("rd@submitrd.test", "RD");
+        var request = new
+        {
+            location = "Not-A-Region",
+            participationType = "R&D Partner",
+            participationProposal = MakeProposal(),
+            productDevelopmentDuration = 2,
+            yearlyDevelopmentCosts = MakeValidYears()
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/rd",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Location", body, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -231,6 +281,9 @@ public class SubmitResearchDevelopmentResponseTests : IDisposable
             JsonContent.Create(MakeValidRequest()), token);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Duplicate", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("already submitted", body, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -242,6 +295,8 @@ public class SubmitResearchDevelopmentResponseTests : IDisposable
             JsonContent.Create(MakeValidRequest()), token);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("published", body, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -305,6 +360,9 @@ public class SubmitResearchDevelopmentResponseTests : IDisposable
             JsonContent.Create(request), token);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("contiguous", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("missing year(s): 2", body, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -334,6 +392,93 @@ public class SubmitResearchDevelopmentResponseTests : IDisposable
             JsonContent.Create(request), token);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("cannot exceed 10", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Exactly 10 years is accepted (upper boundary is inclusive).
+    /// </summary>
+    [Fact]
+    public async Task SubmitResearchDevelopmentResponse_ExactlyTenYears_Returns201()
+    {
+        var token = await GetAccessToken("rd@submitrd.test", "RD");
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/rd",
+            JsonContent.Create(MakeValidRequest(years: 10)), token);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    /// <summary>
+    /// Rationale exactly at the 20-char minimum is accepted (boundary is inclusive).
+    /// </summary>
+    [Fact]
+    public async Task SubmitResearchDevelopmentResponse_RationaleExactlyTwentyChars_Returns201()
+    {
+        var token = await GetAccessToken("rd@submitrd.test", "RD");
+        var exactlyTwenty = new string('a', 20);
+        Assert.Equal(20, exactlyTwenty.Length);
+        var request = new
+        {
+            location = "Asia",
+            participationType = "R&D Partner",
+            participationProposal = MakeProposal(),
+            productDevelopmentDuration = 1,
+            yearlyDevelopmentCosts = new[]
+            {
+                new
+                {
+                    year = 1,
+                    infrastructureCost = 50000.00,
+                    infrastructureCostRationale = exactlyTwenty,
+                    peopleCost = 200000.00,
+                    peopleCostRationale = exactlyTwenty
+                }
+            }
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/rd",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    /// <summary>
+    /// Rationale exceeding the 500-char maximum is rejected.
+    /// </summary>
+    [Fact]
+    public async Task SubmitResearchDevelopmentResponse_RationaleAboveFiveHundredChars_Returns422()
+    {
+        var token = await GetAccessToken("rd@submitrd.test", "RD");
+        var tooLong = new string('a', 501);
+        var request = new
+        {
+            location = "Asia",
+            participationType = "R&D Partner",
+            participationProposal = MakeProposal(),
+            productDevelopmentDuration = 1,
+            yearlyDevelopmentCosts = new[]
+            {
+                new
+                {
+                    year = 1,
+                    infrastructureCost = 50000.00,
+                    infrastructureCostRationale = tooLong,
+                    peopleCost = 200000.00,
+                    peopleCostRationale = "Engineers and a project manager allocated to this workstream for the year."
+                }
+            }
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/rd",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("InfrastructureCostRationale", body, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -348,6 +493,35 @@ public class SubmitResearchDevelopmentResponseTests : IDisposable
             JsonContent.Create(MakeValidRequest(duration: 0)), token);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("ProductDevelopmentDuration", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// ProductDevelopmentDuration = 11 → 422 (above the 1–10 range).
+    /// </summary>
+    [Fact]
+    public async Task SubmitResearchDevelopmentResponse_DurationEleven_Returns422()
+    {
+        var token = await GetAccessToken("rd@submitrd.test", "RD");
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/rd",
+            JsonContent.Create(MakeValidRequest(duration: 11)), token);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    /// <summary>
+    /// ProductDevelopmentDuration exactly 1 and exactly 10 are both accepted (inclusive range).
+    /// </summary>
+    [Fact]
+    public async Task SubmitResearchDevelopmentResponse_DurationBoundaries_Return201()
+    {
+        var tokenOne = await GetAccessToken("rd@submitrd.test", "RD");
+        var responseOne = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/rd",
+            JsonContent.Create(MakeValidRequest(duration: 1)), tokenOne);
+        Assert.Equal(HttpStatusCode.Created, responseOne.StatusCode);
     }
 
     /// <summary>
@@ -382,5 +556,53 @@ public class SubmitResearchDevelopmentResponseTests : IDisposable
             JsonContent.Create(request), token);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SubmitResearchDevelopmentResponse_ParticipationProposalTooShort_Returns400()
+    {
+        var token = await GetAccessToken("rd@submitrd.test", "RD");
+        var request = new
+        {
+            location = "Asia",
+            participationType = "R&D Partner",
+            participationProposal = "Too short",
+            productDevelopmentDuration = 2,
+            yearlyDevelopmentCosts = MakeValidYears()
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/rd",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("ParticipationProposal", body, StringComparison.Ordinal);
+        Assert.Contains("100", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// participationProposal exactly at the 100-char minimum is accepted (boundary is inclusive).
+    /// </summary>
+    [Fact]
+    public async Task SubmitResearchDevelopmentResponse_ParticipationProposalExactlyOneHundredChars_Returns201()
+    {
+        var token = await GetAccessToken("rd@submitrd.test", "RD");
+        var exactlyOneHundred = new string('a', 100);
+        Assert.Equal(100, exactlyOneHundred.Length);
+        var request = new
+        {
+            location = "Asia",
+            participationType = "R&D Partner",
+            participationProposal = exactlyOneHundred,
+            productDevelopmentDuration = 1,
+            yearlyDevelopmentCosts = MakeValidYears(1)
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/rd",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 }

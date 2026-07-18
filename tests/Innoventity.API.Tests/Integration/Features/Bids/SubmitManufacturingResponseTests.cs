@@ -232,6 +232,38 @@ public class SubmitManufacturingResponseTests : IDisposable
             JsonContent.Create(MakeValidRequest()), token);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Manufacturing actors", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Non-existent innovation → 404 (distinct guard path from "exists but not Published").
+    /// </summary>
+    [Fact]
+    public async Task SubmitManufacturingResponse_InnovationNotFound_Returns404()
+    {
+        var token = await GetAccessToken("mfg@submitmfg.test", "Manufacturing");
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{Guid.NewGuid()}/bids/manufacturing",
+            JsonContent.Create(MakeValidRequest()), token);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    /// <summary>
+    /// Invalid location string → 400.
+    /// </summary>
+    [Fact]
+    public async Task SubmitManufacturingResponse_InvalidLocation_Returns400()
+    {
+        var token = await GetAccessToken("mfg@submitmfg.test", "Manufacturing");
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/manufacturing",
+            JsonContent.Create(MakeValidRequest(location: "Not-A-Region")), token);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Location", body, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -295,6 +327,9 @@ public class SubmitManufacturingResponseTests : IDisposable
             JsonContent.Create(MakeValidRequest()), token);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Duplicate", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("already submitted", body, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -309,6 +344,8 @@ public class SubmitManufacturingResponseTests : IDisposable
             JsonContent.Create(MakeValidRequest()), token);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("published", body, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -381,6 +418,9 @@ public class SubmitManufacturingResponseTests : IDisposable
             JsonContent.Create(request), token);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("contiguous", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("missing year(s): 2", body, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -414,6 +454,145 @@ public class SubmitManufacturingResponseTests : IDisposable
             JsonContent.Create(request), token);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("cannot exceed 10", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Exactly 10 years is accepted (upper boundary is inclusive).
+    /// </summary>
+    [Fact]
+    public async Task SubmitManufacturingResponse_ExactlyTenYears_Returns201()
+    {
+        var token = await GetAccessToken("mfg@submitmfg.test", "Manufacturing");
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/manufacturing",
+            JsonContent.Create(MakeValidRequest(years: 10)), token);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    /// <summary>
+    /// Rationale exactly at the 20-char minimum is accepted (boundary is inclusive).
+    /// </summary>
+    [Fact]
+    public async Task SubmitManufacturingResponse_RationaleExactlyTwentyChars_Returns201()
+    {
+        var token = await GetAccessToken("mfg@submitmfg.test", "Manufacturing");
+        var exactlyTwenty = new string('a', 20);
+        Assert.Equal(20, exactlyTwenty.Length);
+        var request = new
+        {
+            location = "Europe",
+            participationType = "Manufacturing Partner",
+            participationProposal = MakeProposal(),
+            yearlyManufacturingCosts = new[]
+            {
+                new
+                {
+                    year = 1,
+                    productionVolume = 10000,
+                    productionVolumeRationale = exactlyTwenty,
+                    unitCost = 5.50,
+                    unitCostRationale = exactlyTwenty,
+                    averageGlobalDistributionExpense = 1.20,
+                    avgDistributionExpenseRationale = exactlyTwenty
+                }
+            }
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/manufacturing",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    /// <summary>
+    /// Rationale exceeding the 500-char maximum is rejected.
+    /// </summary>
+    [Fact]
+    public async Task SubmitManufacturingResponse_RationaleAboveFiveHundredChars_Returns422()
+    {
+        var token = await GetAccessToken("mfg@submitmfg.test", "Manufacturing");
+        var tooLong = new string('a', 501);
+        var request = new
+        {
+            location = "Europe",
+            participationType = "Manufacturing Partner",
+            participationProposal = MakeProposal(),
+            yearlyManufacturingCosts = new[]
+            {
+                new
+                {
+                    year = 1,
+                    productionVolume = 10000,
+                    productionVolumeRationale = tooLong,
+                    unitCost = 5.50,
+                    unitCostRationale = "Materials, labor, and overhead costed against current supplier agreements.",
+                    averageGlobalDistributionExpense = 1.20,
+                    avgDistributionExpenseRationale = "Weighted by target market logistics rates across regions."
+                }
+            }
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/manufacturing",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("ProductionVolumeRationale", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// participationProposal exactly at the 100-char minimum is accepted (boundary is inclusive).
+    /// </summary>
+    [Fact]
+    public async Task SubmitManufacturingResponse_ParticipationProposalExactlyOneHundredChars_Returns201()
+    {
+        var token = await GetAccessToken("mfg@submitmfg.test", "Manufacturing");
+        var exactlyOneHundred = new string('a', 100);
+        Assert.Equal(100, exactlyOneHundred.Length);
+        var request = new
+        {
+            location = "Europe",
+            participationType = "Manufacturing Partner",
+            participationProposal = exactlyOneHundred,
+            yearlyManufacturingCosts = MakeValidYears(1)
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/manufacturing",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    /// <summary>
+    /// participationProposal one character under the 100-char minimum is rejected.
+    /// </summary>
+    [Fact]
+    public async Task SubmitManufacturingResponse_ParticipationProposalNinetyNineChars_Returns400()
+    {
+        var token = await GetAccessToken("mfg@submitmfg.test", "Manufacturing");
+        var ninetyNine = new string('a', 99);
+        var request = new
+        {
+            location = "Europe",
+            participationType = "Manufacturing Partner",
+            participationProposal = ninetyNine,
+            yearlyManufacturingCosts = MakeValidYears(1)
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/manufacturing",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("ParticipationProposal", body, StringComparison.Ordinal);
+        Assert.Contains("100", body, StringComparison.Ordinal);
     }
 
     /// <summary>

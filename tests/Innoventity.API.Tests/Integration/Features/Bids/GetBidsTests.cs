@@ -357,6 +357,78 @@ public class GetBidsTests : IDisposable
         Assert.All(responses.EnumerateArray(), e => Assert.Equal("ManufacturingResponse", e.GetProperty("responseType").GetString()));
     }
 
+    [Fact]
+    public async Task GetBids_TypeFilterSales_ReturnsOnlySalesMarketingResponses()
+    {
+        var token = await GetAccessToken("owner@getbids.test", "IdeaGenerator");
+        var body = await GetResponses(_innovationWithResponsesId, token, "sales");
+        var responses = body.GetProperty("responses");
+
+        Assert.Equal(1, responses.GetArrayLength());
+        Assert.All(responses.EnumerateArray(), e => Assert.Equal("SalesMarketingResponse", e.GetProperty("responseType").GetString()));
+    }
+
+    [Fact]
+    public async Task GetBids_TypeFilterRd_ReturnsOnlyResearchDevelopmentResponses()
+    {
+        var token = await GetAccessToken("owner@getbids.test", "IdeaGenerator");
+        var body = await GetResponses(_innovationWithResponsesId, token, "rd");
+        var responses = body.GetProperty("responses");
+
+        Assert.Equal(1, responses.GetArrayLength());
+        Assert.All(responses.EnumerateArray(), e => Assert.Equal("ResearchDevelopmentResponse", e.GetProperty("responseType").GetString()));
+    }
+
+    [Fact]
+    public async Task GetBids_TypeFilterInvestor_ReturnsOnlyInvestorResponses()
+    {
+        var token = await GetAccessToken("owner@getbids.test", "IdeaGenerator");
+        var body = await GetResponses(_innovationWithResponsesId, token, "investor");
+        var responses = body.GetProperty("responses");
+
+        Assert.Equal(1, responses.GetArrayLength());
+        Assert.All(responses.EnumerateArray(), e => Assert.Equal("InvestorResponse", e.GetProperty("responseType").GetString()));
+    }
+
+    /// <summary>
+    /// An unrecognized ?type= value matches nothing (rather than falling back to "no filter").
+    /// </summary>
+    [Fact]
+    public async Task GetBids_TypeFilterUnrecognized_ReturnsEmptyList()
+    {
+        var token = await GetAccessToken("owner@getbids.test", "IdeaGenerator");
+        var body = await GetResponses(_innovationWithResponsesId, token, "bogus");
+        Assert.Equal(0, body.GetProperty("responses").GetArrayLength());
+    }
+
+    /// <summary>
+    /// An empty ?type= value is treated the same as omitting the filter (all responses returned).
+    /// </summary>
+    [Fact]
+    public async Task GetBids_TypeFilterEmptyString_ReturnsAllResponses()
+    {
+        var token = await GetAccessToken("owner@getbids.test", "IdeaGenerator");
+        var body = await GetResponses(_innovationWithResponsesId, token, "");
+        Assert.Equal(4, body.GetProperty("responses").GetArrayLength());
+    }
+
+    /// <summary>
+    /// Responses are ordered newest-first by SubmittedAt.
+    /// </summary>
+    [Fact]
+    public async Task GetBids_ResponsesOrderedNewestFirst()
+    {
+        var token = await GetAccessToken("owner@getbids.test", "IdeaGenerator");
+        var body = await GetResponses(_innovationWithResponsesId, token);
+        var responses = body.GetProperty("responses").EnumerateArray().ToList();
+
+        // Seed order (oldest to newest): Manufacturing (-4d), Sales (-3d), RD (-2d), Investor (-1d)
+        Assert.Equal("InvestorResponse", responses[0].GetProperty("responseType").GetString());
+        Assert.Equal("ResearchDevelopmentResponse", responses[1].GetProperty("responseType").GetString());
+        Assert.Equal("SalesMarketingResponse", responses[2].GetProperty("responseType").GetString());
+        Assert.Equal("ManufacturingResponse", responses[3].GetProperty("responseType").GetString());
+    }
+
     /// <summary>
     /// (5) responseType discriminator is present in every view tier (SC-008).
     /// </summary>

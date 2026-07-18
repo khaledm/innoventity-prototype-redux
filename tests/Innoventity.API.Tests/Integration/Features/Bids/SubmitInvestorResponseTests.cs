@@ -27,6 +27,7 @@ public class SubmitInvestorResponseTests : IDisposable
 
     private readonly Guid _publishedId = new Guid("a8000001-0000-0000-0000-000000000000");
     private readonly Guid _withExistingResponseId = new Guid("a8000002-0000-0000-0000-000000000000");
+    private readonly Guid _ownedByInvestorId = new Guid("a8000003-0000-0000-0000-000000000000");
 
     public SubmitInvestorResponseTests()
     {
@@ -89,9 +90,9 @@ public class SubmitInvestorResponseTests : IDisposable
 
         db.Actors.AddRange(owner, investorActor, mfgActor, existingResponder);
 
-        Innovation MakeInnovation(Guid id, InnovationStatus status) => new(id)
+        Innovation MakeInnovation(Guid id, InnovationStatus status, Guid? ownerId = null) => new(id)
         {
-            OwnerId = _ownerId,
+            OwnerId = ownerId ?? _ownerId,
             IdeaToken = Guid.NewGuid(),
             Title = $"Test Innovation {id:N}",
             ProductType = "Technology",
@@ -115,8 +116,9 @@ public class SubmitInvestorResponseTests : IDisposable
 
         var published = MakeInnovation(_publishedId, InnovationStatus.Published);
         var withExisting = MakeInnovation(_withExistingResponseId, InnovationStatus.Published);
+        var ownedByInvestor = MakeInnovation(_ownedByInvestorId, InnovationStatus.Published, ownerId: _investorActorId);
 
-        db.Innovations.AddRange(published, withExisting);
+        db.Innovations.AddRange(published, withExisting, ownedByInvestor);
 
         db.FormalResponses.Add(new InvestorResponse(Guid.NewGuid())
         {
@@ -177,6 +179,17 @@ public class SubmitInvestorResponseTests : IDisposable
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         Assert.Equal("InvestorResponse", body.GetProperty("responseType").GetString());
+        Assert.Equal("Pending", body.GetProperty("status").GetString());
+        Assert.Equal(_publishedId, body.GetProperty("innovationId").GetGuid());
+        Assert.NotEqual(Guid.Empty, body.GetProperty("responseId").GetGuid());
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var stored = await db.FormalResponses.OfType<InvestorResponse>()
+            .FirstOrDefaultAsync(r => r.Id == body.GetProperty("responseId").GetGuid());
+        Assert.NotNull(stored);
+        Assert.Equal(GeographicRegion.Europe, stored.Location);
+        Assert.Contains("go-to-market", stored.Feedback);
     }
 
     [Fact]
@@ -188,6 +201,33 @@ public class SubmitInvestorResponseTests : IDisposable
             JsonContent.Create(MakeValidRequest()), token);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Forbidden", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Investor actors", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SubmitInvestorResponse_ActorOwnsInnovation_Returns403()
+    {
+        var token = await GetAccessToken("investor@submitinvestor.test", "Investor");
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_ownedByInvestorId}/bids/investor",
+            JsonContent.Create(MakeValidRequest()), token);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("own innovation", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task SubmitInvestorResponse_InnovationNotFound_Returns404()
+    {
+        var token = await GetAccessToken("investor@submitinvestor.test", "Investor");
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{Guid.NewGuid()}/bids/investor",
+            JsonContent.Create(MakeValidRequest()), token);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
@@ -199,6 +239,30 @@ public class SubmitInvestorResponseTests : IDisposable
             JsonContent.Create(MakeValidRequest()), token);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Duplicate", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("already submitted", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task SubmitInvestorResponse_InvalidLocation_Returns400()
+    {
+        var token = await GetAccessToken("investor@submitinvestor.test", "Investor");
+        var request = new
+        {
+            location = "Not-A-Region",
+            participationType = "Investment Partner",
+            participationProposal = MakeProposal(),
+            feedback = "Strong technical differentiation and a credible go-to-market plan; interested in leading a round."
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/investor",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Location", body, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -211,6 +275,56 @@ public class SubmitInvestorResponseTests : IDisposable
             participationType = "Investment Partner",
             participationProposal = MakeProposal(),
             feedback = "Too short"
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/investor",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Feedback", body, StringComparison.Ordinal);
+        Assert.Contains("50", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Feedback exactly at the 50-char minimum is accepted (boundary is inclusive).
+    /// </summary>
+    [Fact]
+    public async Task SubmitInvestorResponse_FeedbackExactlyFiftyChars_Returns201()
+    {
+        var token = await GetAccessToken("investor@submitinvestor.test", "Investor");
+        var exactlyFifty = new string('a', 50);
+        Assert.Equal(50, exactlyFifty.Length);
+        var request = new
+        {
+            location = "Europe",
+            participationType = "Investment Partner",
+            participationProposal = MakeProposal(),
+            feedback = exactlyFifty
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/investor",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    /// <summary>
+    /// Feedback one character under the 50-char minimum is rejected.
+    /// </summary>
+    [Fact]
+    public async Task SubmitInvestorResponse_FeedbackFortyNineChars_Returns422()
+    {
+        var token = await GetAccessToken("investor@submitinvestor.test", "Investor");
+        var fortyNine = new string('a', 49);
+        var request = new
+        {
+            location = "Europe",
+            participationType = "Investment Partner",
+            participationProposal = MakeProposal(),
+            feedback = fortyNine
         };
 
         var response = await _client.PostWithAuthAsync(
@@ -240,5 +354,32 @@ public class SubmitInvestorResponseTests : IDisposable
             JsonContent.Create(request), token);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("ParticipationProposal", body, StringComparison.Ordinal);
+        Assert.Contains("100", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// participationProposal exactly at the 100-char minimum is accepted (boundary is inclusive).
+    /// </summary>
+    [Fact]
+    public async Task SubmitInvestorResponse_ParticipationProposalExactlyOneHundredChars_Returns201()
+    {
+        var token = await GetAccessToken("investor@submitinvestor.test", "Investor");
+        var exactlyOneHundred = new string('a', 100);
+        Assert.Equal(100, exactlyOneHundred.Length);
+        var request = new
+        {
+            location = "Europe",
+            participationType = "Investment Partner",
+            participationProposal = exactlyOneHundred,
+            feedback = "Strong technical differentiation and a credible go-to-market plan; interested in leading a round."
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/investor",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 }
