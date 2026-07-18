@@ -653,6 +653,32 @@ public class SubmitManufacturingResponseTests : IDisposable
     }
 
     /// <summary>
+    /// participationProposal over the 5000-char maximum is rejected.
+    /// </summary>
+    [Fact]
+    public async Task SubmitManufacturingResponse_ParticipationProposalOverFiveThousandChars_Returns400()
+    {
+        var token = await GetAccessToken("mfg@submitmfg.test", "Manufacturing");
+        var tooLong = new string('a', 5001);
+        var request = new
+        {
+            location = "Europe",
+            participationType = "Manufacturing Partner",
+            participationProposal = tooLong,
+            yearlyManufacturingCosts = MakeValidYears(1)
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/manufacturing",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("ParticipationProposal", body, StringComparison.Ordinal);
+        Assert.Contains("5000", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// (9) Year 1 complete + year 2 missing a rationale field entirely → 422 (FR-009 partial projection rejection).
     /// </summary>
     [Fact]

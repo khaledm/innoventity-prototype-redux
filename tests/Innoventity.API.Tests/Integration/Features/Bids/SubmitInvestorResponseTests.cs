@@ -424,4 +424,30 @@ public class SubmitInvestorResponseTests : IDisposable
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
+
+    /// <summary>
+    /// participationProposal over the 5000-char maximum is rejected.
+    /// </summary>
+    [Fact]
+    public async Task SubmitInvestorResponse_ParticipationProposalOverFiveThousandChars_Returns400()
+    {
+        var token = await GetAccessToken("investor@submitinvestor.test", "Investor");
+        var tooLong = new string('a', 5001);
+        var request = new
+        {
+            location = "Europe",
+            participationType = "Investment Partner",
+            participationProposal = tooLong,
+            feedback = "Strong technical differentiation and a credible go-to-market plan; interested in leading a round."
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/investor",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("ParticipationProposal", body, StringComparison.Ordinal);
+        Assert.Contains("5000", body, StringComparison.Ordinal);
+    }
 }

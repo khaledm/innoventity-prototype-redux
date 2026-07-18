@@ -59,11 +59,13 @@ public static class SubmitInvestorResponse
                 detail: "You have already submitted a response for this innovation.");
         }
 
-        if (string.IsNullOrWhiteSpace(request.ParticipationProposal) || request.ParticipationProposal.Length < 100)
+        if (string.IsNullOrWhiteSpace(request.ParticipationProposal) ||
+            request.ParticipationProposal.Length < 100 ||
+            request.ParticipationProposal.Length > 5000)
         {
             return Results.ValidationProblem(new Dictionary<string, string[]>
             {
-                ["ParticipationProposal"] = ["Participation proposal must be at least 100 characters."]
+                ["ParticipationProposal"] = ["Participation proposal must be between 100 and 5000 characters."]
             });
         }
 

@@ -568,6 +568,32 @@ public class SubmitSalesMarketingResponseTests : IDisposable
     }
 
     /// <summary>
+    /// participationProposal over the 5000-char maximum is rejected.
+    /// </summary>
+    [Fact]
+    public async Task SubmitSalesMarketingResponse_ParticipationProposalOverFiveThousandChars_Returns400()
+    {
+        var token = await GetAccessToken("sales@submitsales.test", "SalesMarketing");
+        var tooLong = new string('a', 5001);
+        var request = new
+        {
+            location = "Americas",
+            participationType = "Sales & Marketing Partner",
+            participationProposal = tooLong,
+            yearlySales = MakeValidYears(1)
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/sales",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("ParticipationProposal", body, StringComparison.Ordinal);
+        Assert.Contains("5000", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// Year 1 complete + year 2 missing a rationale field entirely → 422 (FR-009 partial projection rejection).
     /// </summary>
     [Fact]

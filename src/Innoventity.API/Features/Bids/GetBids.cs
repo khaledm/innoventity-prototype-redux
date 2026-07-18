@@ -3,6 +3,7 @@ using Innoventity.API.Infrastructure.Authentication;
 using Innoventity.API.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 
 namespace Innoventity.API.Features.Bids;
 
@@ -79,85 +80,44 @@ public static class GetBids
     /// Build the JSON-serializable projection for a single response, shaping the payload
     /// by the caller's visibility tier (Spec 005 3-tier visibility).
     /// </summary>
-    private static object BuildDto(FormalResponse r, bool fullVisibility)
+    private static GetBidsResponseItem BuildDto(FormalResponse r, bool fullVisibility)
     {
+        var dto = new GetBidsResponseItem
+        {
+            ResponseId = r.Id,
+            ResponseType = GetResponseTypeName(r),
+            ActorId = r.ActorId,
+            Location = r.Location.ToString(),
+            ParticipationType = r.ParticipationType,
+            Status = r.Status.ToString(),
+            SubmittedAt = r.SubmittedAt
+        };
+
         if (!fullVisibility)
         {
-            return new
-            {
-                responseId = r.Id,
-                responseType = GetResponseTypeName(r),
-                actorId = r.ActorId,
-                location = r.Location.ToString(),
-                participationType = r.ParticipationType,
-                status = r.Status.ToString(),
-                submittedAt = r.SubmittedAt
-            };
+            return dto;
         }
 
-        return r switch
+        dto.ParticipationProposal = r.ParticipationProposal;
+
+        switch (r)
         {
-            ManufacturingResponse m => new
-            {
-                responseId = m.Id,
-                responseType = GetResponseTypeName(m),
-                actorId = m.ActorId,
-                location = m.Location.ToString(),
-                participationType = m.ParticipationType,
-                participationProposal = m.ParticipationProposal,
-                status = m.Status.ToString(),
-                submittedAt = m.SubmittedAt,
-                yearlyManufacturingCosts = m.YearlyManufacturingCosts
-            },
-            SalesMarketingResponse s => new
-            {
-                responseId = s.Id,
-                responseType = GetResponseTypeName(s),
-                actorId = s.ActorId,
-                location = s.Location.ToString(),
-                participationType = s.ParticipationType,
-                participationProposal = s.ParticipationProposal,
-                status = s.Status.ToString(),
-                submittedAt = s.SubmittedAt,
-                yearlySales = s.YearlySales
-            },
-            ResearchDevelopmentResponse d => new
-            {
-                responseId = d.Id,
-                responseType = GetResponseTypeName(d),
-                actorId = d.ActorId,
-                location = d.Location.ToString(),
-                participationType = d.ParticipationType,
-                participationProposal = d.ParticipationProposal,
-                status = d.Status.ToString(),
-                submittedAt = d.SubmittedAt,
-                productDevelopmentDuration = d.ProductDevelopmentDuration,
-                yearlyDevelopmentCosts = d.YearlyDevelopmentCosts
-            },
-            InvestorResponse inv => new
-            {
-                responseId = inv.Id,
-                responseType = GetResponseTypeName(inv),
-                actorId = inv.ActorId,
-                location = inv.Location.ToString(),
-                participationType = inv.ParticipationType,
-                participationProposal = inv.ParticipationProposal,
-                status = inv.Status.ToString(),
-                submittedAt = inv.SubmittedAt,
-                feedback = inv.Feedback
-            },
-            _ => new
-            {
-                responseId = r.Id,
-                responseType = GetResponseTypeName(r),
-                actorId = r.ActorId,
-                location = r.Location.ToString(),
-                participationType = r.ParticipationType,
-                participationProposal = r.ParticipationProposal,
-                status = r.Status.ToString(),
-                submittedAt = r.SubmittedAt
-            }
-        };
+            case ManufacturingResponse m:
+                dto.YearlyManufacturingCosts = m.YearlyManufacturingCosts;
+                break;
+            case SalesMarketingResponse s:
+                dto.YearlySales = s.YearlySales;
+                break;
+            case ResearchDevelopmentResponse d:
+                dto.ProductDevelopmentDuration = d.ProductDevelopmentDuration;
+                dto.YearlyDevelopmentCosts = d.YearlyDevelopmentCosts;
+                break;
+            case InvestorResponse inv:
+                dto.Feedback = inv.Feedback;
+                break;
+        }
+
+        return dto;
     }
 
     private static string GetResponseTypeName(FormalResponse response) => response switch
@@ -181,7 +141,39 @@ public static class GetBids
         /// Formal responses submitted for the innovation, shaped per-entry by the
         /// caller's visibility tier and the response's discriminator type.
         /// </summary>
-        public List<object> Responses { get; set; } = [];
+        public List<GetBidsResponseItem> Responses { get; set; } = [];
+    }
+
+    /// <summary>
+    /// Contract item for a single formal response returned by GET /innovations/{innovationId}/bids.
+    /// </summary>
+    public class GetBidsResponseItem
+    {
+        public Guid ResponseId { get; set; }
+        public string ResponseType { get; set; } = string.Empty;
+        public Guid ActorId { get; set; }
+        public string Location { get; set; } = string.Empty;
+        public string ParticipationType { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public DateTimeOffset SubmittedAt { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ParticipationProposal { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? ProductDevelopmentDuration { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Feedback { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public IList<YearlyManufacturingCost>? YearlyManufacturingCosts { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public IList<YearlySale>? YearlySales { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public IList<YearlyDevelopmentCost>? YearlyDevelopmentCosts { get; set; }
     }
 
     /// <summary>

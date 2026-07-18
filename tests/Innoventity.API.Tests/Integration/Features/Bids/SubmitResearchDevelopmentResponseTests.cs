@@ -666,6 +666,33 @@ public class SubmitResearchDevelopmentResponseTests : IDisposable
     }
 
     /// <summary>
+    /// participationProposal over the 5000-char maximum is rejected.
+    /// </summary>
+    [Fact]
+    public async Task SubmitResearchDevelopmentResponse_ParticipationProposalOverFiveThousandChars_Returns400()
+    {
+        var token = await GetAccessToken("rd@submitrd.test", "RD");
+        var tooLong = new string('a', 5001);
+        var request = new
+        {
+            location = "Asia",
+            participationType = "R&D Partner",
+            participationProposal = tooLong,
+            productDevelopmentDuration = 1,
+            yearlyDevelopmentCosts = MakeValidYears(1)
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/rd",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("ParticipationProposal", body, StringComparison.Ordinal);
+        Assert.Contains("5000", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// ValidateProjection should treat a null list as an empty projection rather than throw.
     /// </summary>
     [Fact]
