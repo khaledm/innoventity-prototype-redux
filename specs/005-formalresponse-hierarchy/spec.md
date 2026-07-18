@@ -233,6 +233,8 @@ As an **Innovation owner**, I want the existing partner selection workflow to se
 
 9. **Legacy spec authority**: The domain model in `specs/002-domain-enhancements/spec.md §R3.6` is the authoritative source for entity structure. This spec adds endpoint-level requirements and migration requirements not covered there.
 
+10. **FR-017 "flagged for manual review" scoped out**: No logging/flag mechanism was implemented for migrated Bid→FormalResponse rows. Per Constraint 2 (No Data Migration — the platform is in early development with no production Bid data), the discriminator/location mapping the migration performs is sufficient; a manual-review audit trail was judged unnecessary overhead for seed/test data. Revisit only if this migration is ever run against a database with real Bid rows.
+
 ---
 
 ## Clarifications
