@@ -53,7 +53,7 @@ Replace the flat `Bid` entity (free-text proposal only) with a polymorphic `Form
 
 **✅ Principle 1 — User Experience First**: Each actor type gets a dedicated endpoint with a request schema tailored to their data (no generic blob). Validation errors identify the specific field and year entry that failed — actors get actionable error messages. The `type` filter on `GET /bids` lets owners quickly compare all manufacturers without scrolling through unrelated responses.
 
-**✅ Principle 2 — Quality is Non-Negotiable**: ~35 new integration tests cover all four submit endpoints (happy path, wrong actor type, duplicate, rationale too short, year gap, innovation not published, owns the innovation). Stryker added for all new feature files. Mutation thresholds maintained at break: 60, low: 70, high: 80.
+**✅ Principle 2 — Quality is Non-Negotiable**: ~35 new integration tests cover all four submit endpoints (happy path, wrong actor type, duplicate, rationale too short, year gap, innovation not published, owns the innovation). Stryker added for all new feature files. Mutation thresholds maintained at break: 71, low: 70, high: 80.
 
 **✅ Principle 3 — Simplicity Over Cleverness**: TPH (single table) is simpler than TPT (joins). `OwnsMany().ToJson()` is the idiomatic EF Core 8 approach. Year contiguity check is 3 lines of LINQ. No mediator, no pipeline abstractions.
 

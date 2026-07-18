@@ -142,8 +142,8 @@ As an **Innovation owner**, I want the existing partner selection workflow to se
 **Bid Submission (Type-Specific)**
 
 - **FR-001**: A Manufacturing actor MUST be able to submit a ManufacturingResponse for a Published innovation, including yearly manufacturing cost projections (production volume, unit cost, distribution expense) for years 1 through N (minimum 1 year, maximum 10 years)
-- **FR-002**: A SalesMarketing actor MUST be able to submit a SalesMarketingResponse for a Published innovation, including yearly revenue projections (units sold, unit price, sales expense) for years 1 through N
-- **FR-003**: An R&D actor MUST be able to submit a ResearchDevelopmentResponse for a Published innovation, including product development duration (in years) and yearly development cost projections (infrastructure cost, people cost)
+- **FR-002**: A SalesMarketing actor MUST be able to submit a SalesMarketingResponse for a Published innovation, including yearly revenue projections (units sold, unit price, sales expense) for years 1 through N (minimum 1 year, maximum 10 years)
+- **FR-003**: An R&D actor MUST be able to submit a ResearchDevelopmentResponse for a Published innovation, including product development duration in years (valid range: 1–10 inclusive) and yearly development cost projections (infrastructure cost, people cost) for years 1 through N (minimum 1 year, maximum 10 years)
 - **FR-004**: An Investor actor MUST be able to submit an InvestorResponse for a Published innovation, containing a free-text feedback field (minimum 50 characters, maximum 2000 characters)
 - **FR-005**: Each actor type MUST only be permitted to submit the response type that corresponds to their role (Manufacturing actor → ManufacturingResponse only, etc.)
 - **FR-006**: Each actor MUST be limited to one response per innovation (duplicate prevention)
@@ -166,7 +166,7 @@ As an **Innovation owner**, I want the existing partner selection workflow to se
   1. **Innovation owner**: receives full response data — base fields, `participationProposal`, type-specific financial projections, all rationale fields, and `feedback` (InvestorResponse)
   2. **The submitting actor** (the actor whose own response is being returned): receives their full own response — base fields, `participationProposal`, `feedback` (if InvestorResponse), type-specific financial projections, and all rationale fields; for all other actors' responses in the list, only public summary fields are returned
   3. **All other authenticated actors**: receive only public summary fields — `responseType`, `actorId`, `location`, `participationType`, `status`, `submittedAt` — with `participationProposal`, `feedback`, financial projections, and rationale text omitted
-- **FR-014**: The system MUST support filtering responses by type (e.g., retrieve only ManufacturingResponses)
+- **FR-014**: The system MUST support filtering responses by type via a `?type=` query parameter; accepted values are `manufacturing`, `sales`, `rd`, `investor` (case-insensitive; e.g., `?type=manufacturing` returns only ManufacturingResponses)
 
 **Partner Selection Compatibility**
 
@@ -180,7 +180,7 @@ As an **Innovation owner**, I want the existing partner selection workflow to se
 
 ### Key Entities
 
-- **FormalResponse** (abstract, aggregate root): Common base for all response types. Properties: InnovationId (FK), ActorId (FK), Location (geographic region), ParticipationType (string), ParticipationProposal (string, min 100 chars), Status (Pending / Accepted / Rejected), SubmittedAt, UpdatedAt, AcceptedAt. Inherits EntityOfGuid.
+- **FormalResponse** (abstract, aggregate root): Common base for all response types. Properties: InnovationId (FK), ActorId (FK), Location (geographic region), ParticipationType (string), ParticipationProposal (string, min 100 chars, max 5000 chars), Status (Pending / Accepted / Rejected), SubmittedAt, UpdatedAt, AcceptedAt. Inherits EntityOfGuid.
 
 - **ManufacturingResponse** (concrete subtype): Extends FormalResponse. Adds: `YearlyManufacturingCosts` — a keyed collection of yearly cost projections, each containing ProductionVolume + Rationale, UnitCost + Rationale, AverageGlobalDistributionExpense + Rationale.
 
@@ -190,11 +190,11 @@ As an **Innovation owner**, I want the existing partner selection workflow to se
 
 - **InvestorResponse** (concrete subtype): Extends FormalResponse. Adds: `Feedback` (free text, min 50 chars, max 2000 chars). No financial projection data.
 
-- **ManufacturingInformation** (value object, no identity): Represents one year's manufacturing data. Fields: ProductionVolume, ProductionVolumeRationale, UnitCost, UnitCostRationale, AverageGlobalDistributionExpense, AvgDistributionExpenseRationale.
+- **YearlyManufacturingCost** (value object, no identity): Represents one year's manufacturing data. Fields: ProductionVolume, ProductionVolumeRationale, UnitCost, UnitCostRationale, AverageGlobalDistributionExpense, AvgDistributionExpenseRationale.
 
-- **SalesMarketingInformation** (value object, no identity): Represents one year's sales data. Fields: UnitsSold, UnitsSoldRationale, UnitPrice, UnitPriceRationale, SalesMarketingExpense, SalesMarketingExpenseRationale.
+- **YearlySale** (value object, no identity): Represents one year's sales data. Fields: UnitsSold, UnitsSoldRationale, UnitPrice, UnitPriceRationale, SalesMarketingExpense, SalesMarketingExpenseRationale.
 
-- **ProductDevelopmentInformation** (value object, no identity): Represents one year's R&D data. Fields: InfrastructureCost, InfrastructureCostRationale, PeopleCost, PeopleCostRationale.
+- **YearlyDevelopmentCost** (value object, no identity): Represents one year's R&D data. Fields: InfrastructureCost, InfrastructureCostRationale, PeopleCost, PeopleCostRationale.
 
 ---
 
@@ -206,7 +206,7 @@ As an **Innovation owner**, I want the existing partner selection workflow to se
 - **SC-002**: All existing SelectPartners integration tests (14 tests from Phase 1c) pass after two mechanical updates: (a) seed data replaced with typed FormalResponse objects, and (b) request body field renamed from `selectedBidIds` to `selectedResponseIds`; the core assertion logic (PartnersSelected status, AcceptedAt timestamps, 403 on re-selection) remains unchanged
 - **SC-003**: Submission of a ManufacturingResponse with any Rationale field under 20 characters is rejected 100% of the time with a response that identifies the failing field by name
 - **SC-004**: The three-tier visibility rule is enforced: (a) the innovation owner receives full data including financial projections, rationale, and `feedback`; (b) the submitting actor receives their full own response — including their own projections, rationale, `participationProposal`, and `feedback` — while all other responses in the list show only public summary fields; (c) all other authenticated actors receive only public summary fields (`responseType`, `actorId`, `location`, `participationType`, `status`, `submittedAt`) for every response
-- **SC-005**: The mutation testing score for the new FormalResponse feature code meets or exceeds the project constitution threshold (≥80% high threshold)
+- **SC-005**: The mutation testing score for the new FormalResponse feature code meets or exceeds the Stryker high threshold of ≥80% for new feature files
 - **SC-006**: All 131 existing tests (pre-feature) continue to pass after migration — zero regressions in authentication, innovation, and actor features
 - **SC-007**: A response with year keys 1, 2, 4 (non-contiguous) is rejected at submission time with an error that identifies the gap
 - **SC-008**: Retrieving responses for an innovation returns each response's discriminator type, allowing callers to identify ManufacturingResponse vs SalesMarketingResponse vs ResearchDevelopmentResponse vs InvestorResponse
