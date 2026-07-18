@@ -400,14 +400,23 @@ public class GetBidsTests : IDisposable
     }
 
     /// <summary>
-    /// An unrecognized ?type= value matches nothing (rather than falling back to "no filter").
+    /// An unrecognized ?type= value returns 400 ValidationProblem with accepted values guidance.
     /// </summary>
     [Fact]
-    public async Task GetBids_TypeFilterUnrecognized_ReturnsEmptyList()
+    public async Task GetBids_TypeFilterUnrecognized_Returns400ValidationProblem()
     {
         var token = await GetAccessToken("owner@getbids.test", "IdeaGenerator");
-        var body = await GetResponses(_innovationWithResponsesId, token, "bogus");
-        Assert.Equal(0, body.GetProperty("responses").GetArrayLength());
+
+        var response = await _client.GetWithAuthAsync(
+            $"/innovations/{_innovationWithResponsesId}/bids?type=bogus",
+            token);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"type\"", content);
+        Assert.Contains("manufacturing", content);
+        Assert.Contains("investor", content);
     }
 
     /// <summary>

@@ -51,14 +51,40 @@ public static class GetBids
 
         if (!string.IsNullOrWhiteSpace(type))
         {
-            query = type.Trim().ToLowerInvariant() switch
+            var normalizedType = type.Trim().ToLowerInvariant();
+            IQueryable<FormalResponse>? filteredQuery;
+
+            switch (normalizedType)
             {
-                "manufacturing" => query.OfType<ManufacturingResponse>(),
-                "sales" => query.OfType<SalesMarketingResponse>(),
-                "rd" => query.OfType<ResearchDevelopmentResponse>(),
-                "investor" => query.OfType<InvestorResponse>(),
-                _ => query.Where(r => false) // unrecognized filter value — no responses can match
-            };
+                case "manufacturing":
+                    filteredQuery = query.OfType<ManufacturingResponse>();
+                    break;
+                case "sales":
+                    filteredQuery = query.OfType<SalesMarketingResponse>();
+                    break;
+                case "rd":
+                    filteredQuery = query.OfType<ResearchDevelopmentResponse>();
+                    break;
+                case "investor":
+                    filteredQuery = query.OfType<InvestorResponse>();
+                    break;
+                default:
+                    filteredQuery = null;
+                    break;
+            }
+
+            if (filteredQuery is null)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["type"] =
+                    [
+                        "Invalid type. Accepted values: manufacturing, sales, rd, investor."
+                    ]
+                });
+            }
+
+            query = filteredQuery;
         }
 
         var responses = await query
@@ -188,6 +214,7 @@ public static class GetBids
             .RequireAuthorization()
             .AddEndpointFilter<ActorResolutionFilter>()
             .Produces<GetBidsResponse>(StatusCodes.Status200OK)
+            .ProducesValidationProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status404NotFound);
     }
