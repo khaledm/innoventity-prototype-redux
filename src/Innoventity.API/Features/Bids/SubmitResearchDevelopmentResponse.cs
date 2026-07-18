@@ -142,7 +142,10 @@ public static class SubmitResearchDevelopmentResponse
         var expectedYears = Enumerable.Range(1, years.Count).ToList();
         if (!years.SequenceEqual(expectedYears))
         {
-            errors["YearlyDevelopmentCosts"] = ["Projection years must be contiguous starting from year 1, with no gaps or duplicates."];
+            var missingYears = expectedYears.Except(years).OrderBy(y => y).ToList();
+            errors["YearlyDevelopmentCosts"] = missingYears.Count > 0
+                ? [$"Projection years must be contiguous starting from year 1 — missing year(s): {string.Join(", ", missingYears)}."]
+                : ["Projection years must be contiguous starting from year 1, with no gaps or duplicates."];
         }
 
         if (years.Max() > 10)

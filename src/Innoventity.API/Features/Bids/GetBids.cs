@@ -48,22 +48,16 @@ public static class GetBids
 
         var query = db.FormalResponses.Where(r => r.InnovationId == innovationId);
 
-        var filterType = MapTypeFilter(type);
-        if (filterType != null)
+        if (!string.IsNullOrWhiteSpace(type))
         {
-            query = filterType switch
+            query = type.Trim().ToLowerInvariant() switch
             {
-                nameof(ManufacturingResponse) => query.OfType<ManufacturingResponse>(),
-                nameof(SalesMarketingResponse) => query.OfType<SalesMarketingResponse>(),
-                nameof(ResearchDevelopmentResponse) => query.OfType<ResearchDevelopmentResponse>(),
-                nameof(InvestorResponse) => query.OfType<InvestorResponse>(),
-                _ => query
+                "manufacturing" => query.OfType<ManufacturingResponse>(),
+                "sales" => query.OfType<SalesMarketingResponse>(),
+                "rd" => query.OfType<ResearchDevelopmentResponse>(),
+                "investor" => query.OfType<InvestorResponse>(),
+                _ => query.Where(r => false) // unrecognized filter value — no responses can match
             };
-        }
-        else if (!string.IsNullOrWhiteSpace(type))
-        {
-            // Unrecognized filter value — no responses can match
-            query = query.Where(r => false);
         }
 
         var responses = await query
@@ -80,16 +74,6 @@ public static class GetBids
             Responses = dtos
         });
     }
-
-    private static string? MapTypeFilter(string? type) => type?.Trim().ToLowerInvariant() switch
-    {
-        "manufacturing" => nameof(ManufacturingResponse),
-        "sales" => nameof(SalesMarketingResponse),
-        "rd" => nameof(ResearchDevelopmentResponse),
-        "investor" => nameof(InvestorResponse),
-        null or "" => null,
-        _ => "unrecognized"
-    };
 
     /// <summary>
     /// Build the JSON-serializable projection for a single response, shaping the payload
