@@ -67,6 +67,14 @@ public static class SubmitResearchDevelopmentResponse
             });
         }
 
+        if (string.IsNullOrWhiteSpace(request.ParticipationType) || request.ParticipationType.Length > 100)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["ParticipationType"] = ["Participation type is required and must be 100 characters or fewer."]
+            });
+        }
+
         if (!Enum.TryParse<GeographicRegion>(request.Location, ignoreCase: true, out var location))
         {
             return Results.ValidationProblem(new Dictionary<string, string[]>

@@ -281,6 +281,48 @@ public class SubmitManufacturingResponseTests : IDisposable
         Assert.Contains("Location", body, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task SubmitManufacturingResponse_BlankParticipationType_Returns400()
+    {
+        var token = await GetAccessToken("mfg@submitmfg.test", "Manufacturing");
+        var request = new
+        {
+            location = "Europe",
+            participationType = string.Empty,
+            participationProposal = MakeProposal(),
+            yearlyManufacturingCosts = MakeValidYears()
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/manufacturing",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("ParticipationType", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SubmitManufacturingResponse_OverlongParticipationType_Returns400()
+    {
+        var token = await GetAccessToken("mfg@submitmfg.test", "Manufacturing");
+        var request = new
+        {
+            location = "Europe",
+            participationType = new string('M', 101),
+            participationProposal = MakeProposal(),
+            yearlyManufacturingCosts = MakeValidYears()
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/manufacturing",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("ParticipationType", body, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// (3) Actor owns the innovation → 403.
     /// </summary>

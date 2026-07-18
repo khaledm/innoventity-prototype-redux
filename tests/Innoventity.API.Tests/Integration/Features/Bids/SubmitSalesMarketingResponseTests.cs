@@ -266,6 +266,48 @@ public class SubmitSalesMarketingResponseTests : IDisposable
     }
 
     [Fact]
+    public async Task SubmitSalesMarketingResponse_BlankParticipationType_Returns400()
+    {
+        var token = await GetAccessToken("sales@submitsales.test", "SalesMarketing");
+        var request = new
+        {
+            location = "Americas",
+            participationType = string.Empty,
+            participationProposal = MakeProposal(),
+            yearlySales = MakeValidYears()
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/sales",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("ParticipationType", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SubmitSalesMarketingResponse_OverlongParticipationType_Returns400()
+    {
+        var token = await GetAccessToken("sales@submitsales.test", "SalesMarketing");
+        var request = new
+        {
+            location = "Americas",
+            participationType = new string('S', 101),
+            participationProposal = MakeProposal(),
+            yearlySales = MakeValidYears()
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/sales",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("ParticipationType", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task SubmitSalesMarketingResponse_Duplicate_Returns409()
     {
         var token = await GetAccessToken("existing@submitsales.test", "SalesMarketing");
