@@ -13,16 +13,9 @@ namespace Innoventity.API.Tests.Integration.Features.Bids;
 
 /// <summary>
 /// Integration tests verifying that ActorResolutionFilter correctly short-circuits with 401
-/// when the JWT identifies an actor that no longer exists in the database.
-///
-/// Epistemic note — RED test:
-///   UpdateBid_WithValidJwtButActorDeletedFromDb_Returns401 FAILS before the filter is added
-///   because UpdateBid only parses the JWT claim and never queries the Actors table.
-///   It PASSES once ActorResolutionFilter is wired to the endpoint.
-///
-/// The GetBids and SubmitBid variants are characterisation tests: those handlers already
-/// performed the DB lookup, so they pass both before and after the refactor and lock the
-/// expected behaviour in place.
+/// when the JWT identifies an actor that no longer exists in the database. All FormalResponse
+/// endpoints (Spec 005) share the same filter, so these are characterisation tests locking in
+/// the expected 401 behaviour across the GetBids and SubmitManufacturingResponse endpoints.
 /// </summary>
 public class ActorResolutionFilterTests : IDisposable
 {
@@ -124,15 +117,28 @@ public class ActorResolutionFilterTests : IDisposable
             SubmittedAt = DateTimeOffset.UtcNow.AddDays(-1)
         });
 
-        db.Bids.Add(new Bid(_bidId)
+        db.FormalResponses.Add(new ManufacturingResponse(_bidId)
         {
             InnovationId = _innovationId,
             ActorId = _manufacturerId,
-            Location = "Munich, Germany",
+            Location = GeographicRegion.Europe,
             ParticipationType = "Manufacturing Partner",
             ParticipationProposal = "We have 20 years of experience in precision battery manufacturing with ISO 9001 certification. Our Munich facility supports pilot runs of 10,000 units per month scalable to 100,000 units, with full supply chain and DfM consultation services included.",
-            Status = BidStatus.Pending,
-            SubmittedAt = DateTimeOffset.UtcNow.AddHours(-2)
+            Status = ResponseStatus.Pending,
+            SubmittedAt = DateTimeOffset.UtcNow.AddHours(-2),
+            YearlyManufacturingCosts =
+            [
+                new YearlyManufacturingCost
+                {
+                    Year = 1,
+                    ProductionVolume = 10000,
+                    ProductionVolumeRationale = "Based on Q1 supplier capacity quotes and pilot line throughput.",
+                    UnitCost = 5.50m,
+                    UnitCostRationale = "Materials, labor, and overhead costed against supplier agreements.",
+                    AverageGlobalDistributionExpense = 1.20m,
+                    AvgDistributionExpenseRationale = "Weighted by target market logistics rates across regions."
+                }
+            ]
         });
 
         db.SaveChanges();
@@ -170,33 +176,6 @@ public class ActorResolutionFilterTests : IDisposable
     }
 
     /// <summary>
-    /// RED TEST: UpdateBid skips the DB actor-existence check, so a revoked actor with a
-    /// still-valid JWT can currently reach the handler and receive a 403 or 200 rather than
-    /// a 401. After ActorResolutionFilter is added to the endpoint, the filter short-circuits
-    /// before the handler runs and returns 401.
-    /// </summary>
-    [Fact]
-    public async Task UpdateBid_WithValidJwtButActorDeletedFromDb_Returns401()
-    {
-        // Arrange: get token while actor exists, then simulate account revocation
-        var token = await GetAccessTokenAsync("manufacturer@filter.test", "Manufacturing");
-        await DeleteActorAsync(_manufacturerId);
-
-        var content = JsonContent.Create(new
-        {
-            location = "Berlin, Germany",
-            participationType = "Manufacturing Partner",
-            participationProposal = "Updated proposal describing our Berlin facility capabilities in advanced precision manufacturing. We offer complete production lines from prototype to mass production at automotive grade quality standards, with ISO 9001 and IATF 16949 certifications and established logistics partnerships across Europe."
-        });
-
-        // Act
-        var response = await _client.PutWithAuthAsync($"/bids/{_bidId}", content, token);
-
-        // Assert: filter must catch the ghost actor and short-circuit before the handler runs
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    /// <summary>
     /// Characterisation: GetBids already queries the Actors table, so it returns 401 for a
     /// revoked actor both before and after the filter refactor. This test locks that behaviour.
     /// </summary>
@@ -216,11 +195,12 @@ public class ActorResolutionFilterTests : IDisposable
     }
 
     /// <summary>
-    /// Characterisation: SubmitBid already queries the Actors table, so it returns 401 for a
-    /// revoked actor both before and after the filter refactor. This test locks that behaviour.
+    /// Characterisation: SubmitManufacturingResponse queries the Actors table via
+    /// ActorResolutionFilter, so it returns 401 for a revoked actor. This test locks that
+    /// behaviour for the FormalResponse hierarchy's typed submission endpoints (Spec 005).
     /// </summary>
     [Fact]
-    public async Task SubmitBid_WithValidJwtButActorDeletedFromDb_Returns401()
+    public async Task SubmitManufacturingResponse_WithValidJwtButActorDeletedFromDb_Returns401()
     {
         // Arrange
         var token = await GetAccessTokenAsync("manufacturer@filter.test", "Manufacturing");
@@ -228,14 +208,27 @@ public class ActorResolutionFilterTests : IDisposable
 
         var content = JsonContent.Create(new
         {
-            location = "Berlin, Germany",
+            location = "Europe",
             participationType = "Manufacturing Partner",
-            participationProposal = "Full proposal text for the SubmitBid characterisation test. We have 20 years of experience in precision manufacturing with ISO 9001 certification and a Munich facility capable of scaling from prototype to mass production with comprehensive supply chain management and quality assurance."
+            participationProposal = "Full proposal text for the SubmitManufacturingResponse characterisation test. We have 20 years of experience in precision manufacturing with ISO 9001 certification and a Munich facility capable of scaling from prototype to mass production with comprehensive supply chain management and quality assurance.",
+            yearlyManufacturingCosts = new[]
+            {
+                new
+                {
+                    year = 1,
+                    productionVolume = 10000,
+                    productionVolumeRationale = "Based on Q1 supplier capacity quotes and pilot line throughput.",
+                    unitCost = 5.50,
+                    unitCostRationale = "Materials, labor, and overhead costed against supplier agreements.",
+                    averageGlobalDistributionExpense = 1.20,
+                    avgDistributionExpenseRationale = "Weighted by target market logistics rates across regions."
+                }
+            }
         });
 
         // Act
         var response = await _client.PostWithAuthAsync(
-            $"/innovations/{_innovationId}/bids", content, token);
+            $"/innovations/{_innovationId}/bids/manufacturing", content, token);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);

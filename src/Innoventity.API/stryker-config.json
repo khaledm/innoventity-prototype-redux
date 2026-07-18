@@ -7,12 +7,17 @@
       "Infrastructure/Authentication/PasswordHasher.cs",
       "Features/Authentication/Login.cs",
       "Domain/Entities/Actor.cs",
-      "Features/Bids/SelectPartners.cs"
+      "Features/Bids/SelectPartners.cs",
+      "Features/Bids/GetBids.cs",
+      "Features/Bids/SubmitManufacturingResponse.cs",
+      "Features/Bids/SubmitSalesMarketingResponse.cs",
+      "Features/Bids/SubmitResearchDevelopmentResponse.cs",
+      "Features/Bids/SubmitInvestorResponse.cs"
     ],
     "reporters": [ "html", "json", "progress" ],
     "thresholds": {
       "high": 80,
-      "low": 70,
+      "low": 71,
       "break": 71
     }
   }
