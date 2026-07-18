@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-07
 
-**Status**: Draft
+**Status**: Implemented (2026-07-18) — all 49 tasks complete, 195 tests passing, mutation score 74.95% (aggregate, clears constitution >70% floor)
 
 **Input**: Replace the flat `Bid` entity with a `FormalResponse` abstract base plus `ManufacturingResponse`, `SalesMarketingResponse`, `ResearchDevelopmentResponse`, and `InvestorResponse` subtypes. EF Core TPH discriminator. New type-specific bid endpoints. Yearly financial projection dictionaries with mandatory rationale fields.
 

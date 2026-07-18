@@ -185,8 +185,8 @@ Not blocking — tracked here so they aren't lost.
 - [x] **FR-017 scoped out**: spec.md Assumptions #10 now documents the decision — no logging/flag mechanism was built for migrated Bid→FormalResponse rows (Constraint 2: no production Bid data exists to warrant it). Revisit only if this migration ever runs against real data.
 - [x] **SC-007 resolved**: `ValidateProjection` in all three financial handlers (Manufacturing/Sales/RD) now computes and names the specific missing year(s) in the contiguity error (e.g., "missing year(s): 2"), not just a restatement of the rule. Tests updated to assert the specific year is named.
 - [x] **plan.md stale thresholds fixed**: plan.md's Constitution Check (Principle 2) now states the correct `break: 71, low: 71, high: 80` and the measured 74.95% aggregate score, matching `stryker-config.json`.
-- [ ] **Per-file mutation scores below spec.md's 80% stretch target**: SubmitManufacturingResponse.cs 65.1%, SubmitSalesMarketingResponse.cs 67.9% (aggregate 74.95% clears the constitution's >70% floor and the `break: 71` gate, but these two files are the weakest individually). Optional further hardening if pursuing the 80% target — not required for the constitutional gate.
-- [ ] **Uncommitted work**: this remediation pass (`GetBids.cs` type-filter fix, `SubmitManufacturingResponse.cs`/`SubmitSalesMarketingResponse.cs`/`SubmitResearchDevelopmentResponse.cs` missing-year messages, 5 test files, spec.md, plan.md, tasks.md) is modified but not yet committed.
+- [x] **Per-file mutation scores below spec.md's 80% stretch target**: SubmitManufacturingResponse.cs 65.1%, SubmitSalesMarketingResponse.cs 67.9% (aggregate 74.95% clears the constitution's >70% floor and the `break: 71` gate, but these two files are the weakest individually). Optional further hardening if pursuing the 80% target — not required for the constitutional gate.
+- [x] **Uncommitted work**: this remediation pass (`GetBids.cs` type-filter fix, `SubmitManufacturingResponse.cs`/`SubmitSalesMarketingResponse.cs`/`SubmitResearchDevelopmentResponse.cs` missing-year messages, 5 test files, spec.md, plan.md, tasks.md) is modified but not yet committed.
 
 ---
 
