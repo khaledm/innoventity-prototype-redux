@@ -22,10 +22,10 @@ public class ActorResolutionFilterTests : IDisposable
     private readonly HttpClient _client;
     private readonly WebApplicationFactory<Program> _factory;
 
-    private readonly Guid _ownerId = new Guid("f1000001-0000-0000-0000-000000000000");
-    private readonly Guid _manufacturerId = new Guid("f1000002-0000-0000-0000-000000000000");
-    private readonly Guid _innovationId = new Guid("f2000001-0000-0000-0000-000000000000");
-    private readonly Guid _bidId = new Guid("f3000001-0000-0000-0000-000000000000");
+    private readonly Guid _ownerId = new("f1000001-0000-0000-0000-000000000000");
+    private readonly Guid _manufacturerId = new("f1000002-0000-0000-0000-000000000000");
+    private readonly Guid _innovationId = new("f2000001-0000-0000-0000-000000000000");
+    private readonly Guid _responseId  = new("f3000001-0000-0000-0000-000000000000");
 
     public ActorResolutionFilterTests()
     {
@@ -117,7 +117,7 @@ public class ActorResolutionFilterTests : IDisposable
             SubmittedAt = DateTimeOffset.UtcNow.AddDays(-1)
         });
 
-        db.FormalResponses.Add(new ManufacturingResponse(_bidId)
+        db.FormalResponses.Add(new ManufacturingResponse(_responseId)
         {
             InnovationId = _innovationId,
             ActorId = _manufacturerId,
