@@ -101,7 +101,7 @@
 
 ## Decision 7 — Stryker Configuration
 
-**Decision**: Add all new feature files to the Stryker `mutate` list: all 4 `Submit*.cs` handlers, updated `GetFormalResponses.cs`, and updated `SelectPartners.cs`. Maintain existing thresholds (break: 60, low: 70, high: 80).
+**Decision**: Add all new feature files to the Stryker `mutate` list: all 4 `Submit*.cs` handlers, updated `GetBids.cs`, and updated `SelectPartners.cs`. Thresholds: high 80, low 71, break 71.
 
 **Rationale**:
 - Constitution Principle 5 requires mutation testing for critical business paths. The rationale validation logic (≥20 chars), year contiguity check, actor-type-to-response-type enforcement, and JSON deserialization edge cases are all critical paths.

@@ -3,7 +3,7 @@ namespace Innoventity.API.Domain.Entities;
 /// <summary>
 /// One year of an R&amp;D actor's development cost projection (Spec 005 §R4.x).
 /// Value object persisted inside the <c>YearlyDevelopmentCosts</c> JSON column via
-/// <c>OwnsMany(...).ToJson()</c> — it has no EF identity key.
+/// <c>OwnsMany(...).ToJson()</c> — EF stores a per-entry key (for example <c>Id</c>) in the JSON payload for change tracking.
 /// Every projected metric is paired with a rationale (Spec FR-007).
 /// </summary>
 public class YearlyDevelopmentCost
