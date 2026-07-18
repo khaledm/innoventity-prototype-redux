@@ -307,8 +307,9 @@ public class AppDbContext : DbContext
                   .HasDatabaseName("IX_FormalResponse_ActorId_InnovationId");
         });
 
-        // Yearly projection collections persisted as JSON columns (EF Core 8 OwnsMany().ToJson()).
-        // Value objects are keyless — EF manages an implicit ordinal key inside the JSON document.
+            // Yearly projection collections persisted as JSON columns (EF Core 8 OwnsMany().ToJson()).
+            // EF Core still creates a key for owned collection entries; the generated JSON payload includes
+            // a per-entry key field (for example `Id`) to track collection elements.
         modelBuilder.Entity<ManufacturingResponse>()
             .OwnsMany(r => r.YearlyManufacturingCosts, b => b.ToJson());
 

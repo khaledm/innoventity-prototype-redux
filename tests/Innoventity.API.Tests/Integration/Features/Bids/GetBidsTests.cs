@@ -326,6 +326,15 @@ public class GetBidsTests : IDisposable
         var responses = body.GetProperty("responses");
         Assert.Equal(4, responses.GetArrayLength());
 
+        var responseTypes = responses.EnumerateArray()
+            .Select(entry => entry.GetProperty("responseType").GetString())
+            .OrderBy(value => value)
+            .ToArray();
+
+        Assert.Equal(
+            ["InvestorResponse", "ManufacturingResponse", "ResearchDevelopmentResponse", "SalesMarketingResponse"],
+            responseTypes);
+
         foreach (var entry in responses.EnumerateArray())
         {
             Assert.True(entry.TryGetProperty("responseType", out _));

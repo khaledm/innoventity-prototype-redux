@@ -86,7 +86,7 @@ public static class GetBids
             return new
             {
                 responseId = r.Id,
-                responseType = r.GetType().Name,
+                responseType = GetResponseTypeName(r),
                 actorId = r.ActorId,
                 location = r.Location.ToString(),
                 participationType = r.ParticipationType,
@@ -100,7 +100,7 @@ public static class GetBids
             ManufacturingResponse m => new
             {
                 responseId = m.Id,
-                responseType = nameof(ManufacturingResponse),
+                responseType = GetResponseTypeName(m),
                 actorId = m.ActorId,
                 location = m.Location.ToString(),
                 participationType = m.ParticipationType,
@@ -112,7 +112,7 @@ public static class GetBids
             SalesMarketingResponse s => new
             {
                 responseId = s.Id,
-                responseType = nameof(SalesMarketingResponse),
+                responseType = GetResponseTypeName(s),
                 actorId = s.ActorId,
                 location = s.Location.ToString(),
                 participationType = s.ParticipationType,
@@ -124,7 +124,7 @@ public static class GetBids
             ResearchDevelopmentResponse d => new
             {
                 responseId = d.Id,
-                responseType = nameof(ResearchDevelopmentResponse),
+                responseType = GetResponseTypeName(d),
                 actorId = d.ActorId,
                 location = d.Location.ToString(),
                 participationType = d.ParticipationType,
@@ -137,7 +137,7 @@ public static class GetBids
             InvestorResponse inv => new
             {
                 responseId = inv.Id,
-                responseType = nameof(InvestorResponse),
+                responseType = GetResponseTypeName(inv),
                 actorId = inv.ActorId,
                 location = inv.Location.ToString(),
                 participationType = inv.ParticipationType,
@@ -149,7 +149,7 @@ public static class GetBids
             _ => new
             {
                 responseId = r.Id,
-                responseType = r.GetType().Name,
+                responseType = GetResponseTypeName(r),
                 actorId = r.ActorId,
                 location = r.Location.ToString(),
                 participationType = r.ParticipationType,
@@ -159,6 +159,15 @@ public static class GetBids
             }
         };
     }
+
+    private static string GetResponseTypeName(FormalResponse response) => response switch
+    {
+        ManufacturingResponse => nameof(ManufacturingResponse),
+        SalesMarketingResponse => nameof(SalesMarketingResponse),
+        ResearchDevelopmentResponse => nameof(ResearchDevelopmentResponse),
+        InvestorResponse => nameof(InvestorResponse),
+        _ => response.GetType().Name
+    };
 
     /// <summary>
     /// Response model for GET /innovations/{innovationId}/bids
