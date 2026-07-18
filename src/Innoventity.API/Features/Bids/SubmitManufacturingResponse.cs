@@ -83,7 +83,8 @@ public static class SubmitManufacturingResponse
             });
         }
 
-        var projectionErrors = ValidateProjection(request.YearlyManufacturingCosts);
+        var yearlyManufacturingCosts = request.YearlyManufacturingCosts ?? [];
+        var projectionErrors = ValidateProjection(yearlyManufacturingCosts);
         if (projectionErrors.Count > 0)
         {
             return Results.ValidationProblem(projectionErrors, statusCode: StatusCodes.Status422UnprocessableEntity);
@@ -98,7 +99,7 @@ public static class SubmitManufacturingResponse
             ParticipationProposal = request.ParticipationProposal,
             Status = ResponseStatus.Pending,
             SubmittedAt = DateTimeOffset.UtcNow,
-            YearlyManufacturingCosts = request.YearlyManufacturingCosts.Select(y => new YearlyManufacturingCost
+            YearlyManufacturingCosts = yearlyManufacturingCosts.Select(y => new YearlyManufacturingCost
             {
                 Year = y.Year,
                 ProductionVolume = y.ProductionVolume,
@@ -129,9 +130,10 @@ public static class SubmitManufacturingResponse
     /// rationale field is 20–500 chars (a missing rationale binds to an empty string, which
     /// naturally fails the minimum-length check — covering FR-009 partial-projection rejection).
     /// </summary>
-    internal static Dictionary<string, string[]> ValidateProjection(List<YearlyManufacturingCostRequest> entries)
+    internal static Dictionary<string, string[]> ValidateProjection(List<YearlyManufacturingCostRequest>? entries)
     {
         var errors = new Dictionary<string, string[]>();
+        entries ??= [];
 
         if (entries.Count == 0)
         {
@@ -157,6 +159,9 @@ public static class SubmitManufacturingResponse
         for (var i = 0; i < entries.Count; i++)
         {
             var entry = entries[i];
+            ValidateNonNegative(errors, $"YearlyManufacturingCosts[{i}].ProductionVolume", entry.ProductionVolume);
+            ValidateNonNegative(errors, $"YearlyManufacturingCosts[{i}].UnitCost", entry.UnitCost);
+            ValidateNonNegative(errors, $"YearlyManufacturingCosts[{i}].AverageGlobalDistributionExpense", entry.AverageGlobalDistributionExpense);
             ValidateRationale(errors, $"YearlyManufacturingCosts[{i}].ProductionVolumeRationale", entry.ProductionVolumeRationale);
             ValidateRationale(errors, $"YearlyManufacturingCosts[{i}].UnitCostRationale", entry.UnitCostRationale);
             ValidateRationale(errors, $"YearlyManufacturingCosts[{i}].AvgDistributionExpenseRationale", entry.AvgDistributionExpenseRationale);
@@ -170,6 +175,22 @@ public static class SubmitManufacturingResponse
         if (string.IsNullOrWhiteSpace(value) || value.Length < 20 || value.Length > 500)
         {
             errors[fieldName] = [$"{fieldName} must be between 20 and 500 characters."];
+        }
+    }
+
+    private static void ValidateNonNegative(Dictionary<string, string[]> errors, string fieldName, decimal value)
+    {
+        if (value < 0)
+        {
+            errors[fieldName] = [$"{fieldName} must be greater than or equal to 0."];
+        }
+    }
+
+    private static void ValidateNonNegative(Dictionary<string, string[]> errors, string fieldName, int value)
+    {
+        if (value < 0)
+        {
+            errors[fieldName] = [$"{fieldName} must be greater than or equal to 0."];
         }
     }
 

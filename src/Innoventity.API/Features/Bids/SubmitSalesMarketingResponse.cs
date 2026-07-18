@@ -75,7 +75,8 @@ public static class SubmitSalesMarketingResponse
             });
         }
 
-        var projectionErrors = ValidateProjection(request.YearlySales);
+        var yearlySales = request.YearlySales ?? [];
+        var projectionErrors = ValidateProjection(yearlySales);
         if (projectionErrors.Count > 0)
         {
             return Results.ValidationProblem(projectionErrors, statusCode: StatusCodes.Status422UnprocessableEntity);
@@ -90,7 +91,7 @@ public static class SubmitSalesMarketingResponse
             ParticipationProposal = request.ParticipationProposal,
             Status = ResponseStatus.Pending,
             SubmittedAt = DateTimeOffset.UtcNow,
-            YearlySales = request.YearlySales.Select(y => new YearlySale
+            YearlySales = yearlySales.Select(y => new YearlySale
             {
                 Year = y.Year,
                 UnitsSold = y.UnitsSold,
@@ -121,9 +122,10 @@ public static class SubmitSalesMarketingResponse
     /// rationale field is 20–500 chars (a missing rationale binds to an empty string, which
     /// naturally fails the minimum-length check — covering FR-009 partial-projection rejection).
     /// </summary>
-    internal static Dictionary<string, string[]> ValidateProjection(List<YearlySaleRequest> entries)
+    internal static Dictionary<string, string[]> ValidateProjection(List<YearlySaleRequest>? entries)
     {
         var errors = new Dictionary<string, string[]>();
+        entries ??= [];
 
         if (entries.Count == 0)
         {
@@ -149,6 +151,9 @@ public static class SubmitSalesMarketingResponse
         for (var i = 0; i < entries.Count; i++)
         {
             var entry = entries[i];
+            ValidateNonNegative(errors, $"YearlySales[{i}].UnitsSold", entry.UnitsSold);
+            ValidateNonNegative(errors, $"YearlySales[{i}].UnitPrice", entry.UnitPrice);
+            ValidateNonNegative(errors, $"YearlySales[{i}].SalesMarketingExpense", entry.SalesMarketingExpense);
             ValidateRationale(errors, $"YearlySales[{i}].UnitsSoldRationale", entry.UnitsSoldRationale);
             ValidateRationale(errors, $"YearlySales[{i}].UnitPriceRationale", entry.UnitPriceRationale);
             ValidateRationale(errors, $"YearlySales[{i}].SalesMarketingExpenseRationale", entry.SalesMarketingExpenseRationale);
@@ -162,6 +167,22 @@ public static class SubmitSalesMarketingResponse
         if (string.IsNullOrWhiteSpace(value) || value.Length < 20 || value.Length > 500)
         {
             errors[fieldName] = [$"{fieldName} must be between 20 and 500 characters."];
+        }
+    }
+
+    private static void ValidateNonNegative(Dictionary<string, string[]> errors, string fieldName, decimal value)
+    {
+        if (value < 0)
+        {
+            errors[fieldName] = [$"{fieldName} must be greater than or equal to 0."];
+        }
+    }
+
+    private static void ValidateNonNegative(Dictionary<string, string[]> errors, string fieldName, int value)
+    {
+        if (value < 0)
+        {
+            errors[fieldName] = [$"{fieldName} must be greater than or equal to 0."];
         }
     }
 

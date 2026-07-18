@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Reflection;
 using Innoventity.API.Domain.Entities;
 using Innoventity.API.Infrastructure.Persistence;
 using Innoventity.API.Tests.TestFixtures;
@@ -60,7 +61,10 @@ public class SubmitSalesMarketingResponseTests : IDisposable
                 {
                     var descriptor = services.SingleOrDefault(
                         d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
-                    if (descriptor != null) services.Remove(descriptor);
+                    if (descriptor != null)
+                    {
+                        services.Remove(descriptor);
+                    }
 
                     services.AddDbContext<AppDbContext>(options =>
                         options.UseInMemoryDatabase(databaseName));
@@ -170,6 +174,17 @@ public class SubmitSalesMarketingResponseTests : IDisposable
             salesMarketingExpense = 25000.00,
             salesMarketingExpenseRationale = "Channel costs plus digital marketing spend for the launch quarter."
         }).ToList();
+
+    private static Dictionary<string, string[]> InvokeValidateProjection(
+        List<Innoventity.API.Features.Bids.SubmitSalesMarketingResponse.YearlySaleRequest>? entries)
+    {
+        var method = typeof(Innoventity.API.Features.Bids.SubmitSalesMarketingResponse)
+            .GetMethod("ValidateProjection", BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.NotNull(method);
+
+        return (Dictionary<string, string[]>)method.Invoke(null, new object?[] { entries })!;
+    }
 
     private object MakeValidRequest(int years = 2) => new
     {
@@ -568,5 +583,43 @@ public class SubmitSalesMarketingResponseTests : IDisposable
         Assert.NotNull(stored);
         Assert.Equal(2, stored.YearlySales.Count);
         Assert.All(stored.YearlySales, y => Assert.True(y.UnitsSoldRationale.Length >= 20));
+    }
+
+    /// <summary>
+    /// ValidateProjection should treat a null list as an empty projection rather than throw.
+    /// </summary>
+    [Fact]
+    public void ValidateProjection_NullList_ReturnsValidationError()
+    {
+        var errors = InvokeValidateProjection(null);
+
+        Assert.Contains("YearlySales", errors.Keys);
+    }
+
+    /// <summary>
+    /// ValidateProjection should reject negative numeric values per contract.
+    /// </summary>
+    [Fact]
+    public void ValidateProjection_NegativeNumericValues_ReturnsValidationErrors()
+    {
+        var entries = new List<Innoventity.API.Features.Bids.SubmitSalesMarketingResponse.YearlySaleRequest>
+        {
+            new()
+            {
+                Year = 1,
+                UnitsSold = -1,
+                UnitsSoldRationale = "Conservative estimate based on comparable product launches in this segment.",
+                UnitPrice = -49.99m,
+                UnitPriceRationale = "Market pricing analysis shows strong demand at this price point currently.",
+                SalesMarketingExpense = -25000.00m,
+                SalesMarketingExpenseRationale = "Channel costs plus digital marketing spend for the launch quarter."
+            }
+        };
+
+        var errors = InvokeValidateProjection(entries);
+
+        Assert.Contains("YearlySales[0].UnitsSold", errors.Keys);
+        Assert.Contains("YearlySales[0].UnitPrice", errors.Keys);
+        Assert.Contains("YearlySales[0].SalesMarketingExpense", errors.Keys);
     }
 }

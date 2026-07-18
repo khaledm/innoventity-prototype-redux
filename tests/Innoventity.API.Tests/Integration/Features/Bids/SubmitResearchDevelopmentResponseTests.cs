@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Reflection;
 using Innoventity.API.Domain.Entities;
 using Innoventity.API.Infrastructure.Persistence;
 using Innoventity.API.Tests.TestFixtures;
@@ -60,7 +61,10 @@ public class SubmitResearchDevelopmentResponseTests : IDisposable
                 {
                     var descriptor = services.SingleOrDefault(
                         d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
-                    if (descriptor != null) services.Remove(descriptor);
+                    if (descriptor != null)
+                    {
+                        services.Remove(descriptor);
+                    }
 
                     services.AddDbContext<AppDbContext>(options =>
                         options.UseInMemoryDatabase(databaseName));
@@ -167,6 +171,17 @@ public class SubmitResearchDevelopmentResponseTests : IDisposable
             peopleCost = 200000.00 * year,
             peopleCostRationale = "Engineers and a project manager allocated to this workstream for the year."
         }).ToList();
+
+    private static Dictionary<string, string[]> InvokeValidateProjection(
+        List<Innoventity.API.Features.Bids.SubmitResearchDevelopmentResponse.YearlyDevelopmentCostRequest>? entries)
+    {
+        var method = typeof(Innoventity.API.Features.Bids.SubmitResearchDevelopmentResponse)
+            .GetMethod("ValidateProjection", BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.NotNull(method);
+
+        return (Dictionary<string, string[]>)method.Invoke(null, new object?[] { entries })!;
+    }
 
     private object MakeValidRequest(int years = 2, int duration = 2) => new
     {
@@ -604,5 +619,40 @@ public class SubmitResearchDevelopmentResponseTests : IDisposable
             JsonContent.Create(request), token);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    /// <summary>
+    /// ValidateProjection should treat a null list as an empty projection rather than throw.
+    /// </summary>
+    [Fact]
+    public void ValidateProjection_NullList_ReturnsValidationError()
+    {
+        var errors = InvokeValidateProjection(null);
+
+        Assert.Contains("YearlyDevelopmentCosts", errors.Keys);
+    }
+
+    /// <summary>
+    /// ValidateProjection should reject negative numeric values per contract.
+    /// </summary>
+    [Fact]
+    public void ValidateProjection_NegativeNumericValues_ReturnsValidationErrors()
+    {
+        var entries = new List<Innoventity.API.Features.Bids.SubmitResearchDevelopmentResponse.YearlyDevelopmentCostRequest>
+        {
+            new()
+            {
+                Year = 1,
+                InfrastructureCost = -50000.00m,
+                InfrastructureCostRationale = "Cloud hosting, lab tooling, and software licenses for the year.",
+                PeopleCost = -200000.00m,
+                PeopleCostRationale = "Engineers and a project manager allocated to this workstream for the year."
+            }
+        };
+
+        var errors = InvokeValidateProjection(entries);
+
+        Assert.Contains("YearlyDevelopmentCosts[0].InfrastructureCost", errors.Keys);
+        Assert.Contains("YearlyDevelopmentCosts[0].PeopleCost", errors.Keys);
     }
 }

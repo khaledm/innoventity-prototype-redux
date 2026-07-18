@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Reflection;
 using Innoventity.API.Domain.Entities;
 using Innoventity.API.Infrastructure.Persistence;
 using Innoventity.API.Tests.TestFixtures;
@@ -60,7 +61,10 @@ public class SubmitManufacturingResponseTests : IDisposable
                 {
                     var descriptor = services.SingleOrDefault(
                         d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
-                    if (descriptor != null) services.Remove(descriptor);
+                    if (descriptor != null)
+                    {
+                        services.Remove(descriptor);
+                    }
 
                     services.AddDbContext<AppDbContext>(options =>
                         options.UseInMemoryDatabase(databaseName));
@@ -170,6 +174,17 @@ public class SubmitManufacturingResponseTests : IDisposable
             averageGlobalDistributionExpense = 1.20,
             avgDistributionExpenseRationale = "Weighted by target market logistics rates across regions."
         }).ToList();
+
+    private static Dictionary<string, string[]> InvokeValidateProjection(
+        List<Innoventity.API.Features.Bids.SubmitManufacturingResponse.YearlyManufacturingCostRequest>? entries)
+    {
+        var method = typeof(Innoventity.API.Features.Bids.SubmitManufacturingResponse)
+            .GetMethod("ValidateProjection", BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.NotNull(method);
+
+        return (Dictionary<string, string[]>)method.Invoke(null, new object?[] { entries })!;
+    }
 
     private object MakeValidRequest(int years = 3, string? location = "Europe") => new
     {
@@ -630,6 +645,44 @@ public class SubmitManufacturingResponseTests : IDisposable
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains("ProductionVolumeRationale", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// ValidateProjection should treat null input as an empty list rather than throw.
+    /// </summary>
+    [Fact]
+    public void ValidateProjection_NullList_ReturnsValidationError()
+    {
+        var errors = InvokeValidateProjection(null);
+
+        Assert.Contains("YearlyManufacturingCosts", errors.Keys);
+    }
+
+    /// <summary>
+    /// ValidateProjection should reject negative numeric values per contract.
+    /// </summary>
+    [Fact]
+    public void ValidateProjection_NegativeNumericValues_ReturnsValidationErrors()
+    {
+        var entries = new List<Innoventity.API.Features.Bids.SubmitManufacturingResponse.YearlyManufacturingCostRequest>
+        {
+            new()
+            {
+                Year = 1,
+                ProductionVolume = -1,
+                ProductionVolumeRationale = "Based on Q1 supplier capacity quotes and pilot line throughput estimates.",
+                UnitCost = -5.50m,
+                UnitCostRationale = "Materials, labor, and overhead costed against current supplier agreements.",
+                AverageGlobalDistributionExpense = -1.20m,
+                AvgDistributionExpenseRationale = "Weighted by target market logistics rates across regions."
+            }
+        };
+
+        var errors = InvokeValidateProjection(entries);
+
+        Assert.Contains("YearlyManufacturingCosts[0].ProductionVolume", errors.Keys);
+        Assert.Contains("YearlyManufacturingCosts[0].UnitCost", errors.Keys);
+        Assert.Contains("YearlyManufacturingCosts[0].AverageGlobalDistributionExpense", errors.Keys);
     }
 
     /// <summary>

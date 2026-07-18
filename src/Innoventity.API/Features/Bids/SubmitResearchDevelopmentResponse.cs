@@ -83,7 +83,8 @@ public static class SubmitResearchDevelopmentResponse
             }, statusCode: StatusCodes.Status422UnprocessableEntity);
         }
 
-        var projectionErrors = ValidateProjection(request.YearlyDevelopmentCosts);
+        var yearlyDevelopmentCosts = request.YearlyDevelopmentCosts ?? [];
+        var projectionErrors = ValidateProjection(yearlyDevelopmentCosts);
         if (projectionErrors.Count > 0)
         {
             return Results.ValidationProblem(projectionErrors, statusCode: StatusCodes.Status422UnprocessableEntity);
@@ -99,7 +100,7 @@ public static class SubmitResearchDevelopmentResponse
             Status = ResponseStatus.Pending,
             SubmittedAt = DateTimeOffset.UtcNow,
             ProductDevelopmentDuration = request.ProductDevelopmentDuration,
-            YearlyDevelopmentCosts = request.YearlyDevelopmentCosts.Select(y => new YearlyDevelopmentCost
+            YearlyDevelopmentCosts = yearlyDevelopmentCosts.Select(y => new YearlyDevelopmentCost
             {
                 Year = y.Year,
                 InfrastructureCost = y.InfrastructureCost,
@@ -128,9 +129,10 @@ public static class SubmitResearchDevelopmentResponse
     /// rationale field is 20–500 chars (a missing rationale binds to an empty string, which
     /// naturally fails the minimum-length check — covering FR-009 partial-projection rejection).
     /// </summary>
-    internal static Dictionary<string, string[]> ValidateProjection(List<YearlyDevelopmentCostRequest> entries)
+    internal static Dictionary<string, string[]> ValidateProjection(List<YearlyDevelopmentCostRequest>? entries)
     {
         var errors = new Dictionary<string, string[]>();
+        entries ??= [];
 
         if (entries.Count == 0)
         {
@@ -156,6 +158,8 @@ public static class SubmitResearchDevelopmentResponse
         for (var i = 0; i < entries.Count; i++)
         {
             var entry = entries[i];
+            ValidateNonNegative(errors, $"YearlyDevelopmentCosts[{i}].InfrastructureCost", entry.InfrastructureCost);
+            ValidateNonNegative(errors, $"YearlyDevelopmentCosts[{i}].PeopleCost", entry.PeopleCost);
             ValidateRationale(errors, $"YearlyDevelopmentCosts[{i}].InfrastructureCostRationale", entry.InfrastructureCostRationale);
             ValidateRationale(errors, $"YearlyDevelopmentCosts[{i}].PeopleCostRationale", entry.PeopleCostRationale);
         }
@@ -168,6 +172,14 @@ public static class SubmitResearchDevelopmentResponse
         if (string.IsNullOrWhiteSpace(value) || value.Length < 20 || value.Length > 500)
         {
             errors[fieldName] = [$"{fieldName} must be between 20 and 500 characters."];
+        }
+    }
+
+    private static void ValidateNonNegative(Dictionary<string, string[]> errors, string fieldName, decimal value)
+    {
+        if (value < 0)
+        {
+            errors[fieldName] = [$"{fieldName} must be greater than or equal to 0."];
         }
     }
 
