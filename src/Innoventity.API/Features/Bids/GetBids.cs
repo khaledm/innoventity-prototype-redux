@@ -7,83 +7,173 @@ using Microsoft.EntityFrameworkCore;
 namespace Innoventity.API.Features.Bids;
 
 /// <summary>
-/// Endpoint for retrieving all bids submitted for an innovation
+/// Endpoint for retrieving all formal responses submitted for an innovation (Spec 005 §R6.1)
 /// </summary>
 public static class GetBids
 {
     /// <summary>
-    /// Retrieve all partnership proposals (bids) for an innovation
+    /// Retrieve all formal responses for an innovation, with 3-tier visibility
     /// </summary>
     /// <remarks>
-    /// Business Rules:
-    /// - R6.1: Only the innovation owner can view bids
-    /// - R8.2: Other actors receive 403 Forbidden
-    /// - Returns full proposal details including actor information
-    /// - Bids ordered by submission date (newest first)
+    /// Business Rules (Spec 005):
+    /// - Any authenticated actor may call this endpoint
+    /// - Innovation owner sees full data (proposal + financial projections + rationale) for every response
+    /// - The actor who submitted a response sees their own full data; all other responses show public fields only
+    /// - All other authenticated actors see public summary fields only for every response
+    /// - Optional `type` filter: manufacturing, sales, rd, investor
     /// </remarks>
-    /// <param name="innovationId">The innovation to retrieve bids for</param>
+    /// <param name="innovationId">The innovation to retrieve responses for</param>
+    /// <param name="type">Optional response-type filter</param>
     /// <param name="httpContext">HTTP context — actor resolved by ActorResolutionFilter</param>
     /// <param name="db">Database context (injected by ASP.NET Core)</param>
-    /// <response code="200">Bids retrieved successfully</response>
+    /// <response code="200">Responses retrieved successfully</response>
     /// <response code="401">Unauthorized - authentication required</response>
-    /// <response code="403">Forbidden - only innovation owner can view bids</response>
     /// <response code="404">Innovation not found</response>
     [Authorize]
     public static async Task<IResult> Handle(
         Guid innovationId,
+        string? type,
         HttpContext httpContext,
         AppDbContext db)
     {
         var actor = httpContext.GetCurrentActor();
 
-        // Validate innovation exists
         var innovation = await db.Innovations.FindAsync(innovationId);
         if (innovation == null)
         {
             return Results.NotFound(new { error = "Innovation not found." });
         }
 
-        // R6.1 & R8.2: Only innovation owner can view bids
-        if (innovation.OwnerId != actor.Id)
+        var isOwner = innovation.OwnerId == actor.Id;
+
+        var query = db.FormalResponses.Where(r => r.InnovationId == innovationId);
+
+        var filterType = MapTypeFilter(type);
+        if (filterType != null)
         {
-            return Results.Problem(
-                statusCode: StatusCodes.Status403Forbidden,
-                title: "Forbidden",
-                detail: "Only the innovation owner can view submitted bids.");
+            query = filterType switch
+            {
+                nameof(ManufacturingResponse) => query.OfType<ManufacturingResponse>(),
+                nameof(SalesMarketingResponse) => query.OfType<SalesMarketingResponse>(),
+                nameof(ResearchDevelopmentResponse) => query.OfType<ResearchDevelopmentResponse>(),
+                nameof(InvestorResponse) => query.OfType<InvestorResponse>(),
+                _ => query
+            };
+        }
+        else if (!string.IsNullOrWhiteSpace(type))
+        {
+            // Unrecognized filter value — no responses can match
+            query = query.Where(r => false);
         }
 
-        // Query all bids for this innovation with actor details
-        var bids = await db.Bids
-            .Include(b => b.Actor)
-            .Where(b => b.InnovationId == innovationId)
-            .OrderByDescending(b => b.SubmittedAt)
-            .Select(b => new BidDetailDto
-            {
-                BidId = b.Id,
-                Actor = new ActorSummaryDto
-                {
-                    ActorId = b.ActorId,
-                    FirstName = b.Actor!.FirstName,
-                    LastName = b.Actor.LastName,
-                    DisplayName = $"{b.Actor.FirstName} {b.Actor.LastName}",
-                    ActorType = b.Actor.ActorType.ToString()
-                },
-                Location = b.Location,
-                ParticipationType = b.ParticipationType,
-                ParticipationProposal = b.ParticipationProposal,
-                SubmittedAt = b.SubmittedAt,
-                Status = b.Status.ToString()
-            })
+        var responses = await query
+            .OrderByDescending(r => r.SubmittedAt)
             .ToListAsync();
 
-        // Return response
-        var response = new GetBidsResponse
-        {
-            Bids = bids,
-            TotalCount = bids.Count
-        };
+        var dtos = responses
+            .Select(r => BuildDto(r, fullVisibility: isOwner || r.ActorId == actor.Id))
+            .ToList();
 
-        return Results.Ok(response);
+        return Results.Ok(new GetBidsResponse
+        {
+            InnovationId = innovationId,
+            Responses = dtos
+        });
+    }
+
+    private static string? MapTypeFilter(string? type) => type?.Trim().ToLowerInvariant() switch
+    {
+        "manufacturing" => nameof(ManufacturingResponse),
+        "sales" => nameof(SalesMarketingResponse),
+        "rd" => nameof(ResearchDevelopmentResponse),
+        "investor" => nameof(InvestorResponse),
+        null or "" => null,
+        _ => "unrecognized"
+    };
+
+    /// <summary>
+    /// Build the JSON-serializable projection for a single response, shaping the payload
+    /// by the caller's visibility tier (Spec 005 3-tier visibility).
+    /// </summary>
+    private static object BuildDto(FormalResponse r, bool fullVisibility)
+    {
+        if (!fullVisibility)
+        {
+            return new
+            {
+                responseId = r.Id,
+                responseType = r.GetType().Name,
+                actorId = r.ActorId,
+                location = r.Location.ToString(),
+                participationType = r.ParticipationType,
+                status = r.Status.ToString(),
+                submittedAt = r.SubmittedAt
+            };
+        }
+
+        return r switch
+        {
+            ManufacturingResponse m => new
+            {
+                responseId = m.Id,
+                responseType = nameof(ManufacturingResponse),
+                actorId = m.ActorId,
+                location = m.Location.ToString(),
+                participationType = m.ParticipationType,
+                participationProposal = m.ParticipationProposal,
+                status = m.Status.ToString(),
+                submittedAt = m.SubmittedAt,
+                yearlyManufacturingCosts = m.YearlyManufacturingCosts
+            },
+            SalesMarketingResponse s => new
+            {
+                responseId = s.Id,
+                responseType = nameof(SalesMarketingResponse),
+                actorId = s.ActorId,
+                location = s.Location.ToString(),
+                participationType = s.ParticipationType,
+                participationProposal = s.ParticipationProposal,
+                status = s.Status.ToString(),
+                submittedAt = s.SubmittedAt,
+                yearlySales = s.YearlySales
+            },
+            ResearchDevelopmentResponse d => new
+            {
+                responseId = d.Id,
+                responseType = nameof(ResearchDevelopmentResponse),
+                actorId = d.ActorId,
+                location = d.Location.ToString(),
+                participationType = d.ParticipationType,
+                participationProposal = d.ParticipationProposal,
+                status = d.Status.ToString(),
+                submittedAt = d.SubmittedAt,
+                productDevelopmentDuration = d.ProductDevelopmentDuration,
+                yearlyDevelopmentCosts = d.YearlyDevelopmentCosts
+            },
+            InvestorResponse inv => new
+            {
+                responseId = inv.Id,
+                responseType = nameof(InvestorResponse),
+                actorId = inv.ActorId,
+                location = inv.Location.ToString(),
+                participationType = inv.ParticipationType,
+                participationProposal = inv.ParticipationProposal,
+                status = inv.Status.ToString(),
+                submittedAt = inv.SubmittedAt,
+                feedback = inv.Feedback
+            },
+            _ => new
+            {
+                responseId = r.Id,
+                responseType = r.GetType().Name,
+                actorId = r.ActorId,
+                location = r.Location.ToString(),
+                participationType = r.ParticipationType,
+                participationProposal = r.ParticipationProposal,
+                status = r.Status.ToString(),
+                submittedAt = r.SubmittedAt
+            }
+        };
     }
 
     /// <summary>
@@ -91,87 +181,14 @@ public static class GetBids
     /// </summary>
     public class GetBidsResponse
     {
-        /// <summary>
-        /// List of bids submitted for the innovation
-        /// </summary>
-        public List<BidDetailDto> Bids { get; set; } = new();
+        /// <summary>The innovation the responses belong to</summary>
+        public Guid InnovationId { get; set; }
 
         /// <summary>
-        /// Total count of bids
+        /// Formal responses submitted for the innovation, shaped per-entry by the
+        /// caller's visibility tier and the response's discriminator type.
         /// </summary>
-        public int TotalCount { get; set; }
-    }
-
-    /// <summary>
-    /// Detailed bid information including actor details
-    /// </summary>
-    public class BidDetailDto
-    {
-        /// <summary>
-        /// Unique identifier for the bid
-        /// </summary>
-        public Guid BidId { get; set; }
-
-        /// <summary>
-        /// Actor who submitted the bid
-        /// </summary>
-        public ActorSummaryDto Actor { get; set; } = null!;
-
-        /// <summary>
-        /// Geographic location of the bidding organization
-        /// </summary>
-        public string Location { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Type of partnership being proposed
-        /// </summary>
-        public string ParticipationType { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Full partnership proposal text
-        /// </summary>
-        public string ParticipationProposal { get; set; } = string.Empty;
-
-        /// <summary>
-        /// When the bid was submitted
-        /// </summary>
-        public DateTimeOffset SubmittedAt { get; set; }
-
-        /// <summary>
-        /// Current status (Pending, Accepted, Rejected)
-        /// </summary>
-        public string Status { get; set; } = string.Empty;
-    }
-
-    /// <summary>
-    /// Summary information about the actor who submitted a bid
-    /// </summary>
-    public class ActorSummaryDto
-    {
-        /// <summary>
-        /// Unique identifier for the actor
-        /// </summary>
-        public Guid ActorId { get; set; }
-
-        /// <summary>
-        /// Actor's first name
-        /// </summary>
-        public string FirstName { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Actor's last name
-        /// </summary>
-        public string LastName { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Display name (typically "FirstName LastName")
-        /// </summary>
-        public string DisplayName { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Type of actor (Manufacturing, RD, SalesMarketing, Investor)
-        /// </summary>
-        public string ActorType { get; set; } = string.Empty;
+        public List<object> Responses { get; set; } = [];
     }
 
     /// <summary>
@@ -187,7 +204,6 @@ public static class GetBids
             .AddEndpointFilter<ActorResolutionFilter>()
             .Produces<GetBidsResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
-            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
     }
 }
