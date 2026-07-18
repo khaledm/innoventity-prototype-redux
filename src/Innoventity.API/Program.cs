@@ -176,9 +176,11 @@ app.MapUpdateInnovation(); // T006: PUT /innovations/{id} - Update draft innovat
 app.MapSubmitInnovation(); // T007: PATCH /innovations/{id}/submit - Publish innovation
 app.MapListInnovations(); // T008: GET /innovations - List published innovations
 app.MapGetIndustries(); // T009: GET /industries - Industry master list (public, no auth)
-app.MapSubmitBid(); // T010: POST /innovations/{innovationId}/bids - Submit partnership proposal
-app.MapGetBids(); // T011: GET /innovations/{innovationId}/bids - List bids for innovation (owner only)
-app.MapUpdateBid(); // T012: PUT /bids/{bidId} - Update unaccepted bid (author only)
+app.MapGetBids(); // GET /innovations/{innovationId}/bids - List formal responses for innovation (3-tier visibility)
+app.MapSubmitManufacturingResponse(); // POST /innovations/{innovationId}/bids/manufacturing
+app.MapSubmitSalesMarketingResponse(); // POST /innovations/{innovationId}/bids/sales
+app.MapSubmitResearchDevelopmentResponse(); // POST /innovations/{innovationId}/bids/rd
+app.MapSubmitInvestorResponse(); // POST /innovations/{innovationId}/bids/investor
 app.MapSelectPartners(); // T094: POST /innovations/{innovationId}/select-partners - Complete partner selection
 app.MapGet("/", () => "Hello World!");
 
