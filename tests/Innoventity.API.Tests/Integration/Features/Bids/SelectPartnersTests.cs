@@ -18,8 +18,9 @@ using Xunit;
 namespace Innoventity.API.Tests.Integration.Features.Bids;
 
 /// <summary>
-/// Integration tests for T094: POST /innovations/{innovationId}/select-partners
-/// Covers all 8 verification scenarios from specs/004-partner-selection/spec.md
+/// Integration tests for POST /innovations/{innovationId}/select-partners
+/// Covers all 8 verification scenarios from specs/004-partner-selection/spec.md, updated for
+/// Spec 005's FormalResponse hierarchy (typed seed data, SelectedResponseIds field rename).
 /// </summary>
 public class SelectPartnersTests : IDisposable
 {
@@ -35,38 +36,38 @@ public class SelectPartnersTests : IDisposable
     private readonly Guid _investorActorId = new Guid("aa000006-0000-0000-0000-000000000000");
 
     // Innovations
-    private readonly Guid _publishedId = new Guid("bb000001-0000-0000-0000-000000000000"); // all 5 bids — validation tests
-    private readonly Guid _target1Id = new Guid("bb000002-0000-0000-0000-000000000000"); // mfg+sales+rd bids — success test 3
-    private readonly Guid _target2Id = new Guid("bb000003-0000-0000-0000-000000000000"); // mfg+sales+rd bids — success test 7
-    private readonly Guid _insufficientId = new Guid("bb000004-0000-0000-0000-000000000000"); // only mfg bid — readiness fail
+    private readonly Guid _publishedId = new Guid("bb000001-0000-0000-0000-000000000000"); // all 5 responses — validation tests
+    private readonly Guid _target1Id = new Guid("bb000002-0000-0000-0000-000000000000"); // mfg+sales+rd responses — success test 3
+    private readonly Guid _target2Id = new Guid("bb000003-0000-0000-0000-000000000000"); // mfg+sales+rd responses — success test 7
+    private readonly Guid _insufficientId = new Guid("bb000004-0000-0000-0000-000000000000"); // only mfg response — readiness fail
     private readonly Guid _completedId = new Guid("bb000005-0000-0000-0000-000000000000"); // already PartnersSelected
     private readonly Guid _draftId = new Guid("bb000006-0000-0000-0000-000000000000"); // Draft status
 
-    // Bids on _publishedId (for non-mutating validation tests)
-    private readonly Guid _pMfgBidId = new Guid("cc000001-0000-0000-0000-000000000000");
-    private readonly Guid _pSalesBidId = new Guid("cc000002-0000-0000-0000-000000000000");
-    private readonly Guid _pRdBidId = new Guid("cc000003-0000-0000-0000-000000000000");
-    private readonly Guid _pMfg2BidId = new Guid("cc000004-0000-0000-0000-000000000000");
-    private readonly Guid _pInvestorBidId = new Guid("cc000005-0000-0000-0000-000000000000");
+    // Responses on _publishedId (for non-mutating validation tests)
+    private readonly Guid _pMfgResponseId = new Guid("cc000001-0000-0000-0000-000000000000");
+    private readonly Guid _pSalesResponseId = new Guid("cc000002-0000-0000-0000-000000000000");
+    private readonly Guid _pRdResponseId = new Guid("cc000003-0000-0000-0000-000000000000");
+    private readonly Guid _pMfg2ResponseId = new Guid("cc000004-0000-0000-0000-000000000000");
+    private readonly Guid _pInvestorResponseId = new Guid("cc000005-0000-0000-0000-000000000000");
 
-    // Bids on _target1Id (for success test 3)
-    private readonly Guid _t1MfgBidId = new Guid("cc000011-0000-0000-0000-000000000000");
-    private readonly Guid _t1SalesBidId = new Guid("cc000012-0000-0000-0000-000000000000");
-    private readonly Guid _t1RdBidId = new Guid("cc000013-0000-0000-0000-000000000000");
+    // Responses on _target1Id (for success test 3)
+    private readonly Guid _t1MfgResponseId = new Guid("cc000011-0000-0000-0000-000000000000");
+    private readonly Guid _t1SalesResponseId = new Guid("cc000012-0000-0000-0000-000000000000");
+    private readonly Guid _t1RdResponseId = new Guid("cc000013-0000-0000-0000-000000000000");
 
-    // Bids on _target2Id (for success test 7)
-    private readonly Guid _t2MfgBidId = new Guid("cc000021-0000-0000-0000-000000000000");
-    private readonly Guid _t2SalesBidId = new Guid("cc000022-0000-0000-0000-000000000000");
-    private readonly Guid _t2RdBidId = new Guid("cc000023-0000-0000-0000-000000000000");
+    // Responses on _target2Id (for success test 7)
+    private readonly Guid _t2MfgResponseId = new Guid("cc000021-0000-0000-0000-000000000000");
+    private readonly Guid _t2SalesResponseId = new Guid("cc000022-0000-0000-0000-000000000000");
+    private readonly Guid _t2RdResponseId = new Guid("cc000023-0000-0000-0000-000000000000");
 
-    // Bid on _insufficientId (only manufacturing)
-    private readonly Guid _insuffMfgBidId = new Guid("cc000031-0000-0000-0000-000000000000");
+    // Response on _insufficientId (only manufacturing)
+    private readonly Guid _insuffMfgResponseId = new Guid("cc000031-0000-0000-0000-000000000000");
 
-    // Bids on _completedId (accepted + rejected — for AC3 bid-state preservation)
-    private readonly Guid _cMfgBidId = new Guid("cc000041-0000-0000-0000-000000000000");
-    private readonly Guid _cSalesBidId = new Guid("cc000042-0000-0000-0000-000000000000");
-    private readonly Guid _cRdBidId = new Guid("cc000043-0000-0000-0000-000000000000");
-    private readonly Guid _cRejectedBidId = new Guid("cc000044-0000-0000-0000-000000000000");
+    // Responses on _completedId (accepted + rejected — for AC3 response-state preservation)
+    private readonly Guid _cMfgResponseId = new Guid("cc000041-0000-0000-0000-000000000000");
+    private readonly Guid _cSalesResponseId = new Guid("cc000042-0000-0000-0000-000000000000");
+    private readonly Guid _cRdResponseId = new Guid("cc000043-0000-0000-0000-000000000000");
+    private readonly Guid _cRejectedResponseId = new Guid("cc000044-0000-0000-0000-000000000000");
 
     public SelectPartnersTests()
     {
@@ -108,6 +109,50 @@ public class SelectPartnersTests : IDisposable
                 });
             });
     }
+
+    private static string MakeProposal() =>
+        "Detailed proposal covering capabilities, production capacity, quality standards, timeline commitments, " +
+        "and strategic partnership vision for this collaboration opportunity at full scale.";
+
+    private static IList<YearlyManufacturingCost> MakeManufacturingCosts() =>
+    [
+        new YearlyManufacturingCost
+        {
+            Year = 1,
+            ProductionVolume = 10000,
+            ProductionVolumeRationale = "Based on Q1 supplier capacity quotes and pilot line throughput.",
+            UnitCost = 5.50m,
+            UnitCostRationale = "Materials, labor, and overhead costed against supplier agreements.",
+            AverageGlobalDistributionExpense = 1.20m,
+            AvgDistributionExpenseRationale = "Weighted by target market logistics rates across regions."
+        }
+    ];
+
+    private static IList<YearlySale> MakeYearlySales() =>
+    [
+        new YearlySale
+        {
+            Year = 1,
+            UnitsSold = 5000,
+            UnitsSoldRationale = "Conservative estimate based on comparable product launches.",
+            UnitPrice = 49.99m,
+            UnitPriceRationale = "Market pricing analysis shows strong demand at this price point.",
+            SalesMarketingExpense = 25000.00m,
+            SalesMarketingExpenseRationale = "Channel costs plus digital marketing spend for launch quarter."
+        }
+    ];
+
+    private static IList<YearlyDevelopmentCost> MakeDevelopmentCosts() =>
+    [
+        new YearlyDevelopmentCost
+        {
+            Year = 1,
+            InfrastructureCost = 50000.00m,
+            InfrastructureCostRationale = "Cloud hosting, lab tooling, and software licenses for year one.",
+            PeopleCost = 200000.00m,
+            PeopleCostRationale = "Three engineers and one project manager allocated to this workstream."
+        }
+    ];
 
     private void SeedTestData()
     {
@@ -172,10 +217,6 @@ public class SelectPartnersTests : IDisposable
         db.Actors.AddRange(owner, mfgActor, salesActor, rdActor, mfg2Actor, investorActor);
 
         // --- Common innovation fields ---
-        string MakeProposal() =>
-            "Detailed proposal covering capabilities, production capacity, quality standards, timeline commitments, " +
-            "and strategic partnership vision for this collaboration opportunity at full scale.";
-
         Innovation MakeInnovation(Guid id, InnovationStatus status, DateTimeOffset? partnerSelectionCompletedOn = null) =>
             new Innovation(id)
             {
@@ -203,7 +244,7 @@ public class SelectPartnersTests : IDisposable
                 PartnerSelectionCompletedOn = partnerSelectionCompletedOn
             };
 
-        // _publishedId: all 5 bids (for non-mutating validation tests)
+        // _publishedId: all 5 responses (for non-mutating validation tests)
         var publishedInnovation = MakeInnovation(_publishedId, InnovationStatus.Published);
 
         // _target1Id: exactly mfg+sales+rd (for success test 3)
@@ -212,7 +253,7 @@ public class SelectPartnersTests : IDisposable
         // _target2Id: exactly mfg+sales+rd (for success test 7)
         var target2Innovation = MakeInnovation(_target2Id, InnovationStatus.Published);
 
-        // _insufficientId: only Manufacturing bid (for readiness failure test 1)
+        // _insufficientId: only Manufacturing response (for readiness failure test 1)
         var insufficientInnovation = MakeInnovation(_insufficientId, InnovationStatus.Published);
 
         // _completedId: already PartnersSelected (for immutability test 4)
@@ -228,136 +269,152 @@ public class SelectPartnersTests : IDisposable
             publishedInnovation, target1Innovation, target2Innovation,
             insufficientInnovation, completedInnovation, draftInnovation);
 
-        // --- Bids on _publishedId ---
-        db.Bids.AddRange(
-            new Bid(_pMfgBidId)
+        // --- Responses on _publishedId ---
+        db.FormalResponses.AddRange(
+            new ManufacturingResponse(_pMfgResponseId)
             {
                 InnovationId = _publishedId, ActorId = _mfgActorId,
-                Location = "Munich, Germany", ParticipationType = "Manufacturing Partner",
-                ParticipationProposal = MakeProposal(), Status = BidStatus.Pending,
-                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3)
+                Location = GeographicRegion.Europe, ParticipationType = "Manufacturing Partner",
+                ParticipationProposal = MakeProposal(), Status = ResponseStatus.Pending,
+                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3),
+                YearlyManufacturingCosts = MakeManufacturingCosts()
             },
-            new Bid(_pSalesBidId)
+            new SalesMarketingResponse(_pSalesResponseId)
             {
                 InnovationId = _publishedId, ActorId = _salesActorId,
-                Location = "London, UK", ParticipationType = "Sales Partner",
-                ParticipationProposal = MakeProposal(), Status = BidStatus.Pending,
-                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3)
+                Location = GeographicRegion.Europe, ParticipationType = "Sales Partner",
+                ParticipationProposal = MakeProposal(), Status = ResponseStatus.Pending,
+                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3),
+                YearlySales = MakeYearlySales()
             },
-            new Bid(_pRdBidId)
+            new ResearchDevelopmentResponse(_pRdResponseId)
             {
                 InnovationId = _publishedId, ActorId = _rdActorId,
-                Location = "Boston, MA, USA", ParticipationType = "R&D Partner",
-                ParticipationProposal = MakeProposal(), Status = BidStatus.Pending,
-                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3)
+                Location = GeographicRegion.Americas, ParticipationType = "R&D Partner",
+                ParticipationProposal = MakeProposal(), Status = ResponseStatus.Pending,
+                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3),
+                ProductDevelopmentDuration = 2, YearlyDevelopmentCosts = MakeDevelopmentCosts()
             },
-            new Bid(_pMfg2BidId)
+            new ManufacturingResponse(_pMfg2ResponseId)
             {
                 InnovationId = _publishedId, ActorId = _mfg2ActorId,
-                Location = "Stuttgart, Germany", ParticipationType = "Manufacturing Partner",
-                ParticipationProposal = MakeProposal(), Status = BidStatus.Pending,
-                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-2)
+                Location = GeographicRegion.Europe, ParticipationType = "Manufacturing Partner",
+                ParticipationProposal = MakeProposal(), Status = ResponseStatus.Pending,
+                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-2),
+                YearlyManufacturingCosts = MakeManufacturingCosts()
             },
-            new Bid(_pInvestorBidId)
+            new InvestorResponse(_pInvestorResponseId)
             {
                 InnovationId = _publishedId, ActorId = _investorActorId,
-                Location = "New York, USA", ParticipationType = "Investment Partner",
-                ParticipationProposal = MakeProposal(), Status = BidStatus.Pending,
-                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-2)
+                Location = GeographicRegion.Americas, ParticipationType = "Investment Partner",
+                ParticipationProposal = MakeProposal(), Status = ResponseStatus.Pending,
+                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-2),
+                Feedback = "Strong technical differentiation and a credible go-to-market plan for this innovation."
             }
         );
 
-        // --- Bids on _target1Id (success test 3) ---
-        db.Bids.AddRange(
-            new Bid(_t1MfgBidId)
+        // --- Responses on _target1Id (success test 3) ---
+        db.FormalResponses.AddRange(
+            new ManufacturingResponse(_t1MfgResponseId)
             {
                 InnovationId = _target1Id, ActorId = _mfgActorId,
-                Location = "Munich, Germany", ParticipationType = "Manufacturing Partner",
-                ParticipationProposal = MakeProposal(), Status = BidStatus.Pending,
-                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3)
+                Location = GeographicRegion.Europe, ParticipationType = "Manufacturing Partner",
+                ParticipationProposal = MakeProposal(), Status = ResponseStatus.Pending,
+                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3),
+                YearlyManufacturingCosts = MakeManufacturingCosts()
             },
-            new Bid(_t1SalesBidId)
+            new SalesMarketingResponse(_t1SalesResponseId)
             {
                 InnovationId = _target1Id, ActorId = _salesActorId,
-                Location = "London, UK", ParticipationType = "Sales Partner",
-                ParticipationProposal = MakeProposal(), Status = BidStatus.Pending,
-                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3)
+                Location = GeographicRegion.Europe, ParticipationType = "Sales Partner",
+                ParticipationProposal = MakeProposal(), Status = ResponseStatus.Pending,
+                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3),
+                YearlySales = MakeYearlySales()
             },
-            new Bid(_t1RdBidId)
+            new ResearchDevelopmentResponse(_t1RdResponseId)
             {
                 InnovationId = _target1Id, ActorId = _rdActorId,
-                Location = "Boston, MA, USA", ParticipationType = "R&D Partner",
-                ParticipationProposal = MakeProposal(), Status = BidStatus.Pending,
-                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3)
+                Location = GeographicRegion.Americas, ParticipationType = "R&D Partner",
+                ParticipationProposal = MakeProposal(), Status = ResponseStatus.Pending,
+                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3),
+                ProductDevelopmentDuration = 2, YearlyDevelopmentCosts = MakeDevelopmentCosts()
             }
         );
 
-        // --- Bids on _target2Id (success test 7) ---
-        db.Bids.AddRange(
-            new Bid(_t2MfgBidId)
+        // --- Responses on _target2Id (success test 7) ---
+        db.FormalResponses.AddRange(
+            new ManufacturingResponse(_t2MfgResponseId)
             {
                 InnovationId = _target2Id, ActorId = _mfgActorId,
-                Location = "Munich, Germany", ParticipationType = "Manufacturing Partner",
-                ParticipationProposal = MakeProposal(), Status = BidStatus.Pending,
-                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3)
+                Location = GeographicRegion.Europe, ParticipationType = "Manufacturing Partner",
+                ParticipationProposal = MakeProposal(), Status = ResponseStatus.Pending,
+                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3),
+                YearlyManufacturingCosts = MakeManufacturingCosts()
             },
-            new Bid(_t2SalesBidId)
+            new SalesMarketingResponse(_t2SalesResponseId)
             {
                 InnovationId = _target2Id, ActorId = _salesActorId,
-                Location = "London, UK", ParticipationType = "Sales Partner",
-                ParticipationProposal = MakeProposal(), Status = BidStatus.Pending,
-                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3)
+                Location = GeographicRegion.Europe, ParticipationType = "Sales Partner",
+                ParticipationProposal = MakeProposal(), Status = ResponseStatus.Pending,
+                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3),
+                YearlySales = MakeYearlySales()
             },
-            new Bid(_t2RdBidId)
+            new ResearchDevelopmentResponse(_t2RdResponseId)
             {
                 InnovationId = _target2Id, ActorId = _rdActorId,
-                Location = "Boston, MA, USA", ParticipationType = "R&D Partner",
-                ParticipationProposal = MakeProposal(), Status = BidStatus.Pending,
-                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3)
+                Location = GeographicRegion.Americas, ParticipationType = "R&D Partner",
+                ParticipationProposal = MakeProposal(), Status = ResponseStatus.Pending,
+                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3),
+                ProductDevelopmentDuration = 2, YearlyDevelopmentCosts = MakeDevelopmentCosts()
             }
         );
 
-        // --- Bid on _insufficientId (only Manufacturing) ---
-        db.Bids.Add(new Bid(_insuffMfgBidId)
+        // --- Response on _insufficientId (only Manufacturing) ---
+        db.FormalResponses.Add(new ManufacturingResponse(_insuffMfgResponseId)
         {
             InnovationId = _insufficientId, ActorId = _mfgActorId,
-            Location = "Munich, Germany", ParticipationType = "Manufacturing Partner",
-            ParticipationProposal = MakeProposal(), Status = BidStatus.Pending,
-            SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3)
+            Location = GeographicRegion.Europe, ParticipationType = "Manufacturing Partner",
+            ParticipationProposal = MakeProposal(), Status = ResponseStatus.Pending,
+            SubmittedAt = DateTimeOffset.UtcNow.AddDays(-3),
+            YearlyManufacturingCosts = MakeManufacturingCosts()
         });
 
-        // --- Bids on _completedId (accepted + rejected, for AC3 bid-state preservation) ---
-        db.Bids.AddRange(
-            new Bid(_cMfgBidId)
+        // --- Responses on _completedId (accepted + rejected, for AC3 response-state preservation) ---
+        db.FormalResponses.AddRange(
+            new ManufacturingResponse(_cMfgResponseId)
             {
                 InnovationId = _completedId, ActorId = _mfgActorId,
-                Location = "Munich, Germany", ParticipationType = "Manufacturing Partner",
-                ParticipationProposal = MakeProposal(), Status = BidStatus.Accepted,
+                Location = GeographicRegion.Europe, ParticipationType = "Manufacturing Partner",
+                ParticipationProposal = MakeProposal(), Status = ResponseStatus.Accepted,
                 SubmittedAt = DateTimeOffset.UtcNow.AddDays(-5),
-                AcceptedAt = DateTimeOffset.UtcNow.AddDays(-1)
+                AcceptedAt = DateTimeOffset.UtcNow.AddDays(-1),
+                YearlyManufacturingCosts = MakeManufacturingCosts()
             },
-            new Bid(_cSalesBidId)
+            new SalesMarketingResponse(_cSalesResponseId)
             {
                 InnovationId = _completedId, ActorId = _salesActorId,
-                Location = "London, UK", ParticipationType = "Sales Partner",
-                ParticipationProposal = MakeProposal(), Status = BidStatus.Accepted,
+                Location = GeographicRegion.Europe, ParticipationType = "Sales Partner",
+                ParticipationProposal = MakeProposal(), Status = ResponseStatus.Accepted,
                 SubmittedAt = DateTimeOffset.UtcNow.AddDays(-5),
-                AcceptedAt = DateTimeOffset.UtcNow.AddDays(-1)
+                AcceptedAt = DateTimeOffset.UtcNow.AddDays(-1),
+                YearlySales = MakeYearlySales()
             },
-            new Bid(_cRdBidId)
+            new ResearchDevelopmentResponse(_cRdResponseId)
             {
                 InnovationId = _completedId, ActorId = _rdActorId,
-                Location = "Boston, MA, USA", ParticipationType = "R&D Partner",
-                ParticipationProposal = MakeProposal(), Status = BidStatus.Accepted,
+                Location = GeographicRegion.Americas, ParticipationType = "R&D Partner",
+                ParticipationProposal = MakeProposal(), Status = ResponseStatus.Accepted,
                 SubmittedAt = DateTimeOffset.UtcNow.AddDays(-5),
-                AcceptedAt = DateTimeOffset.UtcNow.AddDays(-1)
+                AcceptedAt = DateTimeOffset.UtcNow.AddDays(-1),
+                ProductDevelopmentDuration = 2, YearlyDevelopmentCosts = MakeDevelopmentCosts()
             },
-            new Bid(_cRejectedBidId)
+            new ManufacturingResponse(_cRejectedResponseId)
             {
                 InnovationId = _completedId, ActorId = _mfg2ActorId,
-                Location = "Stuttgart, Germany", ParticipationType = "Manufacturing Partner",
-                ParticipationProposal = MakeProposal(), Status = BidStatus.Rejected,
-                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-5)
+                Location = GeographicRegion.Europe, ParticipationType = "Manufacturing Partner",
+                ParticipationProposal = MakeProposal(), Status = ResponseStatus.Rejected,
+                SubmittedAt = DateTimeOffset.UtcNow.AddDays(-5),
+                YearlyManufacturingCosts = MakeManufacturingCosts()
             }
         );
 
@@ -385,9 +442,9 @@ public class SelectPartnersTests : IDisposable
         return token;
     }
 
-    private static JsonContent MakeRequest(params Guid[] bidIds)
+    private static JsonContent MakeRequest(params Guid[] responseIds)
     {
-        var payload = new SelectPartners.SelectPartnersRequest { SelectedBidIds = bidIds };
+        var payload = new SelectPartners.SelectPartnersRequest { SelectedResponseIds = responseIds };
         return JsonContent.Create(payload, options: new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -415,7 +472,7 @@ public class SelectPartnersTests : IDisposable
 
     /// <summary>
     /// Spec Scenario 1: Insufficient readiness threshold → 409, no mutations
-    /// Innovation has only a Manufacturing bid; SalesMarketing and RD are missing.
+    /// Innovation has only a Manufacturing response; SalesMarketing and RD are missing.
     /// </summary>
     [Fact]
     public async Task SelectPartners_InsufficientReadiness_Returns409()
@@ -461,8 +518,8 @@ public class SelectPartnersTests : IDisposable
         // Arrange
         var token = await GetAccessToken("owner@select.test", "IdeaGenerator");
 
-        // Only 2 bids: Manufacturing + SalesMarketing (missing RD)
-        var content = MakeRequest(_pMfgBidId, _pSalesBidId);
+        // Only 2 responses: Manufacturing + SalesMarketing (missing RD)
+        var content = MakeRequest(_pMfgResponseId, _pSalesResponseId);
 
         // Act
         var response = await _client.PostWithAuthAsync(
@@ -472,8 +529,8 @@ public class SelectPartnersTests : IDisposable
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
 
         var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("3 bid IDs", body, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("SelectedBidIds", body, StringComparison.Ordinal);
+        Assert.Contains("3 response IDs", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("SelectedResponseIds", body, StringComparison.Ordinal);
 
         // Verify: no mutations
         using var scope = _factory.Services.CreateScope();
@@ -481,8 +538,8 @@ public class SelectPartnersTests : IDisposable
         var innovation = await db.Innovations.FindAsync(_publishedId);
         Assert.Equal(InnovationStatus.Published, innovation!.Status);
         Assert.Null(innovation.PartnerSelectionCompletedOn);
-        var bids = await db.Bids.Where(b => b.InnovationId == _publishedId).ToListAsync();
-        Assert.All(bids, b => Assert.Equal(BidStatus.Pending, b.Status));
+        var responses = await db.FormalResponses.Where(r => r.InnovationId == _publishedId).ToListAsync();
+        Assert.All(responses, r => Assert.Equal(ResponseStatus.Pending, r.Status));
     }
 
     // ==========================================
@@ -497,7 +554,7 @@ public class SelectPartnersTests : IDisposable
     {
         // Arrange
         var token = await GetAccessToken("owner@select.test", "IdeaGenerator");
-        var content = MakeRequest(_t1MfgBidId, _t1SalesBidId, _t1RdBidId);
+        var content = MakeRequest(_t1MfgResponseId, _t1SalesResponseId, _t1RdResponseId);
 
         // Act
         var response = await _client.PostWithAuthAsync(
@@ -515,10 +572,10 @@ public class SelectPartnersTests : IDisposable
         Assert.NotEqual(default, result.PartnerSelectionCompletedOn);
         Assert.Equal(3, result.AcceptedBids.Count);
 
-        var acceptedBidIds = result.AcceptedBids.Select(b => b.BidId).ToHashSet();
-        Assert.Contains(_t1MfgBidId, acceptedBidIds);
-        Assert.Contains(_t1SalesBidId, acceptedBidIds);
-        Assert.Contains(_t1RdBidId, acceptedBidIds);
+        var acceptedResponseIds = result.AcceptedBids.Select(b => b.BidId).ToHashSet();
+        Assert.Contains(_t1MfgResponseId, acceptedResponseIds);
+        Assert.Contains(_t1SalesResponseId, acceptedResponseIds);
+        Assert.Contains(_t1RdResponseId, acceptedResponseIds);
 
         var acceptedActorTypes = result.AcceptedBids.Select(b => b.ActorType).ToHashSet();
         Assert.Contains("Manufacturing", acceptedActorTypes);
@@ -535,16 +592,16 @@ public class SelectPartnersTests : IDisposable
         Assert.NotNull(innovation.PartnerSelectionCompletedOn);
         Assert.Equal(_ownerId, innovation.SelectedByActorId); // NFR-003: selector actor recorded
 
-        var mfgBid = await db.Bids.FindAsync(_t1MfgBidId);
-        var salesBid = await db.Bids.FindAsync(_t1SalesBidId);
-        var rdBid = await db.Bids.FindAsync(_t1RdBidId);
+        var mfgResponse = await db.FormalResponses.FindAsync(_t1MfgResponseId);
+        var salesResponse = await db.FormalResponses.FindAsync(_t1SalesResponseId);
+        var rdResponse = await db.FormalResponses.FindAsync(_t1RdResponseId);
 
-        Assert.Equal(BidStatus.Accepted, mfgBid!.Status);
-        Assert.NotNull(mfgBid.AcceptedAt);
-        Assert.Equal(BidStatus.Accepted, salesBid!.Status);
-        Assert.NotNull(salesBid.AcceptedAt);
-        Assert.Equal(BidStatus.Accepted, rdBid!.Status);
-        Assert.NotNull(rdBid.AcceptedAt);
+        Assert.Equal(ResponseStatus.Accepted, mfgResponse!.Status);
+        Assert.NotNull(mfgResponse.AcceptedAt);
+        Assert.Equal(ResponseStatus.Accepted, salesResponse!.Status);
+        Assert.NotNull(salesResponse.AcceptedAt);
+        Assert.Equal(ResponseStatus.Accepted, rdResponse!.Status);
+        Assert.NotNull(rdResponse.AcceptedAt);
     }
 
     // ==========================================
@@ -580,19 +637,19 @@ public class SelectPartnersTests : IDisposable
         Assert.Equal(InnovationStatus.PartnersSelected, innovation.Status);
         Assert.NotNull(innovation.PartnerSelectionCompletedOn);
 
-        // Verify: existing accepted/rejected bid outcomes are preserved (US SelectPartner-4 AC3)
-        var cMfgBid = await db.Bids.FindAsync(_cMfgBidId);
-        Assert.Equal(BidStatus.Accepted, cMfgBid!.Status);
-        Assert.NotNull(cMfgBid.AcceptedAt);
+        // Verify: existing accepted/rejected response outcomes are preserved (US SelectPartner-4 AC3)
+        var cMfgResponse = await db.FormalResponses.FindAsync(_cMfgResponseId);
+        Assert.Equal(ResponseStatus.Accepted, cMfgResponse!.Status);
+        Assert.NotNull(cMfgResponse.AcceptedAt);
 
-        var cSalesBid = await db.Bids.FindAsync(_cSalesBidId);
-        Assert.Equal(BidStatus.Accepted, cSalesBid!.Status);
+        var cSalesResponse = await db.FormalResponses.FindAsync(_cSalesResponseId);
+        Assert.Equal(ResponseStatus.Accepted, cSalesResponse!.Status);
 
-        var cRdBid = await db.Bids.FindAsync(_cRdBidId);
-        Assert.Equal(BidStatus.Accepted, cRdBid!.Status);
+        var cRdResponse = await db.FormalResponses.FindAsync(_cRdResponseId);
+        Assert.Equal(ResponseStatus.Accepted, cRdResponse!.Status);
 
-        var cRejectedBid = await db.Bids.FindAsync(_cRejectedBidId);
-        Assert.Equal(BidStatus.Rejected, cRejectedBid!.Status);
+        var cRejectedResponse = await db.FormalResponses.FindAsync(_cRejectedResponseId);
+        Assert.Equal(ResponseStatus.Rejected, cRejectedResponse!.Status);
     }
 
     // ==========================================
@@ -600,8 +657,8 @@ public class SelectPartnersTests : IDisposable
     // ==========================================
 
     /// <summary>
-    /// Spec Scenario 5: Duplicate selected bids from the same required actor type → 422, no mutations
-    /// Both _pMfgBidId and _pMfg2BidId are Manufacturing type.
+    /// Spec Scenario 5: Duplicate selected responses from the same required actor type → 422, no mutations
+    /// Both _pMfgResponseId and _pMfg2ResponseId are Manufacturing type.
     /// </summary>
     [Fact]
     public async Task SelectPartners_DuplicateActorType_Returns422()
@@ -609,8 +666,8 @@ public class SelectPartnersTests : IDisposable
         // Arrange
         var token = await GetAccessToken("owner@select.test", "IdeaGenerator");
 
-        // Two manufacturing bids + one sales (duplicate Manufacturing type)
-        var content = MakeRequest(_pMfgBidId, _pMfg2BidId, _pSalesBidId);
+        // Two manufacturing responses + one sales (duplicate Manufacturing type)
+        var content = MakeRequest(_pMfgResponseId, _pMfg2ResponseId, _pSalesResponseId);
 
         // Act
         var response = await _client.PostWithAuthAsync(
@@ -621,7 +678,7 @@ public class SelectPartnersTests : IDisposable
 
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains("duplicate actor types", body, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("SelectedBidIds", body, StringComparison.Ordinal);
+        Assert.Contains("SelectedResponseIds", body, StringComparison.Ordinal);
 
         // Verify: no mutations
         using var scope = _factory.Services.CreateScope();
@@ -637,7 +694,7 @@ public class SelectPartnersTests : IDisposable
 
     /// <summary>
     /// Spec Scenario 6: Selection payload includes unsupported actor type → 422, no mutations
-    /// _pInvestorBidId is from an Investor actor, which is not a required type in Phase 1c.
+    /// _pInvestorResponseId is from an Investor actor, which is not a required type in Phase 1c.
     /// </summary>
     [Fact]
     public async Task SelectPartners_UnsupportedActorType_Returns422()
@@ -646,7 +703,7 @@ public class SelectPartnersTests : IDisposable
         var token = await GetAccessToken("owner@select.test", "IdeaGenerator");
 
         // Manufacturing + SalesMarketing + Investor (Investor is not a required type)
-        var content = MakeRequest(_pMfgBidId, _pSalesBidId, _pInvestorBidId);
+        var content = MakeRequest(_pMfgResponseId, _pSalesResponseId, _pInvestorResponseId);
 
         // Act
         var response = await _client.PostWithAuthAsync(
@@ -657,7 +714,7 @@ public class SelectPartnersTests : IDisposable
 
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains("not required for partner selection", body, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("SelectedBidIds", body, StringComparison.Ordinal);
+        Assert.Contains("SelectedResponseIds", body, StringComparison.Ordinal);
 
         // Verify: no mutations
         using var scope = _factory.Services.CreateScope();
@@ -672,15 +729,15 @@ public class SelectPartnersTests : IDisposable
     // ==========================================
 
     /// <summary>
-    /// Spec Scenario 7: Exactly one eligible bid per required type → readiness passes and selection succeeds
-    /// _target2Id has exactly one Pending bid per type.
+    /// Spec Scenario 7: Exactly one eligible response per required type → readiness passes and selection succeeds
+    /// _target2Id has exactly one Pending response per type.
     /// </summary>
     [Fact]
     public async Task SelectPartners_ExactlyOneEligiblePerType_ReadinessPassesAndSelectionSucceeds()
     {
         // Arrange
         var token = await GetAccessToken("owner@select.test", "IdeaGenerator");
-        var content = MakeRequest(_t2MfgBidId, _t2SalesBidId, _t2RdBidId);
+        var content = MakeRequest(_t2MfgResponseId, _t2SalesResponseId, _t2RdResponseId);
 
         // Act
         var response = await _client.PostWithAuthAsync(
@@ -743,7 +800,7 @@ public class SelectPartnersTests : IDisposable
     {
         // Arrange — manufacturing actor tries to select partners (not the owner)
         var token = await GetAccessToken("mfg@select.test", "Manufacturing");
-        var content = MakeRequest(_t1MfgBidId, _t1SalesBidId, _t1RdBidId);
+        var content = MakeRequest(_t1MfgResponseId, _t1SalesResponseId, _t1RdResponseId);
 
         // Act
         var response = await _client.PostWithAuthAsync(
@@ -758,14 +815,14 @@ public class SelectPartnersTests : IDisposable
     }
 
     /// <summary>
-    /// Bid IDs that belong to a different innovation return 422 (SelectPartner-3 AC3)
+    /// Response IDs that belong to a different innovation return 422 (SelectPartner-3 AC3)
     /// </summary>
     [Fact]
-    public async Task SelectPartners_BidsFromDifferentInnovation_Returns422()
+    public async Task SelectPartners_ResponsesFromDifferentInnovation_Returns422()
     {
-        // Arrange — use _target1 bids but send request to _target2 innovation
+        // Arrange — use _target1 responses but send request to _target2 innovation
         var token = await GetAccessToken("owner@select.test", "IdeaGenerator");
-        var content = MakeRequest(_t1MfgBidId, _t1SalesBidId, _t1RdBidId);
+        var content = MakeRequest(_t1MfgResponseId, _t1SalesResponseId, _t1RdResponseId);
 
         // Act
         var response = await _client.PostWithAuthAsync(
@@ -776,21 +833,21 @@ public class SelectPartnersTests : IDisposable
 
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains("do not belong to this innovation", body, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("SelectedBidIds", body, StringComparison.Ordinal);
+        Assert.Contains("SelectedResponseIds", body, StringComparison.Ordinal);
     }
 
     /// <summary>
-    /// Duplicate bid IDs in payload → 422 (Step 9 guard)
+    /// Duplicate response IDs in payload → 422 (Step 9 guard)
     /// Sending [mfg, mfg, sales] — same ID twice — is structurally invalid.
     /// </summary>
     [Fact]
-    public async Task SelectPartners_DuplicateBidIds_Returns422()
+    public async Task SelectPartners_DuplicateResponseIds_Returns422()
     {
         // Arrange
         var token = await GetAccessToken("owner@select.test", "IdeaGenerator");
 
-        // Same _pMfgBidId appears twice
-        var content = MakeRequest(_pMfgBidId, _pMfgBidId, _pSalesBidId);
+        // Same _pMfgResponseId appears twice
+        var content = MakeRequest(_pMfgResponseId, _pMfgResponseId, _pSalesResponseId);
 
         // Act
         var response = await _client.PostWithAuthAsync(
@@ -800,8 +857,8 @@ public class SelectPartnersTests : IDisposable
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
 
         var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("Duplicate bid IDs", body, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("SelectedBidIds", body, StringComparison.Ordinal);
+        Assert.Contains("Duplicate response IDs", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("SelectedResponseIds", body, StringComparison.Ordinal);
 
         // Verify: no mutations
         using var scope = _factory.Services.CreateScope();
@@ -809,8 +866,8 @@ public class SelectPartnersTests : IDisposable
         var innovation = await db.Innovations.FindAsync(_publishedId);
         Assert.Equal(InnovationStatus.Published, innovation!.Status);
         Assert.Null(innovation.PartnerSelectionCompletedOn);
-        var bids = await db.Bids.Where(b => b.InnovationId == _publishedId).ToListAsync();
-        Assert.All(bids, b => Assert.Equal(BidStatus.Pending, b.Status));
+        var responses = await db.FormalResponses.Where(r => r.InnovationId == _publishedId).ToListAsync();
+        Assert.All(responses, r => Assert.Equal(ResponseStatus.Pending, r.Status));
     }
 
     /// <summary>
@@ -820,7 +877,7 @@ public class SelectPartnersTests : IDisposable
     public async Task SelectPartners_Unauthenticated_Returns401()
     {
         // Arrange — no Authorization header attached
-        var content = MakeRequest(_t1MfgBidId, _t1SalesBidId, _t1RdBidId);
+        var content = MakeRequest(_t1MfgResponseId, _t1SalesResponseId, _t1RdResponseId);
 
         // Act
         var response = await _client.PostAsync(
@@ -839,7 +896,7 @@ public class SelectPartnersTests : IDisposable
         // Arrange — authenticated owner, but innovation does not exist in the database
         var token = await GetAccessToken("owner@select.test", "IdeaGenerator");
         var nonExistentId = new Guid("ee000001-0000-0000-0000-000000000000");
-        var content = MakeRequest(_t1MfgBidId, _t1SalesBidId, _t1RdBidId);
+        var content = MakeRequest(_t1MfgResponseId, _t1SalesResponseId, _t1RdResponseId);
 
         // Act
         var response = await _client.PostWithAuthAsync(
@@ -854,15 +911,15 @@ public class SelectPartnersTests : IDisposable
     }
 
     /// <summary>
-    /// JWT with a valid signature but a non-Guid 'sub' claim returns 401 Problem Details (Step 1–2 guard).
-    /// Covers the Guid.TryParse failure branch inside the handler.
+    /// JWT with a valid signature but a non-Guid 'sub' claim returns 401 Problem Details.
+    /// Claim parsing fails in ActorResolutionFilter before the handler is reached.
     /// </summary>
     [Fact]
     public async Task SelectPartners_InvalidSubClaim_Returns401ProblemDetails()
     {
         // Arrange — token is cryptographically valid but sub is not a Guid
         var token = CreateRawJwtToken("not-a-guid");
-        var content = MakeRequest(_t1MfgBidId, _t1SalesBidId, _t1RdBidId);
+        var content = MakeRequest(_t1MfgResponseId, _t1SalesResponseId, _t1RdResponseId);
 
         // Act
         var response = await _client.PostWithAuthAsync(
@@ -873,19 +930,19 @@ public class SelectPartnersTests : IDisposable
 
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains("Unauthorized", body, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("authenticated identity", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("resolved", body, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
-    /// JWT with a valid Guid 'sub' that does not match any Actor row returns 401 Problem Details (Step 2 guard).
-    /// Covers the db.Actors.FindAsync == null branch inside the handler.
+    /// JWT with a valid Guid 'sub' that does not match any Actor row returns 401 Problem Details.
+    /// DB lookup returns null in ActorResolutionFilter before the handler is reached.
     /// </summary>
     [Fact]
     public async Task SelectPartners_UnknownActor_Returns401ProblemDetails()
     {
         // Arrange — token sub is a well-formed Guid but no Actor with that ID exists in the DB
         var token = CreateRawJwtToken(new Guid("ff000001-0000-0000-0000-000000000000").ToString());
-        var content = MakeRequest(_t1MfgBidId, _t1SalesBidId, _t1RdBidId);
+        var content = MakeRequest(_t1MfgResponseId, _t1SalesResponseId, _t1RdResponseId);
 
         // Act
         var response = await _client.PostWithAuthAsync(
@@ -896,19 +953,19 @@ public class SelectPartnersTests : IDisposable
 
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains("Unauthorized", body, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("known actor", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("resolved", body, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
-    /// Successful selection on an innovation with extra Pending bids proves those bids
+    /// Successful selection on an innovation with extra Pending responses proves those responses
     /// are Rejected after commit — exercises the else-if(Pending) branch in the mutation loop.
     /// </summary>
     [Fact]
-    public async Task SelectPartners_NonSelectedPendingBidsAreRejected()
+    public async Task SelectPartners_NonSelectedPendingResponsesAreRejected()
     {
-        // Arrange — _publishedId has 5 Pending bids; we select only the 3 required types
+        // Arrange — _publishedId has 5 Pending responses; we select only the 3 required types
         var token = await GetAccessToken("owner@select.test", "IdeaGenerator");
-        var content = MakeRequest(_pMfgBidId, _pSalesBidId, _pRdBidId);
+        var content = MakeRequest(_pMfgResponseId, _pSalesResponseId, _pRdResponseId);
 
         // Act
         var response = await _client.PostWithAuthAsync(
@@ -917,26 +974,26 @@ public class SelectPartnersTests : IDisposable
         // Assert — selection succeeds
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        // Assert — non-selected Pending bids (_pMfg2BidId, _pInvestorBidId) are Rejected
+        // Assert — non-selected Pending responses (_pMfg2ResponseId, _pInvestorResponseId) are Rejected
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var mfg2Bid = await db.Bids.FindAsync(_pMfg2BidId);
-        Assert.Equal(BidStatus.Rejected, mfg2Bid!.Status);
+        var mfg2Response = await db.FormalResponses.FindAsync(_pMfg2ResponseId);
+        Assert.Equal(ResponseStatus.Rejected, mfg2Response!.Status);
 
-        var investorBid = await db.Bids.FindAsync(_pInvestorBidId);
-        Assert.Equal(BidStatus.Rejected, investorBid!.Status);
+        var investorResponse = await db.FormalResponses.FindAsync(_pInvestorResponseId);
+        Assert.Equal(ResponseStatus.Rejected, investorResponse!.Status);
 
-        // Assert — selected bids are Accepted
-        var mfgBid = await db.Bids.FindAsync(_pMfgBidId);
-        Assert.Equal(BidStatus.Accepted, mfgBid!.Status);
-        Assert.NotNull(mfgBid.AcceptedAt);
+        // Assert — selected responses are Accepted
+        var mfgResponse = await db.FormalResponses.FindAsync(_pMfgResponseId);
+        Assert.Equal(ResponseStatus.Accepted, mfgResponse!.Status);
+        Assert.NotNull(mfgResponse.AcceptedAt);
 
-        var salesBid = await db.Bids.FindAsync(_pSalesBidId);
-        Assert.Equal(BidStatus.Accepted, salesBid!.Status);
+        var salesResponse = await db.FormalResponses.FindAsync(_pSalesResponseId);
+        Assert.Equal(ResponseStatus.Accepted, salesResponse!.Status);
 
-        var rdBid = await db.Bids.FindAsync(_pRdBidId);
-        Assert.Equal(BidStatus.Accepted, rdBid!.Status);
+        var rdResponse = await db.FormalResponses.FindAsync(_pRdResponseId);
+        Assert.Equal(ResponseStatus.Accepted, rdResponse!.Status);
 
         // Assert — innovation transitioned
         var innovation = await db.Innovations.FindAsync(_publishedId);

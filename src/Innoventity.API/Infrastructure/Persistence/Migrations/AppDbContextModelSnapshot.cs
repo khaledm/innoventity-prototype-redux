@@ -109,7 +109,7 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                     b.ToTable("Actors");
                 });
 
-            modelBuilder.Entity("Innoventity.API.Domain.Entities.Bid", b =>
+            modelBuilder.Entity("Innoventity.API.Domain.Entities.FormalResponse", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -126,8 +126,8 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Location")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("ParticipationProposal")
                         .IsRequired()
@@ -138,6 +138,11 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ResponseType")
+                        .IsRequired()
+                        .HasMaxLength(34)
+                        .HasColumnType("nvarchar(34)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -155,9 +160,13 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ActorId", "InnovationId")
                         .IsUnique()
-                        .HasDatabaseName("IX_Bid_ActorId_InnovationId");
+                        .HasDatabaseName("IX_FormalResponse_ActorId_InnovationId");
 
-                    b.ToTable("Bids");
+                    b.ToTable("FormalResponses");
+
+                    b.HasDiscriminator<string>("ResponseType").HasValue("FormalResponse");
+
+                    b.UseTphMappingStrategy();
                 });
 
             modelBuilder.Entity("Innoventity.API.Domain.Entities.Industry", b =>
@@ -356,6 +365,42 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                     b.ToTable("Innovations");
                 });
 
+            modelBuilder.Entity("Innoventity.API.Domain.Entities.InvestorResponse", b =>
+                {
+                    b.HasBaseType("Innoventity.API.Domain.Entities.FormalResponse");
+
+                    b.Property<string>("Feedback")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.HasDiscriminator().HasValue("InvestorResponse");
+                });
+
+            modelBuilder.Entity("Innoventity.API.Domain.Entities.ManufacturingResponse", b =>
+                {
+                    b.HasBaseType("Innoventity.API.Domain.Entities.FormalResponse");
+
+                    b.HasDiscriminator().HasValue("ManufacturingResponse");
+                });
+
+            modelBuilder.Entity("Innoventity.API.Domain.Entities.ResearchDevelopmentResponse", b =>
+                {
+                    b.HasBaseType("Innoventity.API.Domain.Entities.FormalResponse");
+
+                    b.Property<int>("ProductDevelopmentDuration")
+                        .HasColumnType("int");
+
+                    b.HasDiscriminator().HasValue("ResearchDevelopmentResponse");
+                });
+
+            modelBuilder.Entity("Innoventity.API.Domain.Entities.SalesMarketingResponse", b =>
+                {
+                    b.HasBaseType("Innoventity.API.Domain.Entities.FormalResponse");
+
+                    b.HasDiscriminator().HasValue("SalesMarketingResponse");
+                });
+
             modelBuilder.Entity("InnovationIndustry", b =>
                 {
                     b.HasOne("Innoventity.API.Domain.Entities.Industry", null)
@@ -419,7 +464,7 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                     b.Navigation("ContactAddress");
                 });
 
-            modelBuilder.Entity("Innoventity.API.Domain.Entities.Bid", b =>
+            modelBuilder.Entity("Innoventity.API.Domain.Entities.FormalResponse", b =>
                 {
                     b.HasOne("Innoventity.API.Domain.Entities.Actor", "Actor")
                         .WithMany()
@@ -428,7 +473,7 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.HasOne("Innoventity.API.Domain.Entities.Innovation", "Innovation")
-                        .WithMany("Bids")
+                        .WithMany("FormalResponses")
                         .HasForeignKey("InnovationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -449,9 +494,146 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                     b.Navigation("Owner");
                 });
 
+            modelBuilder.Entity("Innoventity.API.Domain.Entities.ManufacturingResponse", b =>
+                {
+                    b.OwnsMany("Innoventity.API.Domain.Entities.YearlyManufacturingCost", "YearlyManufacturingCosts", b1 =>
+                        {
+                            b1.Property<Guid>("ManufacturingResponseId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("int");
+
+                            b1.Property<decimal>("AverageGlobalDistributionExpense")
+                                .HasColumnType("decimal(18,2)");
+
+                            b1.Property<string>("AvgDistributionExpenseRationale")
+                                .IsRequired()
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<int>("ProductionVolume")
+                                .HasColumnType("int");
+
+                            b1.Property<string>("ProductionVolumeRationale")
+                                .IsRequired()
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<decimal>("UnitCost")
+                                .HasColumnType("decimal(18,2)");
+
+                            b1.Property<string>("UnitCostRationale")
+                                .IsRequired()
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<int>("Year")
+                                .HasColumnType("int");
+
+                            b1.HasKey("ManufacturingResponseId", "Id");
+
+                            b1.ToTable("FormalResponses");
+
+                            b1.ToJson("YearlyManufacturingCosts");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ManufacturingResponseId");
+                        });
+
+                    b.Navigation("YearlyManufacturingCosts");
+                });
+
+            modelBuilder.Entity("Innoventity.API.Domain.Entities.ResearchDevelopmentResponse", b =>
+                {
+                    b.OwnsMany("Innoventity.API.Domain.Entities.YearlyDevelopmentCost", "YearlyDevelopmentCosts", b1 =>
+                        {
+                            b1.Property<Guid>("ResearchDevelopmentResponseId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("int");
+
+                            b1.Property<decimal>("InfrastructureCost")
+                                .HasColumnType("decimal(18,2)");
+
+                            b1.Property<string>("InfrastructureCostRationale")
+                                .IsRequired()
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<decimal>("PeopleCost")
+                                .HasColumnType("decimal(18,2)");
+
+                            b1.Property<string>("PeopleCostRationale")
+                                .IsRequired()
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<int>("Year")
+                                .HasColumnType("int");
+
+                            b1.HasKey("ResearchDevelopmentResponseId", "Id");
+
+                            b1.ToTable("FormalResponses");
+
+                            b1.ToJson("YearlyDevelopmentCosts");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ResearchDevelopmentResponseId");
+                        });
+
+                    b.Navigation("YearlyDevelopmentCosts");
+                });
+
+            modelBuilder.Entity("Innoventity.API.Domain.Entities.SalesMarketingResponse", b =>
+                {
+                    b.OwnsMany("Innoventity.API.Domain.Entities.YearlySale", "YearlySales", b1 =>
+                        {
+                            b1.Property<Guid>("SalesMarketingResponseId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("int");
+
+                            b1.Property<decimal>("SalesMarketingExpense")
+                                .HasColumnType("decimal(18,2)");
+
+                            b1.Property<string>("SalesMarketingExpenseRationale")
+                                .IsRequired()
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<decimal>("UnitPrice")
+                                .HasColumnType("decimal(18,2)");
+
+                            b1.Property<string>("UnitPriceRationale")
+                                .IsRequired()
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<int>("UnitsSold")
+                                .HasColumnType("int");
+
+                            b1.Property<string>("UnitsSoldRationale")
+                                .IsRequired()
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<int>("Year")
+                                .HasColumnType("int");
+
+                            b1.HasKey("SalesMarketingResponseId", "Id");
+
+                            b1.ToTable("FormalResponses");
+
+                            b1.ToJson("YearlySales");
+
+                            b1.WithOwner()
+                                .HasForeignKey("SalesMarketingResponseId");
+                        });
+
+                    b.Navigation("YearlySales");
+                });
+
             modelBuilder.Entity("Innoventity.API.Domain.Entities.Innovation", b =>
                 {
-                    b.Navigation("Bids");
+                    b.Navigation("FormalResponses");
                 });
 #pragma warning restore 612, 618
         }

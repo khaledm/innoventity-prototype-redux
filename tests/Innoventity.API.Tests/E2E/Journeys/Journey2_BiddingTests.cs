@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text;
 using System.Text.Json;
 using Innoventity.API.Domain.Entities;
 using Innoventity.API.Infrastructure.Persistence;
@@ -13,8 +12,9 @@ using Xunit;
 namespace Innoventity.API.Tests.E2E.Journeys;
 
 /// <summary>
-/// Journey 2: Innovation Discovery & Bid Submission
-/// Tests the complete flow of discovering published innovations and submitting partnership proposals
+/// Journey 2: Innovation Discovery &amp; Formal Response Submission (Spec 005)
+/// Tests the complete flow of discovering published innovations and submitting typed
+/// partnership proposals (FormalResponse hierarchy) via the type-specific endpoints.
 /// </summary>
 public class Journey2_BiddingTests : IDisposable
 {
@@ -215,59 +215,104 @@ public class Journey2_BiddingTests : IDisposable
     }
 
     /// <summary>
-    /// Helper: Submit bid on an innovation
+    /// Helper: Submit a Manufacturing formal response on an innovation
     /// </summary>
-    private async Task<BidSubmissionResult> SubmitBid(Guid innovationId, string token, object request)
+    private async Task<ResponseSubmissionResult> SubmitManufacturingResponse(Guid innovationId, string token, object request)
     {
-        var response = await _client.PostWithAuthAsync($"/innovations/{innovationId}/bids",
+        var response = await _client.PostWithAuthAsync($"/innovations/{innovationId}/bids/manufacturing",
             JsonContent.Create(request), token);
+        return await ReadSubmissionResult(response);
+    }
 
+    /// <summary>
+    /// Helper: Submit a Research &amp; Development formal response on an innovation
+    /// </summary>
+    private async Task<ResponseSubmissionResult> SubmitResearchDevelopmentResponse(Guid innovationId, string token, object request)
+    {
+        var response = await _client.PostWithAuthAsync($"/innovations/{innovationId}/bids/rd",
+            JsonContent.Create(request), token);
+        return await ReadSubmissionResult(response);
+    }
+
+    private static async Task<ResponseSubmissionResult> ReadSubmissionResult(HttpResponseMessage response)
+    {
         if (response.IsSuccessStatusCode)
         {
             var data = await response.Content.ReadFromJsonAsync<JsonElement>();
-            return new BidSubmissionResult
+            return new ResponseSubmissionResult
             {
                 StatusCode = response.StatusCode,
-                BidId = Guid.Parse(data.GetProperty("bidId").GetString() ?? throw new InvalidOperationException()),
+                ResponseId = Guid.Parse(data.GetProperty("responseId").GetString() ?? throw new InvalidOperationException()),
+                ResponseType = data.GetProperty("responseType").GetString() ?? string.Empty,
                 Status = data.GetProperty("status").GetString() ?? string.Empty
             };
         }
 
-        return new BidSubmissionResult
+        return new ResponseSubmissionResult
         {
             StatusCode = response.StatusCode,
-            BidId = Guid.Empty,
+            ResponseId = Guid.Empty,
+            ResponseType = string.Empty,
             Status = "Failed"
         };
     }
 
     /// <summary>
-    /// Helper: Get bids for an innovation (owner only)
+    /// Helper: Get formal responses for an innovation (3-tier visibility per caller)
     /// </summary>
     private async Task<HttpResponseMessage> GetBidsForInnovation(Guid innovationId, string token)
     {
         return await _client.GetWithAuthAsync($"/innovations/{innovationId}/bids", token);
     }
 
-    /// <summary>
-    /// Helper: Update an existing bid
-    /// </summary>
-    private async Task<HttpStatusCode> UpdateBid(Guid bidId, string token, object request)
+    private static object MakeManufacturingRequest(string location = "Europe") => new
     {
-        var response = await _client.PutWithAuthAsync($"/bids/{bidId}",
-            JsonContent.Create(request), token);
-        return response.StatusCode;
-    }
+        location,
+        participationType = "Manufacturing Partner",
+        participationProposal = "We are a leading manufacturing company with 20+ years of experience in clean energy production. Our state-of-the-art facilities and global distribution network position us perfectly to scale this innovation to market. We can offer advanced prototyping, quality assurance, and mass production capabilities with competitive pricing.",
+        yearlyManufacturingCosts = new[]
+        {
+            new
+            {
+                year = 1,
+                productionVolume = 10000,
+                productionVolumeRationale = "Based on Q1 supplier capacity quotes and pilot line throughput estimates.",
+                unitCost = 5.50,
+                unitCostRationale = "Materials, labor, and overhead costed against current supplier agreements.",
+                averageGlobalDistributionExpense = 1.20,
+                avgDistributionExpenseRationale = "Weighted by target market logistics rates across regions."
+            }
+        }
+    };
+
+    private static object MakeResearchDevelopmentRequest() => new
+    {
+        location = "Europe",
+        participationType = "R&D Partner",
+        participationProposal = "We are an established R&D organization with extensive experience in technology development and commercialization. Our team of experts can provide valuable insights and accelerate the innovation's path to market with proven methodologies.",
+        productDevelopmentDuration = 2,
+        yearlyDevelopmentCosts = new[]
+        {
+            new
+            {
+                year = 1,
+                infrastructureCost = 50000.00,
+                infrastructureCostRationale = "Cloud hosting, lab tooling, and software licenses for year one.",
+                peopleCost = 200000.00,
+                peopleCostRationale = "Three engineers and one project manager allocated to this workstream."
+            }
+        }
+    };
 
     #endregion
 
     #region Journey 2 Tests
 
     /// <summary>
-    /// PRIMARY JOURNEY: Manufacturing actor discovers and bids on published innovation
+    /// PRIMARY JOURNEY: Manufacturing actor discovers and submits a typed response
     /// </summary>
     [Fact]
-    public async Task Journey2_ManufacturingActorSubmitsBid_BidRecorded()
+    public async Task Journey2_ManufacturingActorSubmitsResponse_ResponseRecorded()
     {
         // Step 1: Seed published innovation (owned by Idea Generator)
         var ideaGenerator = await RegisterActor("IdeaGenerator", $"owner-{Guid.NewGuid()}@test.com");
@@ -327,41 +372,37 @@ public class Journey2_BiddingTests : IDisposable
         var detailsResponse = await GetInnovation(innovationId, manufacturingToken);
         Assert.Equal(HttpStatusCode.OK, detailsResponse.StatusCode);
 
-        // Step 6: Submit bid
-        var bidRequest = new
-        {
-            location = "Munich, Germany",
-            participationType = "Manufacturing Partner",
-            participationProposal = "We are a leading manufacturing company with 20+ years of experience in clean energy production. Our state-of-the-art facilities and global distribution network position us perfectly to scale this innovation to market. We can offer advanced prototyping, quality assurance, and mass production capabilities with competitive pricing."
-        };
+        // Step 6: Submit typed Manufacturing response
+        var submitResponseResult = await SubmitManufacturingResponse(innovationId, manufacturingToken, MakeManufacturingRequest());
+        Assert.Equal(HttpStatusCode.Created, submitResponseResult.StatusCode);
+        Assert.NotEqual(Guid.Empty, submitResponseResult.ResponseId);
+        Assert.Equal("ManufacturingResponse", submitResponseResult.ResponseType);
+        Assert.Equal("Pending", submitResponseResult.Status);
 
-        var bidSubmitResult = await SubmitBid(innovationId, manufacturingToken, bidRequest);
-        Assert.Equal(HttpStatusCode.Created, bidSubmitResult.StatusCode);
-        Assert.NotEqual(Guid.Empty, bidSubmitResult.BidId);
-        Assert.Equal("Pending", bidSubmitResult.Status);
-
-        // Step 7: Verify bid in database (Pending status)
+        // Step 7: Verify response in database (Pending status)
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var bidInDb = await db.Bids.FirstOrDefaultAsync(b => b.Id == bidSubmitResult.BidId);
-        Assert.NotNull(bidInDb);
-        Assert.Equal(BidStatus.Pending, bidInDb.Status);
-        Assert.Equal(innovationId, bidInDb.InnovationId);
+        var responseInDb = await db.FormalResponses.FirstOrDefaultAsync(r => r.Id == submitResponseResult.ResponseId);
+        Assert.NotNull(responseInDb);
+        Assert.Equal(ResponseStatus.Pending, responseInDb.Status);
+        Assert.Equal(innovationId, responseInDb.InnovationId);
+        Assert.IsType<ManufacturingResponse>(responseInDb);
 
-        // Step 8: Verify owner sees bid (GET /innovations/{innovationId}/bids)
+        // Step 8: Verify owner sees the response (GET /innovations/{innovationId}/bids)
         var ownerBidsResponse = await GetBidsForInnovation(innovationId, ownerToken);
         Assert.Equal(HttpStatusCode.OK, ownerBidsResponse.StatusCode);
-        var bidsData = await ownerBidsResponse.Content.ReadFromJsonAsync<BidsListResponse>();
+        var bidsData = await ownerBidsResponse.Content.ReadFromJsonAsync<BidsListResponse>(
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         Assert.NotNull(bidsData);
-        Assert.Single(bidsData.Bids);
-        Assert.Equal(bidSubmitResult.BidId, bidsData.Bids[0].BidId);
+        Assert.Single(bidsData.Responses);
+        Assert.Equal(submitResponseResult.ResponseId, bidsData.Responses[0].ResponseId);
     }
 
     /// <summary>
-    /// ERROR PATH: Idea Generator attempts to bid (should return 403 Forbidden)
+    /// ERROR PATH: Idea Generator attempts to submit a response (should return 403 Forbidden)
     /// </summary>
     [Fact]
-    public async Task Journey2_IdeaGeneratorCannotBid_Returns403()
+    public async Task Journey2_IdeaGeneratorCannotSubmitResponse_Returns403()
     {
         // Create published innovation (owned by Idea Generator)
         var owner = await RegisterActor("IdeaGenerator", $"owner-{Guid.NewGuid()}@test.com");
@@ -371,7 +412,7 @@ public class Journey2_BiddingTests : IDisposable
 
         var createRequest = new
         {
-            title = "Innovation for Bidding Test",
+            title = "Innovation for Response Submission Test",
             productType = "Test Product",
             researchCategory = "Engineering",
             researchBackground = "This is a detailed research background with sufficient length to meet all validation requirements for successful submission to published status. We have conducted extensive research and prototyping.",
@@ -391,7 +432,7 @@ public class Journey2_BiddingTests : IDisposable
             relevantMarketSize = 1000000,
             potentialMarketSize = 5000000,
             targetIndustryIds = new[] { "TECH-001" },
-            partnersNeeded = new[] { "RD" }
+            partnersNeeded = new[] { "Manufacturing" }
         };
 
         var createResult = await CreateInnovation(ownerToken, createRequest);
@@ -400,28 +441,21 @@ public class Journey2_BiddingTests : IDisposable
         var submitResult = await SubmitInnovation(innovationId, ownerToken);
         Assert.Equal(HttpStatusCode.OK, submitResult.StatusCode);
 
-        // Register Idea Generator and attempt bid
+        // Register Idea Generator and attempt to submit a Manufacturing response
         var ideaGenerator = await RegisterActor("IdeaGenerator", $"ideagen-{Guid.NewGuid()}@test.com");
         await ActivateAccount(ideaGenerator.Email, ideaGenerator.ActivationToken);
         var ideaGenLogin = await Login(ideaGenerator.Email, "IdeaGenerator");
         var ideaGenToken = ideaGenLogin.AccessToken;
 
-        var bidRequest = new
-        {
-            location = "Berlin, Germany",
-            participationType = "Partnership",
-            participationProposal = "This is a detailed partnership proposal with more than 200 characters to meet the minimum length requirement for bid submissions. We are interested in collaborating on this project and bringing our expertise to the partnership."
-        };
-
-        var bidResult = await SubmitBid(innovationId, ideaGenToken, bidRequest);
-        Assert.Equal(HttpStatusCode.Forbidden, bidResult.StatusCode);
+        var result = await SubmitManufacturingResponse(innovationId, ideaGenToken, MakeManufacturingRequest());
+        Assert.Equal(HttpStatusCode.Forbidden, result.StatusCode);
     }
 
     /// <summary>
-    /// ERROR PATH: Actor submits duplicate bid (should return 409 Conflict)
+    /// ERROR PATH: Actor submits a duplicate response (should return 409 Conflict)
     /// </summary>
     [Fact]
-    public async Task Journey2_DuplicateBid_Returns409()
+    public async Task Journey2_DuplicateResponse_Returns409()
     {
         // Create published innovation
         var owner = await RegisterActor("IdeaGenerator", $"owner-{Guid.NewGuid()}@test.com");
@@ -431,7 +465,7 @@ public class Journey2_BiddingTests : IDisposable
 
         var createRequest = new
         {
-            title = "Innovation for Duplicate Bid Test",
+            title = "Innovation for Duplicate Response Test",
             productType = "Test Product",
             researchCategory = "Engineering",
             researchBackground = "This is a detailed research background with sufficient length to meet all validation requirements for successful submission to published status. We have conducted extensive research and prototyping.",
@@ -460,25 +494,18 @@ public class Journey2_BiddingTests : IDisposable
         var submitResult = await SubmitInnovation(innovationId, ownerToken);
         Assert.Equal(HttpStatusCode.OK, submitResult.StatusCode);
 
-        // Register RD actor and submit first bid
+        // Register RD actor and submit first response
         var rdActor = await RegisterActor("RD", $"rd-{Guid.NewGuid()}@test.com");
         await ActivateAccount(rdActor.Email, rdActor.ActivationToken);
         var rdLogin = await Login(rdActor.Email, "RD");
         var rdToken = rdLogin.AccessToken;
 
-        var bidRequest = new
-        {
-            location = "London, UK",
-            participationType = "R&D Collaboration",
-            participationProposal = "We are an established R&D organization with extensive experience in technology development and commercialization. Our team of experts can provide valuable insights and accelerate the innovation's path to market with proven methodologies."
-        };
+        var firstResult = await SubmitResearchDevelopmentResponse(innovationId, rdToken, MakeResearchDevelopmentRequest());
+        Assert.Equal(HttpStatusCode.Created, firstResult.StatusCode);
 
-        var firstBidResult = await SubmitBid(innovationId, rdToken, bidRequest);
-        Assert.Equal(HttpStatusCode.Created, firstBidResult.StatusCode);
-
-        // Attempt second bid (duplicate)
-        var secondBidResult = await SubmitBid(innovationId, rdToken, bidRequest);
-        Assert.Equal(HttpStatusCode.Conflict, secondBidResult.StatusCode);
+        // Attempt second response (duplicate)
+        var secondResult = await SubmitResearchDevelopmentResponse(innovationId, rdToken, MakeResearchDevelopmentRequest());
+        Assert.Equal(HttpStatusCode.Conflict, secondResult.StatusCode);
     }
 
     #endregion
@@ -510,10 +537,11 @@ public class Journey2_BiddingTests : IDisposable
         public string Status { get; init; } = string.Empty;
     }
 
-    private record BidSubmissionResult
+    private record ResponseSubmissionResult
     {
         public HttpStatusCode StatusCode { get; init; }
-        public Guid BidId { get; init; }
+        public Guid ResponseId { get; init; }
+        public string ResponseType { get; init; } = string.Empty;
         public string Status { get; init; } = string.Empty;
     }
 
@@ -531,13 +559,13 @@ public class Journey2_BiddingTests : IDisposable
 
     private record BidsListResponse
     {
-        public List<BidDetail> Bids { get; init; } = new();
-        public int TotalCount { get; init; }
+        public Guid InnovationId { get; init; }
+        public List<BidDetail> Responses { get; init; } = new();
     }
 
     private record BidDetail
     {
-        public Guid BidId { get; init; }
+        public Guid ResponseId { get; init; }
         public string Location { get; init; } = string.Empty;
         public string ParticipationType { get; init; } = string.Empty;
         public string Status { get; init; } = string.Empty;

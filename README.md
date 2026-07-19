@@ -5,6 +5,7 @@ A .NET 8 Minimal API + Angular 19 SPA for the Innoventity platform — a B2B inn
 **Phase 0 MVP Status**: ✅ **MERGED TO MAIN** (2026-04-12) — Merge commit: 5b200d5
 
 **Scope Semantics**:
+
 - **Merged Baseline**: Phase 0 deliverables shipped on merge commit 5b200d5.
 - **Deferred Backlog**: Remaining unchecked items in `specs/001-platform-core/tasks.md` are planned post-merge work.
 - **Active Scope**: Starts only when a dedicated feature branch/spec is explicitly opened.
@@ -210,12 +211,3 @@ Validated by: [Journey2_BiddingTests.cs](tests/Innoventity.API.Tests/E2E/Journey
 - **Minimal APIs**: All endpoints use `app.MapPost(...)` / `app.MapGet(...)` etc. No controllers.
 - **EF Core + In-Memory for Tests**: Production uses SQL Server; tests use `UseInMemoryDatabase` with unique names per test class.
 - **JWT Bearer Auth**: Tokens issued on login, validated on protected endpoints. Swagger UI includes JWT Bearer input.
-
----
-
-## Deferred to Phase 1
-
-- Rich Innovation domain composition (IdeaSummary, Product, Market owned entities)
-- Polymorphic Bid response types (ManufacturingResponse, InvestorResponse, etc.)
-- Partner selection workflow (SelectPartners state machine)
-- NPV financial modeling domain service
