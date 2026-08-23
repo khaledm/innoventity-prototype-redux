@@ -44,7 +44,7 @@ public static class ListInnovations
             {
                 if (Enum.TryParse<ResearchCategory>(researchCategory, ignoreCase: true, out var category))
                 {
-                    query = query.Where(i => i.ResearchCategory == category);
+                    query = query.Where(i => i.IdeaSummary.ResearchCategory == category);
                 }
             }
 
@@ -64,9 +64,12 @@ public static class ListInnovations
             var items = innovations.Select(i => new
             {
                 innovationId = i.Id,
-                title = i.Title,
-                productType = i.ProductType,
-                researchCategory = i.ResearchCategory.ToString(),
+                ideaSummary = new
+                {
+                    title = i.IdeaSummary.Title,
+                    productType = i.IdeaSummary.ProductType,
+                    researchCategory = i.IdeaSummary.ResearchCategory.ToString()
+                },
                 status = i.Status.ToString(),
                 submittedAt = i.SubmittedAt,
                 owner = new
@@ -77,7 +80,9 @@ public static class ListInnovations
                     displayName = $"{i.Owner?.FirstName} {i.Owner?.LastName}".Trim()
                 },
                 targetIndustries = i.TargetIndustries.Select(ti => ti.Name).ToList(),
-                partnersNeeded = new List<string>() // TODO: Add PartnersNeeded field to Innovation entity in Phase 1
+                partnersNeeded = (i.CollaborationRequirement.PartnersNeeded ?? string.Empty)
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .ToList()
             }).ToList();
 
             // Return paginated results with metadata

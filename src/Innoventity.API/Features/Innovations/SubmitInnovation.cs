@@ -68,18 +68,18 @@ public static class SubmitInnovation
             var validationErrors = new Dictionary<string, List<string>>();
 
             // Rule 1: Title not empty and not placeholder
-            if (string.IsNullOrWhiteSpace(innovation.Title))
+            if (string.IsNullOrWhiteSpace(innovation.IdeaSummary.Title))
             {
                 validationErrors.Add("Title", new List<string> { "Title is required" });
             }
-            else if (innovation.Title.Contains("Untitled", StringComparison.OrdinalIgnoreCase) ||
-                     innovation.Title.Contains("TODO", StringComparison.OrdinalIgnoreCase))
+            else if (innovation.IdeaSummary.Title.Contains("Untitled", StringComparison.OrdinalIgnoreCase) ||
+                     innovation.IdeaSummary.Title.Contains("TODO", StringComparison.OrdinalIgnoreCase))
             {
                 validationErrors.Add("Title", new List<string> { "Title must not be a placeholder" });
             }
 
             // Rule 2: ProductType provided
-            if (string.IsNullOrWhiteSpace(innovation.ProductType))
+            if (string.IsNullOrWhiteSpace(innovation.IdeaSummary.ProductType))
             {
                 validationErrors.Add("ProductType", new List<string> { "Product type is required" });
             }
@@ -88,11 +88,11 @@ public static class SubmitInnovation
             // Already enforced by enum type, no additional validation needed
 
             // Rule 4: ResearchBackground min 50 characters
-            if (string.IsNullOrWhiteSpace(innovation.ResearchBackground))
+            if (string.IsNullOrWhiteSpace(innovation.IdeaSummary.ResearchBackground))
             {
                 validationErrors.Add("ResearchBackground", new List<string> { "Research background is required" });
             }
-            else if (innovation.ResearchBackground.Length < 50)
+            else if (innovation.IdeaSummary.ResearchBackground.Length < 50)
             {
                 validationErrors.Add("ResearchBackground",
                     new List<string> { "Research background must be at least 50 characters" });
@@ -100,7 +100,7 @@ public static class SubmitInnovation
 
             // Rule 5: HasIPR declared (always present via IprStatus field)
             // Rule 6: HasRightToUse = true (blocking validation)
-            if (innovation.IprStatus == "None" || string.IsNullOrWhiteSpace(innovation.IprStatus))
+            if (innovation.IdeaSummary.IprStatus == "None" || string.IsNullOrWhiteSpace(innovation.IdeaSummary.IprStatus))
             {
                 // Allow innovations without IPR, but they must explicitly state "None"
                 // This rule focuses on "HasRightToUse" which is validated during creation
@@ -108,32 +108,32 @@ public static class SubmitInnovation
             }
 
             // Rule 7: ProductDescription provided
-            if (string.IsNullOrWhiteSpace(innovation.ProductDescription))
+            if (string.IsNullOrWhiteSpace(innovation.Product.ProductDescription))
             {
                 validationErrors.Add("ProductDescription", new List<string> { "Product description is required" });
             }
 
             // Rule 8: TechnologyDescription provided
-            if (string.IsNullOrWhiteSpace(innovation.TechnologyDescription))
+            if (string.IsNullOrWhiteSpace(innovation.Product.TechnologyDescription))
             {
                 validationErrors.Add("TechnologyDescription", new List<string> { "Technology description is required" });
             }
 
             // Rule 9: TargetBeneficiaries provided
-            if (string.IsNullOrWhiteSpace(innovation.TargetBeneficiaries))
+            if (string.IsNullOrWhiteSpace(innovation.Product.TargetBeneficiaries))
             {
                 validationErrors.Add("TargetBeneficiaries", new List<string> { "Target beneficiaries are required" });
             }
 
             // Rule 10: RelevantMarketSize > 0
-            if (!innovation.RelevantMarketSize.HasValue || innovation.RelevantMarketSize.Value <= 0)
+            if (!innovation.Market.RelevantMarketSize.HasValue || innovation.Market.RelevantMarketSize.Value <= 0)
             {
                 validationErrors.Add("RelevantMarketSize",
                     new List<string> { "Relevant market size must be greater than zero" });
             }
 
             // Rule 11: PotentialMarketSize > 0
-            if (!innovation.PotentialMarketSize.HasValue || innovation.PotentialMarketSize.Value <= 0)
+            if (!innovation.Market.PotentialMarketSize.HasValue || innovation.Market.PotentialMarketSize.Value <= 0)
             {
                 validationErrors.Add("PotentialMarketSize",
                     new List<string> { "Potential market size must be greater than zero" });
@@ -147,15 +147,16 @@ public static class SubmitInnovation
             }
 
             // Rule 13: PartnersNeeded count ≥ 1
-            if (string.IsNullOrWhiteSpace(innovation.PartnersNeeded) ||
-                innovation.PartnersNeeded.Split(',', StringSplitOptions.RemoveEmptyEntries).Length == 0)
+            if (string.IsNullOrWhiteSpace(innovation.CollaborationRequirement.PartnersNeeded) ||
+                innovation.CollaborationRequirement.PartnersNeeded.Split(',', StringSplitOptions.RemoveEmptyEntries).Length == 0)
             {
                 validationErrors.Add("PartnersNeeded",
                     new List<string> { "At least one partner type is required (RD, Manufacturing, SalesMarketing, or Investor)" });
             }
 
-            // Return 400 Bad Request if any validation errors exist
-            if (validationErrors.Any())
+            // Completeness decision is delegated to the entity (FR-005); field-level
+            // checks above exist only to report which fields are incomplete.
+            if (!innovation.IsReadyForSubmission())
             {
                 return Results.ValidationProblem(
                     errors: validationErrors.ToDictionary(
