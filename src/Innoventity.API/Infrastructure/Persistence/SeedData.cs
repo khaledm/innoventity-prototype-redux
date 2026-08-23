@@ -75,25 +75,37 @@ public static class SeedData
         {
             IdeaToken = TestIdeaToken,
             OwnerId = TestActorId,
-            Title = "Quantum Battery Prototype",
-            ProductType = "Energy Storage Device",
-            ResearchBackground = "Lithium-air battery leveraging quantum tunneling for 10x energy density improvement.",
-            ResearchCategory = ResearchCategory.Engineering,
-            IprStatus = "Patent Pending",
-            ProductDescription = "Next-generation battery technology for electric vehicles enabling 1000-mile range.",
-            TechnologyDescription = "Quantum tunneling mechanism enables unprecedented energy density through advanced material science",
-            ProductAdvantages = "10x energy density, 50% faster charging time, 20-year operational lifespan",
-            DevelopmentPhase = "Prototype",
-            DevelopmentProcess = "Laboratory validation complete, seeking partners for commercial scale production",
-            TargetMarket = "Electric vehicle manufacturers, renewable energy storage systems",
-            TargetCustomerBase = "Automotive OEMs, grid-scale energy storage providers",
-            TargetBeneficiaries = "Electric vehicle manufacturers, renewable energy providers, grid operators",
-            TargetCustomerType = "B2B",
-            ProductKeywords = "battery, energy storage, electric vehicle, quantum",
-            AdvantageKeywords = "energy density, fast charging, long lifespan",
-            RelevantMarketSize = 50000000000m, // $50 billion
-            PotentialMarketSize = 150000000000m, // $150 billion
-            PartnersNeeded = "RD,Manufacturing,SalesMarketing",
+            IdeaSummary = new IdeaSummary
+            {
+                Title = "Quantum Battery Prototype",
+                ProductType = "Energy Storage Device",
+                ResearchBackground = "Lithium-air battery leveraging quantum tunneling for 10x energy density improvement.",
+                ResearchCategory = ResearchCategory.Engineering,
+                IprStatus = "Patent Pending"
+            },
+            Product = new Product
+            {
+                ProductDescription = "Next-generation battery technology for electric vehicles enabling 1000-mile range.",
+                TechnologyDescription = "Quantum tunneling mechanism enables unprecedented energy density through advanced material science",
+                ProductAdvantages = "10x energy density, 50% faster charging time, 20-year operational lifespan",
+                DevelopmentPhase = "Prototype",
+                DevelopmentProcess = "Laboratory validation complete, seeking partners for commercial scale production",
+                TargetBeneficiaries = "Electric vehicle manufacturers, renewable energy providers, grid operators",
+                ProductKeywords = "battery, energy storage, electric vehicle, quantum",
+                AdvantageKeywords = "energy density, fast charging, long lifespan"
+            },
+            Market = new Market
+            {
+                TargetMarket = "Electric vehicle manufacturers, renewable energy storage systems",
+                TargetCustomerBase = "Automotive OEMs, grid-scale energy storage providers",
+                TargetCustomerType = "B2B",
+                RelevantMarketSize = 50000000000m, // $50 billion
+                PotentialMarketSize = 150000000000m // $150 billion
+            },
+            CollaborationRequirement = new CollaborationRequirement
+            {
+                PartnersNeeded = "RD,Manufacturing,SalesMarketing"
+            },
             Status = InnovationStatus.Published,
             CreatedAt = new DateTimeOffset(2026, 1, 15, 0, 0, 0, TimeSpan.Zero),
             SubmittedAt = new DateTimeOffset(2026, 1, 20, 0, 0, 0, TimeSpan.Zero),

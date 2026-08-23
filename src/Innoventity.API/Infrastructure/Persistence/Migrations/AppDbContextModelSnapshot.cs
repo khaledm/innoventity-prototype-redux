@@ -243,80 +243,19 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("AdvantageKeywords")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<DateTimeOffset>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetimeoffset")
                         .HasDefaultValueSql("GETUTCDATE()");
 
-                    b.Property<string>("DevelopmentPhase")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("DevelopmentProcess")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
                     b.Property<Guid>("IdeaToken")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("IprStatus")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
 
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTimeOffset?>("PartnerSelectionCompletedOn")
                         .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("PartnersNeeded")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<decimal?>("PotentialMarketSize")
-                        .HasPrecision(28, 2)
-                        .HasColumnType("decimal(28,2)");
-
-                    b.Property<string>("ProductAdvantages")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<string>("ProductDescription")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<string>("ProductKeywords")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("ProductType")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<decimal?>("RelevantMarketSize")
-                        .HasPrecision(28, 2)
-                        .HasColumnType("decimal(28,2)");
-
-                    b.Property<string>("ResearchBackground")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<string>("ResearchCategory")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid?>("SelectedByActorId")
                         .HasColumnType("uniqueidentifier");
@@ -327,36 +266,6 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTimeOffset?>("SubmittedAt")
                         .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("TargetBeneficiaries")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<string>("TargetCustomerBase")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<string>("TargetCustomerType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("TargetMarket")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<string>("TechnologyDescription")
-                        .IsRequired()
-                        .HasMaxLength(5000)
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -491,7 +400,181 @@ namespace Innoventity.API.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.OwnsOne("Innoventity.API.Domain.Entities.CollaborationRequirement", "CollaborationRequirement", b1 =>
+                        {
+                            b1.Property<Guid>("InnovationId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<string>("PartnersNeeded")
+                                .HasMaxLength(500)
+                                .HasColumnType("nvarchar(500)")
+                                .HasColumnName("PartnersNeeded");
+
+                            b1.HasKey("InnovationId");
+
+                            b1.ToTable("Innovations");
+
+                            b1.WithOwner()
+                                .HasForeignKey("InnovationId");
+                        });
+
+                    b.OwnsOne("Innoventity.API.Domain.Entities.IdeaSummary", "IdeaSummary", b1 =>
+                        {
+                            b1.Property<Guid>("InnovationId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<string>("IprStatus")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("nvarchar(200)")
+                                .HasColumnName("IprStatus");
+
+                            b1.Property<string>("ProductType")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("nvarchar(200)")
+                                .HasColumnName("ProductType");
+
+                            b1.Property<string>("ResearchBackground")
+                                .IsRequired()
+                                .HasMaxLength(2000)
+                                .HasColumnType("nvarchar(2000)")
+                                .HasColumnName("ResearchBackground");
+
+                            b1.Property<string>("ResearchCategory")
+                                .IsRequired()
+                                .HasColumnType("nvarchar(max)")
+                                .HasColumnName("ResearchCategory");
+
+                            b1.Property<string>("Title")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("nvarchar(200)")
+                                .HasColumnName("Title");
+
+                            b1.HasKey("InnovationId");
+
+                            b1.ToTable("Innovations");
+
+                            b1.WithOwner()
+                                .HasForeignKey("InnovationId");
+                        });
+
+                    b.OwnsOne("Innoventity.API.Domain.Entities.Market", "Market", b1 =>
+                        {
+                            b1.Property<Guid>("InnovationId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<decimal?>("PotentialMarketSize")
+                                .HasPrecision(28, 2)
+                                .HasColumnType("decimal(28,2)")
+                                .HasColumnName("PotentialMarketSize");
+
+                            b1.Property<decimal?>("RelevantMarketSize")
+                                .HasPrecision(28, 2)
+                                .HasColumnType("decimal(28,2)")
+                                .HasColumnName("RelevantMarketSize");
+
+                            b1.Property<string>("TargetCustomerBase")
+                                .IsRequired()
+                                .HasMaxLength(2000)
+                                .HasColumnType("nvarchar(2000)")
+                                .HasColumnName("TargetCustomerBase");
+
+                            b1.Property<string>("TargetCustomerType")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("nvarchar(100)")
+                                .HasColumnName("TargetCustomerType");
+
+                            b1.Property<string>("TargetMarket")
+                                .IsRequired()
+                                .HasMaxLength(2000)
+                                .HasColumnType("nvarchar(2000)")
+                                .HasColumnName("TargetMarket");
+
+                            b1.HasKey("InnovationId");
+
+                            b1.ToTable("Innovations");
+
+                            b1.WithOwner()
+                                .HasForeignKey("InnovationId");
+                        });
+
+                    b.OwnsOne("Innoventity.API.Domain.Entities.Product", "Product", b1 =>
+                        {
+                            b1.Property<Guid>("InnovationId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<string>("AdvantageKeywords")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("nvarchar(500)")
+                                .HasColumnName("AdvantageKeywords");
+
+                            b1.Property<string>("DevelopmentPhase")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("nvarchar(200)")
+                                .HasColumnName("DevelopmentPhase");
+
+                            b1.Property<string>("DevelopmentProcess")
+                                .IsRequired()
+                                .HasMaxLength(2000)
+                                .HasColumnType("nvarchar(2000)")
+                                .HasColumnName("DevelopmentProcess");
+
+                            b1.Property<string>("ProductAdvantages")
+                                .IsRequired()
+                                .HasMaxLength(2000)
+                                .HasColumnType("nvarchar(2000)")
+                                .HasColumnName("ProductAdvantages");
+
+                            b1.Property<string>("ProductDescription")
+                                .IsRequired()
+                                .HasMaxLength(2000)
+                                .HasColumnType("nvarchar(2000)")
+                                .HasColumnName("ProductDescription");
+
+                            b1.Property<string>("ProductKeywords")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("nvarchar(500)")
+                                .HasColumnName("ProductKeywords");
+
+                            b1.Property<string>("TargetBeneficiaries")
+                                .IsRequired()
+                                .HasMaxLength(2000)
+                                .HasColumnType("nvarchar(2000)")
+                                .HasColumnName("TargetBeneficiaries");
+
+                            b1.Property<string>("TechnologyDescription")
+                                .IsRequired()
+                                .HasMaxLength(5000)
+                                .HasColumnType("nvarchar(max)")
+                                .HasColumnName("TechnologyDescription");
+
+                            b1.HasKey("InnovationId");
+
+                            b1.ToTable("Innovations");
+
+                            b1.WithOwner()
+                                .HasForeignKey("InnovationId");
+                        });
+
+                    b.Navigation("CollaborationRequirement")
+                        .IsRequired();
+
+                    b.Navigation("IdeaSummary")
+                        .IsRequired();
+
+                    b.Navigation("Market")
+                        .IsRequired();
+
                     b.Navigation("Owner");
+
+                    b.Navigation("Product")
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Innoventity.API.Domain.Entities.ManufacturingResponse", b =>

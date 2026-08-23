@@ -127,68 +127,6 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(i => i.Id);
 
-            entity.Property(i => i.Title)
-                  .IsRequired()
-                  .HasMaxLength(200);
-
-            entity.Property(i => i.ProductType)
-                  .IsRequired()
-                  .HasMaxLength(200);
-
-            entity.Property(i => i.ResearchBackground)
-                  .IsRequired()
-                  .HasMaxLength(2000);
-
-            entity.Property(i => i.ResearchCategory)
-                  .IsRequired()
-                  .HasConversion<string>();
-
-            entity.Property(i => i.IprStatus)
-                  .IsRequired()
-                  .HasMaxLength(200);
-
-            entity.Property(i => i.ProductDescription)
-                  .IsRequired()
-                  .HasMaxLength(2000);
-
-            entity.Property(i => i.ProductAdvantages)
-                  .IsRequired()
-                  .HasMaxLength(2000);
-
-            entity.Property(i => i.DevelopmentPhase)
-                  .IsRequired()
-                  .HasMaxLength(200);
-
-            entity.Property(i => i.DevelopmentProcess)
-                  .IsRequired()
-                  .HasMaxLength(2000);
-
-            entity.Property(i => i.TargetMarket)
-                  .IsRequired()
-                  .HasMaxLength(2000);
-
-            entity.Property(i => i.TargetCustomerBase)
-                  .IsRequired()
-                  .HasMaxLength(2000);
-
-            entity.Property(i => i.TargetCustomerType)
-                  .IsRequired()
-                  .HasMaxLength(100);
-
-            entity.Property(i => i.RelevantMarketSize)
-                  .HasPrecision(28, 2);
-
-            entity.Property(i => i.PotentialMarketSize)
-                  .HasPrecision(28, 2);
-
-            entity.Property(i => i.ProductKeywords)
-                  .IsRequired()
-                  .HasMaxLength(500);
-
-            entity.Property(i => i.AdvantageKeywords)
-                  .IsRequired()
-                  .HasMaxLength(500);
-
             entity.Property(i => i.Status)
                   .IsRequired()
                   .HasConversion<string>();
@@ -207,6 +145,110 @@ public class AppDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(i => i.OwnerId)
                   .OnDelete(DeleteBehavior.Restrict);
+            
+            entity.OwnsOne(i => i.IdeaSummary, ideaSummary =>
+            {
+                  ideaSummary.Property(s=> s.Title)
+                  .HasColumnName("Title")
+                  .IsRequired()
+                  .HasMaxLength(200);
+
+                  ideaSummary.Property(s => s.ProductType)
+                  .HasColumnName("ProductType")
+                  .IsRequired()
+                  .HasMaxLength(200);
+
+                  ideaSummary.Property(s => s.ResearchCategory)
+                  .HasColumnName("ResearchCategory")
+                  .IsRequired()
+                  .HasConversion<string>();
+
+                  ideaSummary.Property(s => s.IprStatus)
+                  .HasColumnName("IprStatus")
+                  .IsRequired()
+                  .HasMaxLength(200);
+
+                  ideaSummary.Property(s => s.ResearchBackground)
+                  .HasColumnName("ResearchBackground")
+                  .IsRequired()
+                  .HasMaxLength(2000);
+            });
+
+            entity.OwnsOne(i => i.Product, product =>
+            {
+                  product.Property(p => p.ProductDescription)
+                  .HasColumnName("ProductDescription")
+                  .IsRequired()
+                  .HasMaxLength(2000);
+
+                  product.Property(p => p.TechnologyDescription)
+                  .HasColumnName("TechnologyDescription")
+                  .IsRequired()
+                  .HasMaxLength(5000);
+
+                  product.Property(p => p.TargetBeneficiaries)
+                  .HasColumnName("TargetBeneficiaries")
+                  .IsRequired()
+                  .HasMaxLength(2000);
+
+                  product.Property(p => p.ProductAdvantages)
+                  .HasColumnName("ProductAdvantages")
+                  .IsRequired()
+                  .HasMaxLength(2000);
+
+                  product.Property(p => p.DevelopmentPhase)
+                  .HasColumnName("DevelopmentPhase")
+                  .IsRequired()
+                  .HasMaxLength(200);
+
+                  product.Property(p => p.DevelopmentProcess)
+                  .HasColumnName("DevelopmentProcess")
+                  .IsRequired()
+                  .HasMaxLength(2000);
+
+                  product.Property(p => p.ProductKeywords)
+                  .HasColumnName("ProductKeywords")
+                  .IsRequired()
+                  .HasMaxLength(500);
+
+                  product.Property(p => p.AdvantageKeywords)
+                  .HasColumnName("AdvantageKeywords")
+                  .IsRequired()
+                  .HasMaxLength(500);
+            });
+
+            entity.OwnsOne(i => i.Market, market =>
+            {
+                  market.Property(m => m.TargetMarket)
+                  .HasColumnName("TargetMarket")
+                  .IsRequired()
+                  .HasMaxLength(2000);
+
+                  market.Property(m => m.TargetCustomerBase)
+                  .HasColumnName("TargetCustomerBase")
+                  .IsRequired()
+                  .HasMaxLength(2000);
+
+                  market.Property(m => m.TargetCustomerType)
+                  .HasColumnName("TargetCustomerType")
+                  .IsRequired()
+                  .HasMaxLength(100);
+
+                  market.Property(m => m.RelevantMarketSize)
+                  .HasColumnName("RelevantMarketSize")
+                  .HasPrecision(28, 2);
+
+                  market.Property(m => m.PotentialMarketSize)
+                  .HasColumnName("PotentialMarketSize")
+                  .HasPrecision(28, 2);
+            });
+
+            entity.OwnsOne(i => i.CollaborationRequirement, collaboration =>
+            {
+                  collaboration.Property(c => c.PartnersNeeded)
+                  .HasColumnName("PartnersNeeded")
+                  .HasMaxLength(500);
+            });
 
             // Configure many-to-many relationship with Industry
             entity.HasMany(i => i.TargetIndustries)
