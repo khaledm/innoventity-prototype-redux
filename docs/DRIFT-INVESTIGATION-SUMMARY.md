@@ -71,7 +71,7 @@ info: Microsoft.EntityFrameworkCore.Migrations[20405]
 **New Step (After Migrations):**
 ```yaml
 - name: Validate schema integrity
-```
+`
 
 **Checks:**
 - ✅ Actors table exists
