@@ -3,173 +3,102 @@ using Xunit;
 
 namespace Innoventity.API.Tests.Unit.Domain.Entities;
 
-/// <summary>
-/// PHASE 1 WORK - Domain validation tests deferred to Phase 1 (Post Phase 0.6)
-/// These tests validate Innovation entity field requirements using [Required] attributes.
-/// Expected failures in Phase 0.6 implementation as domain validation not yet implemented.
-/// Will be addressed in Phase 1 when domain layer is enhanced with data annotations/FluentValidation.
-/// </summary>
 public class InnovationTests
 {
-    /// <summary>
-    /// PHASE 1 DEFERRED: Validates Title is required
-    /// </summary>
-    [Fact(Skip = "Phase 1 domain validation work - deferred")]
-    public void Innovation_Should_RequireTitle()
+    private static Innovation CreateValidInnovation(Guid? id = null)
     {
-        // Arrange & Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() =>
+        return new Innovation(id ?? Guid.NewGuid())
         {
-            var innovation = new Innovation
+            IdeaToken = Guid.NewGuid(),
+            OwnerId = Guid.NewGuid(),
+            IdeaSummary = new IdeaSummary
             {
-                Title = null!, // Explicitly set to null to test [Required] validation
+                Title = "Quantum Battery Prototype",
                 ProductType = "Energy Storage Device",
-                ResearchBackground = "Test background",
-                IprStatus = "Patent Pending",
-                ProductDescription = "Test description",
-                TechnologyDescription = "Test technology description",
-                TargetBeneficiaries = "Test beneficiaries",
-                ProductAdvantages = "Test advantages",
-                DevelopmentPhase = "Prototype",
-                DevelopmentProcess = "Test process",
-                TargetMarket = "Test market",
-                TargetCustomerBase = "Test customer",
-                TargetCustomerType = "B2B",
-                ProductKeywords = "test",
-                AdvantageKeywords = "test"
-            };
-        });
-        Assert.Contains("Title", exception.Message);
-    }
-
-    /// <summary>
-    /// PHASE 1 DEFERRED: Validates ProductType is required
-    /// </summary>
-    [Fact(Skip = "Phase 1 domain validation work - deferred")]
-    public void Innovation_Should_RequireProductType()
-    {
-        // Arrange & Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() =>
-        {
-            var innovation = new Innovation
+                ResearchBackground = "Lithium-air battery leveraging quantum tunneling for enhanced storage",
+                ResearchCategory = ResearchCategory.Engineering,
+                IprStatus = "Patent Pending"
+            },
+            Product = new Product
             {
-                Title = "Test Innovation",
-                ProductType = null!, // Explicitly set to null to test [Required] validation
-                ResearchBackground = "Test background",
-                IprStatus = "Patent Pending",
-                ProductDescription = "Test description",
-                TechnologyDescription = "Test technology description",
-                TargetBeneficiaries = "Test beneficiaries",
-                ProductAdvantages = "Test advantages",
+                ProductDescription = "Next-generation battery technology",
+                TechnologyDescription = "Quantum tunneling mechanism for enhanced energy storage",
+                ProductAdvantages = "10x energy density, 50% faster charging",
                 DevelopmentPhase = "Prototype",
-                DevelopmentProcess = "Test process",
-                TargetMarket = "Test market",
-                TargetCustomerBase = "Test customer",
-                TargetCustomerType = "B2B",
-                ProductKeywords = "test",
-                AdvantageKeywords = "test"
-            };
-        });
-
-        Assert.Contains("ProductType", exception.Message);
-    }
-
-    /// <summary>
-    /// PHASE 1 DEFERRED: Validates ResearchBackground is required
-    /// </summary>
-    [Fact(Skip = "Phase 1 domain validation work - deferred")]
-    public void Innovation_Should_RequireResearchBackground()
-    {
-        // Arrange & Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() =>
-        {
-            var innovation = new Innovation
+                DevelopmentProcess = "Laboratory validation complete",
+                TargetBeneficiaries = "Electric vehicle manufacturers and renewable energy providers",
+                ProductKeywords = "battery, energy storage, electric vehicle",
+                AdvantageKeywords = "energy density, fast charging"
+            },
+            Market = new Market
             {
-                Title = "Test Innovation",
-                ProductType = "Energy Storage Device",
-                ResearchBackground = null!, // Explicitly set to null to test [Required] validation
-                IprStatus = "Patent Pending",
-                ProductDescription = "Test description",
-                TechnologyDescription = "Test technology description",
-                TargetBeneficiaries = "Test beneficiaries",
-                ProductAdvantages = "Test advantages",
-                DevelopmentPhase = "Prototype",
-                DevelopmentProcess = "Test process",
-                TargetMarket = "Test market",
-                TargetCustomerBase = "Test customer",
+                TargetMarket = "Electric vehicle manufacturers",
+                TargetCustomerBase = "Automotive OEMs",
                 TargetCustomerType = "B2B",
-                ProductKeywords = "test",
-                AdvantageKeywords = "test"
-            };
-        });
-#pragma warning restore CS9035
-
-        Assert.Contains("ResearchBackground", exception.Message);
+                RelevantMarketSize = 50000000000m,
+                PotentialMarketSize = 150000000000m
+            },
+            CollaborationRequirement = new CollaborationRequirement
+            {
+                PartnersNeeded = "RD,Manufacturing"
+            },
+            Status = InnovationStatus.Published,
+            CreatedAt = DateTimeOffset.UtcNow,
+            SubmittedAt = DateTimeOffset.UtcNow
+        };
     }
 
     [Fact]
     public void Innovation_Should_AllowValidConstruction()
     {
-        // Arrange & Act
-        var innovation = new Innovation(Guid.NewGuid())
-        {
-            IdeaToken = Guid.NewGuid(),
-            OwnerId = Guid.NewGuid(),
-            Title = "Quantum Battery Prototype",
-            ProductType = "Energy Storage Device",
-            ResearchBackground = "Lithium-air battery leveraging quantum tunneling",
-            ResearchCategory = ResearchCategory.Engineering,
-            IprStatus = "Patent Pending",
-            ProductDescription = "Next-generation battery technology",
-            TechnologyDescription = "Quantum tunneling mechanism for enhanced energy storage",
-            TargetBeneficiaries = "Electric vehicle manufacturers and renewable energy providers",
-            ProductAdvantages = "10x energy density, 50% faster charging",
-            DevelopmentPhase = "Prototype",
-            DevelopmentProcess = "Laboratory validation complete",
-            TargetMarket = "Electric vehicle manufacturers",
-            TargetCustomerBase = "Automotive OEMs",
-            TargetCustomerType = "B2B",
-            ProductKeywords = "battery, energy storage, electric vehicle",
-            AdvantageKeywords
+        var innovation = CreateValidInnovation();
 
- = "energy density, fast charging",
-            Status = InnovationStatus.Published,
-            CreatedAt = DateTime.UtcNow,
-            SubmittedAt = DateTime.UtcNow
-        };
-
-        // Assert
         Assert.NotNull(innovation);
-        Assert.Equal("Quantum Battery Prototype", innovation.Title);
-        Assert.Equal(ResearchCategory.Engineering, innovation.ResearchCategory);
+        Assert.Equal("Quantum Battery Prototype", innovation.IdeaSummary.Title);
+        Assert.Equal(ResearchCategory.Engineering, innovation.IdeaSummary.ResearchCategory);
         Assert.Equal(InnovationStatus.Published, innovation.Status);
     }
 
     [Fact]
     public void Innovation_Should_InitializeTargetIndustriesCollection()
     {
-        // Arrange & Act
-        var innovation = new Innovation
-        {
-            Title = "Test Innovation",
-            ProductType = "Energy Storage Device",
-            ResearchBackground = "Test background",
-            IprStatus = "Patent Pending",
-            ProductDescription = "Test description",
-            TechnologyDescription = "Test technology description",
-            TargetBeneficiaries = "Test beneficiaries",
-            ProductAdvantages = "Test advantages",
-            DevelopmentPhase = "Prototype",
-            DevelopmentProcess = "Test process",
-            TargetMarket = "Test market",
-            TargetCustomerBase = "Test customer",
-            TargetCustomerType = "B2B",
-            ProductKeywords = "test",
-            AdvantageKeywords = "test"
-        };
+        var innovation = CreateValidInnovation();
 
-        // Assert
         Assert.NotNull(innovation.TargetIndustries);
         Assert.Empty(innovation.TargetIndustries);
+    }
+
+    [Fact]
+    public void Innovation_Should_Preserve_Root_Properties()
+    {
+        var id = Guid.NewGuid();
+        var innovation = CreateValidInnovation(id);
+
+        Assert.Equal(id, innovation.Id);
+        Assert.NotEqual(Guid.Empty, innovation.IdeaToken);
+        Assert.NotEqual(Guid.Empty, innovation.OwnerId);
+        Assert.Equal(InnovationStatus.Published, innovation.Status);
+        Assert.NotEqual(default, innovation.CreatedAt);
+        Assert.NotNull(innovation.SubmittedAt);
+    }
+
+    [Fact]
+    public void Innovation_Should_ReportComplete_When_AllOwnedSectionsComplete()
+    {
+        var innovation = CreateValidInnovation();
+        innovation.TargetIndustries.Add(new Industry("TECH-001") { Name = "Technology" });
+
+        Assert.True(innovation.IsIdeaSummaryComplete());
+        Assert.True(innovation.IsProductDetailsComplete());
+        Assert.True(innovation.IsMarketDetailsSectionComplete());
+        Assert.True(innovation.IsReadyForSubmission());
+    }
+
+    [Fact]
+    public void Innovation_Should_NotBeReadyForSubmission_When_NoTargetIndustries()
+    {
+        var innovation = CreateValidInnovation();
+
+        Assert.False(innovation.IsReadyForSubmission());
     }
 }
