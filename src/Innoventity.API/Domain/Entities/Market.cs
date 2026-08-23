@@ -28,7 +28,7 @@ public class Market
 
     public bool IsComplete()
     {
-        return RelevantMarketSize > 0 &&
+        return RelevantMarketSize != null &&  RelevantMarketSize > 0 &&
                PotentialMarketSize > 0;
     }
 }

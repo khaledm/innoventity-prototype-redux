@@ -1,5 +1,4 @@
 using Innoventity.API.Domain.Entities;
-using Xunit;
 
 namespace Innoventity.API.Tests.Unit.Domain.Entities;
 
@@ -98,6 +97,60 @@ public class InnovationTests
     public void Innovation_Should_NotBeReadyForSubmission_When_NoTargetIndustries()
     {
         var innovation = CreateValidInnovation();
+
+        Assert.False(innovation.IsReadyForSubmission());
+    }
+
+    [Fact]
+    public void Innovation_Should_NotBeProductDetailsComplete_When_ProductDescriptionMissing()
+    {
+        var innovation = CreateValidInnovation();
+        innovation.TargetIndustries.Add(new Industry("TECH-001")
+        {
+            Name = "Technology"
+        });
+        innovation.Product = new Product
+        {
+            ProductDescription = "", // broken
+            TechnologyDescription = "Channel tunneling mechanism for enhanced energy storage",
+            ProductAdvantages = "10x energy density",
+            DevelopmentPhase = "Prototype",
+            DevelopmentProcess = "Laboratory validation complete",
+            TargetBeneficiaries = "Electric vehicle manufacturers",
+            ProductKeywords = "battery",
+            AdvantageKeywords = "energy density"
+        };
+
+        Assert.True(innovation.IsIdeaSummaryComplete());
+        Assert.False(innovation.IsProductDetailsComplete());
+        Assert.False(innovation.IsReadyForSubmission());
+    }
+
+    [Fact]
+    public void Innovation_Should_NotBeMArketDetailsSectionComplete_When_RelevantMarketSizeIsZero()
+    {
+        var innovation = CreateValidInnovation();
+        innovation.TargetIndustries.Add(new Industry("TECH-001") { Name = "Technology" });
+        innovation.Market = new Market
+        {
+            TargetMarket = "Electric vehicle manufacturers",
+            TargetCustomerBase = "Automotive OEMs",
+            TargetCustomerType = "B2B",
+            RelevantMarketSize = 0m,  // broken
+            PotentialMarketSize = 150000000000m
+        };
+
+        Assert.True(innovation.IsProductDetailsComplete());
+        Assert.False(innovation.IsMarketDetailsSectionComplete());
+        Assert.False(innovation.IsReadyForSubmission());
+    }
+
+    [Fact]
+    public void Innovation_Should_NotBeReadyForSubmission_When_PartnersNeededIsWhitespace()
+    {
+        var innovation = CreateValidInnovation();
+        innovation.TargetIndustries.Add(new Industry("TECH-001") { Name = "Technology" });
+        innovation.CollaborationRequirement = new CollaborationRequirement { PartnersNeeded = "       " };
 
         Assert.False(innovation.IsReadyForSubmission());
     }

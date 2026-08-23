@@ -62,4 +62,50 @@ public class MarketTests
         Assert.Equal("TargetCustomerType", exception.ParamName);
         Assert.Contains("TargetCustomerType is required.", exception.Message);
     }
+
+    private static Market CreateValid(
+    decimal? relevantMarketSize = 1000000m,
+    decimal? potentialMarketSize = 5000000m) => new()
+    {
+        TargetMarket = "Valid Target Market",
+        TargetCustomerBase = "Valid Target Customer Base",
+        TargetCustomerType = "Valid Target Customer Type",
+        RelevantMarketSize = relevantMarketSize,
+        PotentialMarketSize = potentialMarketSize
+    };
+
+    [Fact]
+    public void IsComplete_Should_Accept_BothSizesPositive()
+    {
+        var market = CreateValid();
+        Assert.True(market.IsComplete());
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("0")]
+    [InlineData("-1")]
+    public void IsComplete_Should_Reject_RelevantMarketSize_NotPositive(string? value)
+    {
+        var market = CreateValid(relevantMarketSize: value == null ? null : decimal.Parse(value));
+        Assert.False(market.IsComplete());
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("0")]
+    [InlineData("-1")]
+    public void IsComplete_Should_Reject_PotentialMarketSize_NotPositive(string? value)
+    {
+        var market = CreateValid(potentialMarketSize: value == null ? null : decimal.Parse(value));
+        Assert.False(market.IsComplete());
+    }
+
+    [Fact]
+    public void IsComplete_Should_Accept_SmallestValidPositiveSize()
+    {
+        // Boundary case: kills a `> 0` → `>= 0` mutant
+        var market = CreateValid(relevantMarketSize: 0.01m, potentialMarketSize: 0.01m);
+        Assert.True(market.IsComplete());
+    }
 }

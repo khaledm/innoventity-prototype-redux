@@ -94,6 +94,14 @@ public class IdeaSummaryTests
         ResearchBackground = researchBackground ?? new string('a', 50)
     };
 
+
+    [Fact]
+    public void IsComplete_Should_Accept_AllFiveRequiredFieldsPresent()
+    {
+        var ideaSummary = CreateValid();
+        Assert.True(ideaSummary.IsComplete());
+    }
+
     [Theory]
     [InlineData("Untitled")]
     [InlineData("untitled project")]
