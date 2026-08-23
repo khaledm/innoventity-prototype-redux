@@ -99,22 +99,31 @@ public class SubmitManufacturingResponseTests : IDisposable
         {
             OwnerId = ownerId,
             IdeaToken = Guid.NewGuid(),
-            Title = $"Test Innovation {id:N}",
-            ProductType = "Technology",
-            ResearchBackground = "Background for test innovation covering the research area and motivation.",
-            ResearchCategory = ResearchCategory.Engineering,
-            IprStatus = "Patent Pending",
-            ProductDescription = "Product description for testing manufacturing response submission.",
-            TechnologyDescription = "Technology description providing technical details for the innovation.",
-            TargetBeneficiaries = "Manufacturers, distributors, and end consumers of the product.",
-            ProductAdvantages = "Cost reduction, quality improvement, and faster time-to-market.",
-            DevelopmentPhase = "Prototype",
-            DevelopmentProcess = "Lab validation with pilot production runs planned.",
-            TargetMarket = "Global technology markets.",
-            TargetCustomerBase = "Enterprise customers in manufacturing and distribution.",
-            TargetCustomerType = "B2B",
-            ProductKeywords = "technology, innovation, testing",
-            AdvantageKeywords = "efficiency, quality, scale",
+            IdeaSummary = new IdeaSummary
+            {
+                Title = $"Test Innovation {id:N}",
+                ProductType = "Technology",
+                ResearchBackground = "Background for test innovation covering the research area and motivation.",
+                ResearchCategory = ResearchCategory.Engineering,
+                IprStatus = "Patent Pending"
+            },
+            Product = new Product
+            {
+                ProductDescription = "Product description for testing manufacturing response submission.",
+                TechnologyDescription = "Technology description providing technical details for the innovation.",
+                TargetBeneficiaries = "Manufacturers, distributors, and end consumers of the product.",
+                ProductAdvantages = "Cost reduction, quality improvement, and faster time-to-market.",
+                DevelopmentPhase = "Prototype",
+                DevelopmentProcess = "Lab validation with pilot production runs planned.",
+                ProductKeywords = "technology, innovation, testing",
+                AdvantageKeywords = "efficiency, quality, scale"
+            },
+            Market = new Market
+            {
+                TargetMarket = "Global technology markets.",
+                TargetCustomerBase = "Enterprise customers in manufacturing and distribution.",
+                TargetCustomerType = "B2B"
+            },
             Status = status,
             SubmittedAt = status == InnovationStatus.Draft ? null : DateTimeOffset.UtcNow.AddDays(-5)
         };
@@ -341,22 +350,31 @@ public class SubmitManufacturingResponseTests : IDisposable
             {
                 OwnerId = _mfgActorId,
                 IdeaToken = Guid.NewGuid(),
-                Title = "Self Owned Innovation",
-                ProductType = "Technology",
-                ResearchBackground = "Background for self-owned innovation test covering the research area.",
-                ResearchCategory = ResearchCategory.Engineering,
-                IprStatus = "Patent Pending",
-                ProductDescription = "Product description for self-owned innovation test.",
-                TechnologyDescription = "Technology description for self-owned innovation test.",
-                TargetBeneficiaries = "Manufacturers and distributors.",
-                ProductAdvantages = "Cost reduction and quality improvement.",
-                DevelopmentPhase = "Prototype",
-                DevelopmentProcess = "Lab validation planned.",
-                TargetMarket = "Global technology markets.",
-                TargetCustomerBase = "Enterprise customers.",
-                TargetCustomerType = "B2B",
-                ProductKeywords = "technology, testing",
-                AdvantageKeywords = "efficiency, scale",
+                IdeaSummary = new IdeaSummary
+                {
+                    Title = "Self Owned Innovation",
+                    ProductType = "Technology",
+                    ResearchBackground = "Background for self-owned innovation test covering the research area.",
+                    ResearchCategory = ResearchCategory.Engineering,
+                    IprStatus = "Patent Pending"
+                },
+                Product = new Product
+                {
+                    ProductDescription = "Product description for self-owned innovation test.",
+                    TechnologyDescription = "Technology description for self-owned innovation test.",
+                    TargetBeneficiaries = "Manufacturers and distributors.",
+                    ProductAdvantages = "Cost reduction and quality improvement.",
+                    DevelopmentPhase = "Prototype",
+                    DevelopmentProcess = "Lab validation planned.",
+                    ProductKeywords = "technology, testing",
+                    AdvantageKeywords = "efficiency, scale"
+                },
+                Market = new Market
+                {
+                    TargetMarket = "Global technology markets.",
+                    TargetCustomerBase = "Enterprise customers.",
+                    TargetCustomerType = "B2B"
+                },
                 Status = InnovationStatus.Published,
                 SubmittedAt = DateTimeOffset.UtcNow.AddDays(-1)
             };

@@ -107,22 +107,35 @@ public class GetInnovationTests : IDisposable
         {
             IdeaToken = new Guid("33333333-3333-3333-3333-333333333333"),
             OwnerId = _testActorId,
-            Title = "Quantum Battery Prototype",
-            ProductType = "Energy Storage Device",
-            ResearchBackground = "Lithium-air battery leveraging quantum tunneling for 10x energy density improvement over conventional Li-ion batteries. Based on 3 years of R&D at Advanced Energy Lab.",
-            ResearchCategory = ResearchCategory.Engineering,
-            IprStatus = "Patent Pending",
-            ProductDescription = "Next-generation battery technology for electric vehicles enabling 1000-mile range on single charge with 50% faster charging and 20-year lifespan.",
-            TechnologyDescription = "Quantum tunneling mechanism enables unprecedented energy density through advanced cathode materials and electrolyte chemistry",
-            TargetBeneficiaries = "Electric vehicle manufacturers, renewable energy storage providers, consumer electronics companies",
-            ProductAdvantages = "10x energy density, 50% faster charging time, 20-year operational lifespan, environmentally sustainable materials",
-            DevelopmentPhase = "Prototype",
-            DevelopmentProcess = "Laboratory validation complete, seeking partners for commercial scale production",
-            TargetMarket = "Electric vehicle manufacturers, renewable energy storage systems, consumer electronics",
-            TargetCustomerBase = "Automotive OEMs, grid-scale energy storage providers",
-            TargetCustomerType = "B2B",
-            ProductKeywords = "battery, energy storage, electric vehicle, quantum, lithium-air",
-            AdvantageKeywords = "energy density, fast charging, long lifespan, sustainable",
+            IdeaSummary = new IdeaSummary
+            {
+                Title = "Quantum Battery Prototype",
+                ProductType = "Energy Storage Device",
+                ResearchBackground = "Lithium-air battery leveraging quantum tunneling for 10x energy density improvement over conventional Li-ion batteries. Based on 3 years of R&D at Advanced Energy Lab.",
+                ResearchCategory = ResearchCategory.Engineering,
+                IprStatus = "Patent Pending"
+            },
+            Product = new Product
+            {
+                ProductDescription = "Next-generation battery technology for electric vehicles enabling 1000-mile range on single charge with 50% faster charging and 20-year lifespan.",
+                TechnologyDescription = "Quantum tunneling mechanism enables unprecedented energy density through advanced cathode materials and electrolyte chemistry",
+                TargetBeneficiaries = "Electric vehicle manufacturers, renewable energy storage providers, consumer electronics companies",
+                ProductAdvantages = "10x energy density, 50% faster charging time, 20-year operational lifespan, environmentally sustainable materials",
+                DevelopmentPhase = "Prototype",
+                DevelopmentProcess = "Laboratory validation complete, seeking partners for commercial scale production",
+                ProductKeywords = "battery, energy storage, electric vehicle, quantum, lithium-air",
+                AdvantageKeywords = "energy density, fast charging, long lifespan, sustainable"
+            },
+            Market = new Market
+            {
+                TargetMarket = "Electric vehicle manufacturers, renewable energy storage systems, consumer electronics",
+                TargetCustomerBase = "Automotive OEMs, grid-scale energy storage providers",
+                TargetCustomerType = "B2B"
+            },
+            CollaborationRequirement = new CollaborationRequirement
+            {
+                PartnersNeeded = "RD,Manufacturing"
+            },
             Status = InnovationStatus.Published,
             CreatedAt = new DateTime(2026, 1, 15, 10, 0, 0, DateTimeKind.Utc),
             SubmittedAt = new DateTime(2026, 1, 15, 14, 30, 0, DateTimeKind.Utc),
@@ -181,8 +194,9 @@ public class GetInnovationTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var innovation = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("Quantum Battery Prototype", innovation.GetProperty("title").GetString());
-        Assert.Equal("Engineering", innovation.GetProperty("researchCategory").GetString());
+        var ideaSummary = innovation.GetProperty("ideaSummary");
+        Assert.Equal("Quantum Battery Prototype", ideaSummary.GetProperty("title").GetString());
+        Assert.Equal("Engineering", ideaSummary.GetProperty("researchCategory").GetString());
         Assert.Equal("Published", innovation.GetProperty("status").GetString());
     }
 

@@ -145,22 +145,35 @@ public class Phase0JourneyTests : IDisposable
             {
                 IdeaToken = new Guid("33333333-3333-3333-3333-333333333333"),
                 OwnerId = actorId,
-                Title = "Quantum Battery Prototype",
-                ProductType = "Energy Storage Device",
-                ResearchBackground = "Lithium-air battery leveraging quantum tunneling for 10x energy density improvement.",
-                ResearchCategory = ResearchCategory.Engineering,
-                IprStatus = "Patent Pending",
-                ProductDescription = "Next-generation battery technology for electric vehicles enabling 1000-mile range.",
-                TechnologyDescription = "Quantum tunneling mechanism enables unprecedented energy density through advanced material science",
-                TargetBeneficiaries = "Electric vehicle manufacturers, renewable energy storage providers, grid operators",
-                ProductAdvantages = "10x energy density, 50% faster charging time, 20-year operational lifespan",
-                DevelopmentPhase = "Prototype",
-                DevelopmentProcess = "Laboratory validation complete, seeking partners for commercial scale production",
-                TargetMarket = "Electric vehicle manufacturers, renewable energy storage systems",
-                TargetCustomerBase = "Automotive OEMs, grid-scale energy storage providers",
-                TargetCustomerType = "B2B",
-                ProductKeywords = "battery, energy storage, electric vehicle, quantum",
-                AdvantageKeywords = "energy density, fast charging, long lifespan",
+                IdeaSummary = new IdeaSummary
+                {
+                    Title = "Quantum Battery Prototype",
+                    ProductType = "Energy Storage Device",
+                    ResearchBackground = "Lithium-air battery leveraging quantum tunneling for 10x energy density improvement.",
+                    ResearchCategory = ResearchCategory.Engineering,
+                    IprStatus = "Patent Pending"
+                },
+                Product = new Product
+                {
+                    ProductDescription = "Next-generation battery technology for electric vehicles enabling 1000-mile range.",
+                    TechnologyDescription = "Quantum tunneling mechanism enables unprecedented energy density through advanced material science",
+                    TargetBeneficiaries = "Electric vehicle manufacturers, renewable energy storage providers, grid operators",
+                    ProductAdvantages = "10x energy density, 50% faster charging time, 20-year operational lifespan",
+                    DevelopmentPhase = "Prototype",
+                    DevelopmentProcess = "Laboratory validation complete, seeking partners for commercial scale production",
+                    ProductKeywords = "battery, energy storage, electric vehicle, quantum",
+                    AdvantageKeywords = "energy density, fast charging, long lifespan"
+                },
+                Market = new Market
+                {
+                    TargetMarket = "Electric vehicle manufacturers, renewable energy storage systems",
+                    TargetCustomerBase = "Automotive OEMs, grid-scale energy storage providers",
+                    TargetCustomerType = "B2B"
+                },
+                CollaborationRequirement = new CollaborationRequirement
+                {
+                    PartnersNeeded = "RD,Manufacturing"
+                },
                 Status = InnovationStatus.Published,
                 CreatedAt = DateTime.UtcNow,
                 SubmittedAt = DateTime.UtcNow,
@@ -200,8 +213,9 @@ public class Phase0JourneyTests : IDisposable
 
         Assert.Equal(HttpStatusCode.OK, innovationResponse.StatusCode);
         var innovation = await innovationResponse.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("Quantum Battery Prototype", innovation.GetProperty("title").GetString());
-        Assert.Equal("Engineering", innovation.GetProperty("researchCategory").GetString());
+        var ideaSummary = innovation.GetProperty("ideaSummary");
+        Assert.Equal("Quantum Battery Prototype", ideaSummary.GetProperty("title").GetString());
+        Assert.Equal("Engineering", ideaSummary.GetProperty("researchCategory").GetString());
         Assert.Equal("Published", innovation.GetProperty("status").GetString());
 
         // Verify complete journey success

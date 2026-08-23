@@ -137,22 +137,35 @@ public class ListInnovationsTests : IDisposable
         {
             IdeaToken = Guid.NewGuid(),
             OwnerId = _ideaGeneratorId,
-            Title = "Quantum Battery Prototype",
-            ProductType = "Energy Storage Device",
-            ResearchBackground = "Lithium-air battery leveraging quantum tunneling",
-            ResearchCategory = ResearchCategory.Engineering,
-            IprStatus = "Patent Pending",
-            ProductDescription = "Next-generation battery technology",
-            TechnologyDescription = "Quantum-enhanced battery materials",
-            TargetBeneficiaries = "EV manufacturers and renewable energy storage providers",
-            ProductAdvantages = "High energy density",
-            DevelopmentPhase = "Prototype",
-            DevelopmentProcess = "R&D phase",
-            TargetMarket = "EV manufacturers",
-            TargetCustomerBase = "Automotive OEMs",
-            TargetCustomerType = "B2B",
-            ProductKeywords = "battery, quantum, energy",
-            AdvantageKeywords = "efficient, high-capacity",
+            IdeaSummary = new IdeaSummary
+            {
+                Title = "Quantum Battery Prototype",
+                ProductType = "Energy Storage Device",
+                ResearchBackground = "Lithium-air battery leveraging quantum tunneling",
+                ResearchCategory = ResearchCategory.Engineering,
+                IprStatus = "Patent Pending"
+            },
+            Product = new Product
+            {
+                ProductDescription = "Next-generation battery technology",
+                TechnologyDescription = "Quantum-enhanced battery materials",
+                TargetBeneficiaries = "EV manufacturers and renewable energy storage providers",
+                ProductAdvantages = "High energy density",
+                DevelopmentPhase = "Prototype",
+                DevelopmentProcess = "R&D phase",
+                ProductKeywords = "battery, quantum, energy",
+                AdvantageKeywords = "efficient, high-capacity"
+            },
+            Market = new Market
+            {
+                TargetMarket = "EV manufacturers",
+                TargetCustomerBase = "Automotive OEMs",
+                TargetCustomerType = "B2B"
+            },
+            CollaborationRequirement = new CollaborationRequirement
+            {
+                PartnersNeeded = "RD,Manufacturing"
+            },
             Status = InnovationStatus.Published,
             CreatedAt = DateTimeOffset.UtcNow.AddDays(-5),
             SubmittedAt = DateTimeOffset.UtcNow.AddDays(-4)
@@ -166,22 +179,35 @@ public class ListInnovationsTests : IDisposable
         {
             IdeaToken = Guid.NewGuid(),
             OwnerId = _ideaGeneratorId,
-            Title = "Smart Circuit Optimizer",
-            ProductType = "Electronic Component",
-            ResearchBackground = "AI-powered circuit design optimization for reduced power consumption",
-            ResearchCategory = ResearchCategory.Engineering,
-            IprStatus = "Patent Pending",
-            ProductDescription = "Circuit optimization software",
-            TechnologyDescription = "AI-powered circuit design optimization",
-            TargetBeneficiaries = "Electronics manufacturers and circuit designers",
-            ProductAdvantages = "Reduces power by 30%",
-            DevelopmentPhase = "Beta",
-            DevelopmentProcess = "Software development",
-            TargetMarket = "Electronics manufacturers",
-            TargetCustomerBase = "Circuit designers",
-            TargetCustomerType = "B2B",
-            ProductKeywords = "circuit, AI, optimization",
-            AdvantageKeywords = "efficient, smart",
+            IdeaSummary = new IdeaSummary
+            {
+                Title = "Smart Circuit Optimizer",
+                ProductType = "Electronic Component",
+                ResearchBackground = "AI-powered circuit design optimization for reduced power consumption",
+                ResearchCategory = ResearchCategory.Engineering,
+                IprStatus = "Patent Pending"
+            },
+            Product = new Product
+            {
+                ProductDescription = "Circuit optimization software",
+                TechnologyDescription = "AI-powered circuit design optimization",
+                TargetBeneficiaries = "Electronics manufacturers and circuit designers",
+                ProductAdvantages = "Reduces power by 30%",
+                DevelopmentPhase = "Beta",
+                DevelopmentProcess = "Software development",
+                ProductKeywords = "circuit, AI, optimization",
+                AdvantageKeywords = "efficient, smart"
+            },
+            Market = new Market
+            {
+                TargetMarket = "Electronics manufacturers",
+                TargetCustomerBase = "Circuit designers",
+                TargetCustomerType = "B2B"
+            },
+            CollaborationRequirement = new CollaborationRequirement
+            {
+                PartnersNeeded = "SalesMarketing"
+            },
             Status = InnovationStatus.Published,
             CreatedAt = DateTimeOffset.UtcNow.AddDays(-3),
             SubmittedAt = DateTimeOffset.UtcNow.AddDays(-2)
@@ -194,22 +220,35 @@ public class ListInnovationsTests : IDisposable
         {
             IdeaToken = Guid.NewGuid(),
             OwnerId = _ideaGeneratorId,
-            Title = "Rapid Diagnostic Test Kit",
-            ProductType = "Medical Device",
-            ResearchBackground = "Novel biomarker detection for early disease diagnosis",
-            ResearchCategory = ResearchCategory.NaturalScience,
-            IprStatus = "Patent Pending",
-            ProductDescription = "Point-of-care diagnostic device",
-            TechnologyDescription = "Novel biomarker detection technology",
-            TargetBeneficiaries = "Healthcare providers, hospitals, and patients",
-            ProductAdvantages = "Results in 5 minutes",
-            DevelopmentPhase = "Clinical trials",
-            DevelopmentProcess = "FDA approval process",
-            TargetMarket = "Healthcare providers",
-            TargetCustomerBase = "Hospitals and clinics",
-            TargetCustomerType = "B2B",
-            ProductKeywords = "diagnostic, rapid, biomarker",
-            AdvantageKeywords = "fast, accurate",
+            IdeaSummary = new IdeaSummary
+            {
+                Title = "Rapid Diagnostic Test Kit",
+                ProductType = "Medical Device",
+                ResearchBackground = "Novel biomarker detection for early disease diagnosis",
+                ResearchCategory = ResearchCategory.NaturalScience,
+                IprStatus = "Patent Pending"
+            },
+            Product = new Product
+            {
+                ProductDescription = "Point-of-care diagnostic device",
+                TechnologyDescription = "Novel biomarker detection technology",
+                TargetBeneficiaries = "Healthcare providers, hospitals, and patients",
+                ProductAdvantages = "Results in 5 minutes",
+                DevelopmentPhase = "Clinical trials",
+                DevelopmentProcess = "FDA approval process",
+                ProductKeywords = "diagnostic, rapid, biomarker",
+                AdvantageKeywords = "fast, accurate"
+            },
+            Market = new Market
+            {
+                TargetMarket = "Healthcare providers",
+                TargetCustomerBase = "Hospitals and clinics",
+                TargetCustomerType = "B2B"
+            },
+            CollaborationRequirement = new CollaborationRequirement
+            {
+                PartnersNeeded = "Investor"
+            },
             Status = InnovationStatus.Published,
             CreatedAt = DateTimeOffset.UtcNow.AddDays(-2),
             SubmittedAt = DateTimeOffset.UtcNow.AddDays(-1)
@@ -222,22 +261,32 @@ public class ListInnovationsTests : IDisposable
         {
             IdeaToken = Guid.NewGuid(),
             OwnerId = _ideaGeneratorId,
-            Title = "Draft Innovation - Should Not Appear",
-            ProductType = "Draft Product",
-            ResearchBackground = "This is still a draft",
-            ResearchCategory = ResearchCategory.Management,
-            IprStatus = "None",
-            ProductDescription = "Draft description",
-            TechnologyDescription = "Draft technology",
-            TargetBeneficiaries = "Draft beneficiaries",
-            ProductAdvantages = "Draft advantages",
-            DevelopmentPhase = "Concept",
-            DevelopmentProcess = "Planning",
-            TargetMarket = "TBD",
-            TargetCustomerBase = "TBD",
-            TargetCustomerType = "B2B",
-            ProductKeywords = "draft",
-            AdvantageKeywords = "none",
+            IdeaSummary = new IdeaSummary
+            {
+                Title = "Draft Innovation - Should Not Appear",
+                ProductType = "Draft Product",
+                ResearchBackground = "This is still a draft",
+                ResearchCategory = ResearchCategory.Management,
+                IprStatus = "None"
+            },
+            Product = new Product
+            {
+                ProductDescription = "Draft description",
+                TechnologyDescription = "Draft technology",
+                TargetBeneficiaries = "Draft beneficiaries",
+                ProductAdvantages = "Draft advantages",
+                DevelopmentPhase = "Concept",
+                DevelopmentProcess = "Planning",
+                ProductKeywords = "draft",
+                AdvantageKeywords = "none"
+            },
+            Market = new Market
+            {
+                TargetMarket = "TBD",
+                TargetCustomerBase = "TBD",
+                TargetCustomerType = "B2B"
+            },
+            CollaborationRequirement = new CollaborationRequirement(),
             Status = InnovationStatus.Draft,
             CreatedAt = DateTimeOffset.UtcNow.AddDays(-1),
             SubmittedAt = null
@@ -364,7 +413,7 @@ public class ListInnovationsTests : IDisposable
         // Verify all items are Engineering category
         foreach (var item in items.EnumerateArray())
         {
-            Assert.Equal("Engineering", item.GetProperty("researchCategory").GetString());
+            Assert.Equal("Engineering", item.GetProperty("ideaSummary").GetProperty("researchCategory").GetString());
         }
     }
 

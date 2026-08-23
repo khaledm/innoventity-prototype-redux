@@ -130,22 +130,32 @@ public class UpdateInnovationTests : IDisposable
         {
             IdeaToken = Guid.NewGuid(),
             OwnerId = _ideaGeneratorId,
-            Title = "Original Draft Title",
-            ProductType = "Energy Storage Device",
-            ResearchBackground = "Original research background",
-            ResearchCategory = ResearchCategory.Engineering,
-            IprStatus = "Patent Pending",
-            ProductDescription = "Original product description",
-            TechnologyDescription = "Advanced battery technology with enhanced energy storage capabilities",
-            ProductAdvantages = "Energy efficient",
-            DevelopmentPhase = "Prototype",
-            DevelopmentProcess = "In-house R&D",
-            TargetMarket = "EV manufacturers",
-            TargetCustomerBase = "Corporate",
-            TargetBeneficiaries = "Electric vehicle manufacturers and energy storage providers",
-            TargetCustomerType = "B2B",
-            ProductKeywords = "battery, energy",
-            AdvantageKeywords = "efficient, sustainable",
+            IdeaSummary = new IdeaSummary
+            {
+                Title = "Original Draft Title",
+                ProductType = "Energy Storage Device",
+                ResearchBackground = "Original research background",
+                ResearchCategory = ResearchCategory.Engineering,
+                IprStatus = "Patent Pending"
+            },
+            Product = new Product
+            {
+                ProductDescription = "Original product description",
+                TechnologyDescription = "Advanced battery technology with enhanced energy storage capabilities",
+                ProductAdvantages = "Energy efficient",
+                DevelopmentPhase = "Prototype",
+                DevelopmentProcess = "In-house R&D",
+                TargetBeneficiaries = "Electric vehicle manufacturers and energy storage providers",
+                ProductKeywords = "battery, energy",
+                AdvantageKeywords = "efficient, sustainable"
+            },
+            Market = new Market
+            {
+                TargetMarket = "EV manufacturers",
+                TargetCustomerBase = "Corporate",
+                TargetCustomerType = "B2B"
+            },
+            CollaborationRequirement = new CollaborationRequirement(),
             Status = InnovationStatus.Draft,
             CreatedAt = DateTimeOffset.UtcNow.AddDays(-1),
             SubmittedAt = null
@@ -157,22 +167,35 @@ public class UpdateInnovationTests : IDisposable
         {
             IdeaToken = Guid.NewGuid(),
             OwnerId = _ideaGeneratorId,
-            Title = "Published Innovation",
-            ProductType = "Medical Device",
-            ResearchBackground = "Published research background",
-            ResearchCategory = ResearchCategory.NaturalScience,
-            IprStatus = "Patent Pending",
-            ProductDescription = "Published product description",
-            TechnologyDescription = "Advanced medical device technology for improved patient outcomes",
-            ProductAdvantages = "Health improving",
-            DevelopmentPhase = "Clinical trials",
-            DevelopmentProcess = "FDA approved process",
-            TargetMarket = "Healthcare providers",
-            TargetCustomerBase = "Hospitals",
-            TargetBeneficiaries = "Healthcare providers, hospitals, and patients",
-            TargetCustomerType = "B2B",
-            ProductKeywords = "medical, healthcare",
-            AdvantageKeywords = "safe, effective",
+            IdeaSummary = new IdeaSummary
+            {
+                Title = "Published Innovation",
+                ProductType = "Medical Device",
+                ResearchBackground = "Published research background",
+                ResearchCategory = ResearchCategory.NaturalScience,
+                IprStatus = "Patent Pending"
+            },
+            Product = new Product
+            {
+                ProductDescription = "Published product description",
+                TechnologyDescription = "Advanced medical device technology for improved patient outcomes",
+                ProductAdvantages = "Health improving",
+                DevelopmentPhase = "Clinical trials",
+                DevelopmentProcess = "FDA approved process",
+                TargetBeneficiaries = "Healthcare providers, hospitals, and patients",
+                ProductKeywords = "medical, healthcare",
+                AdvantageKeywords = "safe, effective"
+            },
+            Market = new Market
+            {
+                TargetMarket = "Healthcare providers",
+                TargetCustomerBase = "Hospitals",
+                TargetCustomerType = "B2B"
+            },
+            CollaborationRequirement = new CollaborationRequirement
+            {
+                PartnersNeeded = "SalesMarketing"
+            },
             Status = InnovationStatus.Published,
             CreatedAt = DateTimeOffset.UtcNow.AddDays(-2),
             SubmittedAt = DateTimeOffset.UtcNow.AddDays(-1)
@@ -233,7 +256,7 @@ public class UpdateInnovationTests : IDisposable
         var root = jsonDoc.RootElement;
 
         Assert.Equal(_draftInnovationId.ToString(), root.GetProperty("innovationId").GetString());
-        Assert.Equal("Updated Draft Title", root.GetProperty("title").GetString());
+        Assert.Equal("Updated Draft Title", root.GetProperty("ideaSummary").GetProperty("title").GetString());
         Assert.Equal("Draft", root.GetProperty("status").GetString());
         Assert.True(root.TryGetProperty("modifiedAt", out _), "Response should include modifiedAt timestamp");
 
@@ -242,8 +265,8 @@ public class UpdateInnovationTests : IDisposable
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var updatedInnovation = await context.Innovations.FindAsync(_draftInnovationId);
         Assert.NotNull(updatedInnovation);
-        Assert.Equal("Updated Draft Title", updatedInnovation.Title);
-        Assert.Equal("Updated product description with more details", updatedInnovation.ProductDescription);
+        Assert.Equal("Updated Draft Title", updatedInnovation.IdeaSummary.Title);
+        Assert.Equal("Updated product description with more details", updatedInnovation.Product.ProductDescription);
     }
 
     /// <summary>

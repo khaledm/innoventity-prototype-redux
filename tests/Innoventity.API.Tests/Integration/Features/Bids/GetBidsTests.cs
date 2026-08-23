@@ -116,22 +116,31 @@ public class GetBidsTests : IDisposable
         {
             OwnerId = _ownerId,
             IdeaToken = Guid.NewGuid(),
-            Title = $"Test Innovation {id:N}",
-            ProductType = "Energy Storage Device",
-            ResearchBackground = "Background covering the research area and motivation for this innovation.",
-            ResearchCategory = ResearchCategory.Engineering,
-            IprStatus = "Patent Pending",
-            ProductDescription = "Product description for testing GetBids visibility.",
-            TechnologyDescription = "Technology description providing technical details for the innovation.",
-            TargetBeneficiaries = "Manufacturers, distributors, and end consumers of the product.",
-            ProductAdvantages = "Cost reduction, quality improvement, and faster time-to-market.",
-            DevelopmentPhase = "Prototype",
-            DevelopmentProcess = "Lab validation with pilot production runs planned.",
-            TargetMarket = "Global technology markets.",
-            TargetCustomerBase = "Enterprise customers in manufacturing and distribution.",
-            TargetCustomerType = "B2B",
-            ProductKeywords = "technology, innovation, testing",
-            AdvantageKeywords = "efficiency, quality, scale",
+            IdeaSummary = new IdeaSummary
+            {
+                Title = $"Test Innovation {id:N}",
+                ProductType = "Energy Storage Device",
+                ResearchBackground = "Background covering the research area and motivation for this innovation.",
+                ResearchCategory = ResearchCategory.Engineering,
+                IprStatus = "Patent Pending"
+            },
+            Product = new Product
+            {
+                ProductDescription = "Product description for testing GetBids visibility.",
+                TechnologyDescription = "Technology description providing technical details for the innovation.",
+                TargetBeneficiaries = "Manufacturers, distributors, and end consumers of the product.",
+                ProductAdvantages = "Cost reduction, quality improvement, and faster time-to-market.",
+                DevelopmentPhase = "Prototype",
+                DevelopmentProcess = "Lab validation with pilot production runs planned.",
+                ProductKeywords = "technology, innovation, testing",
+                AdvantageKeywords = "efficiency, quality, scale"
+            },
+            Market = new Market
+            {
+                TargetMarket = "Global technology markets.",
+                TargetCustomerBase = "Enterprise customers in manufacturing and distribution.",
+                TargetCustomerType = "B2B"
+            },
             Status = InnovationStatus.Published,
             SubmittedAt = DateTimeOffset.UtcNow.AddDays(-5)
         };
