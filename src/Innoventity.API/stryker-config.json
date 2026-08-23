@@ -12,7 +12,12 @@
       "Features/Bids/SubmitManufacturingResponse.cs",
       "Features/Bids/SubmitSalesMarketingResponse.cs",
       "Features/Bids/SubmitResearchDevelopmentResponse.cs",
-      "Features/Bids/SubmitInvestorResponse.cs"
+      "Features/Bids/SubmitInvestorResponse.cs",
+      "Domain/Entities/Innovation.cs",
+      "Domain/Entities/IdeaSummary.cs",
+      "Domain/Entities/Product.cs",
+      "Domain/Entities/Market.cs",
+      "Domain/Entities/CollaborationRequirement.cs"
     ],
     "reporters": [ "html", "json", "progress" ],
     "thresholds": {
