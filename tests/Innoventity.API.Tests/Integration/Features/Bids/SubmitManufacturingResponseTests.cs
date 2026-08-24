@@ -5,11 +5,11 @@ using System.Reflection;
 using Innoventity.API.Domain.Entities;
 using Innoventity.API.Infrastructure.Persistence;
 using Innoventity.API.Tests.TestFixtures;
+
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
 namespace Innoventity.API.Tests.Integration.Features.Bids;
 
@@ -408,6 +408,44 @@ public class SubmitManufacturingResponseTests : IDisposable
     }
 
     /// <summary>
+    /// (1a) Same actor different innovation --> not a duplicate --> 201.
+    /// Regression guard for the ActorId/InnovationId duplicate check using && (not ||):
+    ///  an actor who already responded to one innovation must still be able to respond to different one.
+    /// </summary>
+    [Fact]
+    public async Task SubmitManufacturingResponse_SameActorDifferentInnovation_Returns201()
+    {
+        var token = await GetAccessToken("existing@submitmfg.test", "Manufacturing");
+        var request = MakeValidRequest();
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_ownedByOwnerId}/bids/manufacturing",
+            JsonContent.Create(request),
+            token
+        );
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    /// <summary>
+    /// (1b) Different actor, same innovation --> not duplicate --> 201.
+    /// </summary>
+    [Fact]
+    public async Task SubmitManufacturingResponse_DifferentActorSameInnovation_Returns201()
+    {
+        var token = await GetAccessToken("mfg@submitmfg.test", "Manufacturing");
+        var request = MakeValidRequest();
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_withExistingResponseId}/bids/manufacturing",
+            JsonContent.Create(request),
+            token
+        );
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    /// <summary>
     /// (5) Innovation not Published (Draft) → 404.
     /// </summary>
     [Fact]
@@ -621,6 +659,103 @@ public class SubmitManufacturingResponseTests : IDisposable
     }
 
     /// <summary>
+    /// (M10a) UnitCostRationale under 20 chars → 422 with field name in error.
+    /// Kills the statement-deletion mutant on the ValidateRationale(...UnitCostRationale...) call —
+    /// only ProductionVolumeRationale was previously exercised for this rule.
+    /// </summary>
+    [Fact]
+    public async Task SubmitManufacturingResponse_UnitCostRationaleTooShort_Returns422WithFieldName()
+    {
+        var token = await GetAccessToken("mfg@submitmfg.test", "Manufacturing");
+        var request = new
+        {
+            location = "Europe",
+            participationType = "Manufacturing Partner",
+            participationProposal = MakeProposal(),
+            yearlyManufacturingCosts = new[]
+            {
+            new
+            {
+                year = 1,
+                productionVolume = 10000,
+                productionVolumeRationale = "Based on Q1 supplier capacity quotes and pilot line throughput.",
+                unitCost = 5.50,
+                unitCostRationale = "Too short",
+                averageGlobalDistributionExpense = 1.20,
+                avgDistributionExpenseRationale = "Weighted by target market logistics rates across regions."
+            }
+        }
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/manufacturing",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("UnitCostRationale", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SubmitManufacturingResponse_AvgDistributionExpenseRationaleTooShort_Returns422WithFieldName()
+    {
+        var token = await GetAccessToken("mfg@submitmfg.test", "Manufacturing");
+        var request = new
+        {
+            location = "Europe",
+            participationType = "Manufacturing Partner",
+            participationProposal = MakeProposal(),
+            yearlyManufacturingCosts = new[]
+            {
+                new
+                {
+                    year = 1,
+                    productionVolume = 10000,
+                    productionVolumeRationale = "Based on Q1 supplier capacity quotes and pilot line throughput.",
+                    unitCost = 5.50,
+                    unitCostRationale = "Materials, labor, and overhead costed against supplier agreements.",
+                    averageGlobalDistributionExpense = 1.20,
+                    avgDistributionExpenseRationale = "Too short"
+                }
+            }
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/manufacturing",
+            JsonContent.Create(request),
+            token
+        );
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("AvgDistributionExpenseRationale", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// participationType exactly at the 100-char max is accepted (boundary inclusive).
+    /// </summary>
+    [Fact]
+    public async Task SubmitManufacturingResponse_ParticipationTypeExactlyOneHundredChars_Returns201()
+    {
+        var token = await GetAccessToken("mfg@submitmfg.test", "Manufacturing");
+        var request = new
+        {
+            location = "Europe",
+            participationType = new string('M', 100),
+            participationProposal = MakeProposal(),
+            yearlyManufacturingCosts = MakeValidYears()
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/manufacturing",
+            JsonContent.Create(request),
+            token
+        );
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    /// <summary>
     /// participationProposal exactly at the 100-char minimum is accepted (boundary is inclusive).
     /// </summary>
     [Fact]
@@ -729,8 +864,63 @@ public class SubmitManufacturingResponseTests : IDisposable
             JsonContent.Create(request), token);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains("ProductionVolumeRationale", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// (M11) Client explicitly sends yearlyManufacturingCosts: null in the JSON body → 422.
+    /// Distinct from omitting the field (which binds to the DTO's [] default and never
+    /// reaches the `?? []` null-coalescing at the top of Handle). Kills that mutant.
+    /// </summary>
+    [Fact]
+    public async Task SubmitManufacturingResponse_NullYearlyManufacturingCosts_Returns422()
+    {
+        var token = await GetAccessToken("mfg@submitmfg.test", "Manufacturing");
+        var request = new
+        {
+            location = "Europe",
+            participationType = "Manufacturing Partner",
+            participationProposal = MakeProposal(),
+            yearlyManufacturingCosts = (object?)null
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/manufacturing",
+            JsonContent.Create(request),
+            token
+        );
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("At least one yearly projection entry is required", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// participationProposal exactly at the 5000-char maximum is accepted (boundary is inclusive)
+    /// </summary>
+    [Fact]
+    public async Task SubmitManufacturingResponse_ParticipationProposalExactlyFiveThousandChars_Returns201()
+    {
+        var token = await GetAccessToken("mfg@submitmfg.test", "Manufacturing");
+        var exactlyFiveThousand = new string('a', 5000);
+
+        Assert.Equal(5000, exactlyFiveThousand.Length);
+
+        var request = new
+        {
+            location = "Europe",
+            participationType = "Manufacturing Partner",
+            participationProposal = exactlyFiveThousand,
+            yearlyManufacturingCosts = MakeValidYears(1)
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/manufacturing",
+            JsonContent.Create(request),
+            token
+        );
     }
 
     /// <summary>
@@ -742,6 +932,41 @@ public class SubmitManufacturingResponseTests : IDisposable
         var errors = InvokeValidateProjection(null);
 
         Assert.Contains("YearlyManufacturingCosts", errors.Keys);
+    }
+
+    /// <summary>
+    /// Zero is a valid (non-negative) value for ProductionVolume/UnitCost/
+    /// AverageGlobalDistributionExpense — proves `< 0` (not `<= 0`) is the actual rule.
+    /// </summary>
+    [Fact]
+    public async Task SubmitManufacturingResponse_ZeroValuedNumericFields_Returns201()
+    {
+        var token = await GetAccessToken("mfg@submitmfg.test", "Manufacturing");
+        var request = new
+        {
+            location = "Europe",
+            participationType = "Manufacturing Partner",
+            participationProposal = MakeProposal(),
+            yearlyManufacturingCosts = new[]
+            {
+            new
+            {
+                year = 1,
+                productionVolume = 0,
+                productionVolumeRationale = "Pre-revenue year with no production volume planned for this phase.",
+                unitCost = 0.0,
+                unitCostRationale = "Unit cost not yet determinable during this pre-production planning phase.",
+                averageGlobalDistributionExpense = 0.0,
+                avgDistributionExpenseRationale = "No distribution activity is planned during this initial phase."
+            }
+        }
+        };
+
+        var response = await _client.PostWithAuthAsync(
+            $"/innovations/{_publishedId}/bids/manufacturing",
+            JsonContent.Create(request), token);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
     /// <summary>
@@ -808,6 +1033,28 @@ public class SubmitManufacturingResponseTests : IDisposable
     }
 
     /// <summary>
+    /// (M12a) Multiple duplicate years must be reported in ascending order.
+    /// Kills the OrderBy→OrderByDescending mutants at lines 157-161.
+    /// </summary>
+    [Fact]
+    public void ValidateProjection_MultipleDuplicateYears_ReturnsAscendingOrderInMessage()
+    {
+        string MakeRationale(string label) => $"{label} based on Q1 supplier capacity quotes and pilot line throughput estimates.";
+        var entries = new List<Innoventity.API.Features.Bids.SubmitManufacturingResponse.YearlyManufacturingCostRequest>
+        {
+            new() { Year = 3, ProductionVolume = 10000, ProductionVolumeRationale = MakeRationale("A"), UnitCost = 5.50m, UnitCostRationale = MakeRationale("B"), AverageGlobalDistributionExpense = 1.20m, AvgDistributionExpenseRationale = MakeRationale("C") },
+            new() { Year = 3, ProductionVolume = 11000, ProductionVolumeRationale = MakeRationale("D"), UnitCost = 5.10m, UnitCostRationale = MakeRationale("E"), AverageGlobalDistributionExpense = 1.10m, AvgDistributionExpenseRationale = MakeRationale("F") },
+            new() { Year = 1, ProductionVolume = 9000,  ProductionVolumeRationale = MakeRationale("G"), UnitCost = 5.00m, UnitCostRationale = MakeRationale("H"), AverageGlobalDistributionExpense = 1.00m, AvgDistributionExpenseRationale = MakeRationale("I") },
+            new() { Year = 1, ProductionVolume = 9500,  ProductionVolumeRationale = MakeRationale("J"), UnitCost = 5.05m, UnitCostRationale = MakeRationale("K"), AverageGlobalDistributionExpense = 1.05m, AvgDistributionExpenseRationale = MakeRationale("L") }
+        };
+
+        var errors = InvokeValidateProjection(entries);
+
+        Assert.Contains("YearlyManufacturingCosts", errors.Keys);
+        Assert.Contains("duplicate year(s): 1, 3", errors["YearlyManufacturingCosts"][0], StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
     /// ValidateProjection should report invalid years explicitly instead of masking them as gaps.
     /// </summary>
     [Fact]
@@ -831,6 +1078,27 @@ public class SubmitManufacturingResponseTests : IDisposable
 
         Assert.Contains("YearlyManufacturingCosts", errors.Keys);
         Assert.Contains("invalid year(s): 0", errors["YearlyManufacturingCosts"][0], StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// (M12b) Multiple invalid years must be reported in ascending order.
+    /// Kills the OrderBy→OrderByDescending mutant at line 154.
+    /// </summary>
+    [Fact]
+    public void ValidateProjection_MultipleInvalidYears_ReturnsAscendingOrderInMessage()
+    {
+        string MakeRationale(string label) => $"{label} based on Q1 supplier capacity quotes and pilot line throughput entries.";
+
+        var entries = new List<Innoventity.API.Features.Bids.SubmitManufacturingResponse.YearlyManufacturingCostRequest>
+        {
+            new () { Year = 0, ProductionVolume = 10000, ProductionVolumeRationale = MakeRationale("A"), UnitCost = 5.50m, UnitCostRationale = MakeRationale("B"), AverageGlobalDistributionExpense = 1.20m, AvgDistributionExpenseRationale = MakeRationale("C")},
+            new () { Year = -2, ProductionVolume = 11000, ProductionVolumeRationale = MakeRationale("D"), UnitCost = 5.10m, UnitCostRationale = MakeRationale("E"), AverageGlobalDistributionExpense = 1.10m, AvgDistributionExpenseRationale = MakeRationale("F") }
+        };
+
+        var errors = InvokeValidateProjection(entries);
+
+        Assert.Contains("YearlyManufacturingCosts", errors.Keys);
+        Assert.Contains("invalid year(s): -2, 0", errors["YearlyManufacturingCosts"][0], StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
