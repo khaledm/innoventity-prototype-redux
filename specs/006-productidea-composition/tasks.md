@@ -101,7 +101,7 @@ Web app per plan.md: `src/Innoventity.API/` (backend), `src/Innoventity.Client/s
 - [X] T026 [US2] Fix inverted placeholder-title check (`||` → `&&`) in `IdeaSummary.IsComplete()` in `src/Innoventity.API/Domain/Entities/IdeaSummary.cs` (bug found via T010's test-first pass)
 - [X] T027 [US2] Update `SubmitInnovation.cs`'s 13 field-level checks to read through the nested owned entities (`innovation.IdeaSummary.Title`, etc.) for error-detail reporting in `src/Innoventity.API/Features/Innovations/SubmitInnovation.cs`
 - [X] T028 [US2] Delegate the publish accept/reject decision to `innovation.IsReadyForSubmission()` instead of `validationErrors.Any()`, per FR-005, in `src/Innoventity.API/Features/Innovations/SubmitInnovation.cs` (depends on T006, T026, T027)
-- [ ] T029 [US2] Section-qualify validation error keys (e.g., `ideaSummary.title` instead of bare `Title`) per FR-008's "field + section identifiable" requirement in `src/Innoventity.API/Features/Innovations/SubmitInnovation.cs` (open item noted in contracts/innovations-api.md; current bare keys satisfy FR-008 only via the external rule-mapping table, not self-descriptively)
+- [X] T029 [US2] Section-qualify validation error keys (e.g., `ideaSummary.Title` instead of bare `Title`) per FR-008's "field + section identifiable" requirement in `src/Innoventity.API/Features/Innovations/SubmitInnovation.cs`
 
 **Checkpoint**: User Story 2 verified independently — `dotnet test --filter "FullyQualifiedName~SubmitInnovationTests"` passes (5/5); the placeholder-title bug (T026) was caught precisely because T010/T025 were written test-first before T028's delegation change.
 

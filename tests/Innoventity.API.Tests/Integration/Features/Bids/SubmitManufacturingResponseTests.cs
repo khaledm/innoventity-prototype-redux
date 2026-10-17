@@ -256,8 +256,9 @@ public class SubmitManufacturingResponseTests : IDisposable
             JsonContent.Create(MakeValidRequest()), token);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("Manufacturing actors", body, StringComparison.Ordinal);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Forbidden", problem.GetProperty("title").GetString());
+        Assert.Contains("Manufacturing actors", problem.GetProperty("detail").GetString(), StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -272,6 +273,8 @@ public class SubmitManufacturingResponseTests : IDisposable
             JsonContent.Create(MakeValidRequest()), token);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Not Found", problem.GetProperty("title").GetString());
     }
 
     /// <summary>
@@ -287,7 +290,9 @@ public class SubmitManufacturingResponseTests : IDisposable
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("Location", body, StringComparison.Ordinal);
+        Assert.Contains(
+            "Location must be one of: Asia, Americas, Europe, Africa, Oceania.",
+            body, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -308,7 +313,9 @@ public class SubmitManufacturingResponseTests : IDisposable
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("ParticipationType", body, StringComparison.Ordinal);
+        Assert.Contains(
+            "Participation type is required and must be 100 characters or fewer.",
+            body, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -387,6 +394,9 @@ public class SubmitManufacturingResponseTests : IDisposable
                 JsonContent.Create(MakeValidRequest()), token);
 
             Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+            var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+            Assert.Equal("Forbidden", problem.GetProperty("title").GetString());
+            Assert.Contains("your own innovation", problem.GetProperty("detail").GetString(), StringComparison.Ordinal);
         }
     }
 
@@ -494,7 +504,9 @@ public class SubmitManufacturingResponseTests : IDisposable
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("ProductionVolumeRationale", body, StringComparison.Ordinal);
+        Assert.Contains(
+            "YearlyManufacturingCosts[0].ProductionVolumeRationale must be between 20 and 500 characters.",
+            body, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -655,7 +667,9 @@ public class SubmitManufacturingResponseTests : IDisposable
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("ProductionVolumeRationale", body, StringComparison.Ordinal);
+        Assert.Contains(
+            "YearlyManufacturingCosts[0].ProductionVolumeRationale must be between 20 and 500 characters.",
+            body, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -693,7 +707,9 @@ public class SubmitManufacturingResponseTests : IDisposable
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("UnitCostRationale", body, StringComparison.Ordinal);
+        Assert.Contains(
+            "YearlyManufacturingCosts[0].UnitCostRationale must be between 20 and 500 characters.",
+            body, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -728,7 +744,9 @@ public class SubmitManufacturingResponseTests : IDisposable
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("AvgDistributionExpenseRationale", body, StringComparison.Ordinal);
+        Assert.Contains(
+            "YearlyManufacturingCosts[0].AvgDistributionExpenseRationale must be between 20 and 500 characters.",
+            body, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -801,8 +819,9 @@ public class SubmitManufacturingResponseTests : IDisposable
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("ParticipationProposal", body, StringComparison.Ordinal);
-        Assert.Contains("100", body, StringComparison.Ordinal);
+        Assert.Contains(
+            "Participation proposal must be between 100 and 5000 characters.",
+            body, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -866,7 +885,9 @@ public class SubmitManufacturingResponseTests : IDisposable
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
 
         var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("ProductionVolumeRationale", body, StringComparison.Ordinal);
+        Assert.Contains(
+            "YearlyManufacturingCosts[1].ProductionVolumeRationale must be between 20 and 500 characters.",
+            body, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -992,8 +1013,19 @@ public class SubmitManufacturingResponseTests : IDisposable
         var errors = InvokeValidateProjection(entries);
 
         Assert.Contains("YearlyManufacturingCosts[0].ProductionVolume", errors.Keys);
+        Assert.Equal(
+            "YearlyManufacturingCosts[0].ProductionVolume must be greater than or equal to 0.",
+            errors["YearlyManufacturingCosts[0].ProductionVolume"][0]);
+
         Assert.Contains("YearlyManufacturingCosts[0].UnitCost", errors.Keys);
+        Assert.Equal(
+            "YearlyManufacturingCosts[0].UnitCost must be greater than or equal to 0.",
+            errors["YearlyManufacturingCosts[0].UnitCost"][0]);
+
         Assert.Contains("YearlyManufacturingCosts[0].AverageGlobalDistributionExpense", errors.Keys);
+        Assert.Equal(
+            "YearlyManufacturingCosts[0].AverageGlobalDistributionExpense must be greater than or equal to 0.",
+            errors["YearlyManufacturingCosts[0].AverageGlobalDistributionExpense"][0]);
     }
 
     /// <summary>

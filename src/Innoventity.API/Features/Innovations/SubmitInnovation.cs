@@ -70,18 +70,18 @@ public static class SubmitInnovation
             // Rule 1: Title not empty and not placeholder
             if (string.IsNullOrWhiteSpace(innovation.IdeaSummary.Title))
             {
-                validationErrors.Add("Title", new List<string> { "Title is required" });
+                validationErrors.Add("ideaSummary.Title", new List<string> { "Title is required" });
             }
             else if (innovation.IdeaSummary.Title.Contains("Untitled", StringComparison.OrdinalIgnoreCase) ||
                      innovation.IdeaSummary.Title.Contains("TODO", StringComparison.OrdinalIgnoreCase))
             {
-                validationErrors.Add("Title", new List<string> { "Title must not be a placeholder" });
+                validationErrors.Add("ideaSummary.Title", new List<string> { "Title must not be a placeholder" });
             }
 
             // Rule 2: ProductType provided
             if (string.IsNullOrWhiteSpace(innovation.IdeaSummary.ProductType))
             {
-                validationErrors.Add("ProductType", new List<string> { "Product type is required" });
+                validationErrors.Add("ideaSummary.ProductType", new List<string> { "Product type is required" });
             }
 
             // Rule 3: ResearchCategory selected
@@ -90,11 +90,11 @@ public static class SubmitInnovation
             // Rule 4: ResearchBackground min 50 characters
             if (string.IsNullOrWhiteSpace(innovation.IdeaSummary.ResearchBackground))
             {
-                validationErrors.Add("ResearchBackground", new List<string> { "Research background is required" });
+                validationErrors.Add("ideaSummary.ResearchBackground", new List<string> { "Research background is required" });
             }
             else if (innovation.IdeaSummary.ResearchBackground.Length < 50)
             {
-                validationErrors.Add("ResearchBackground",
+                validationErrors.Add("ideaSummary.ResearchBackground",
                     new List<string> { "Research background must be at least 50 characters" });
             }
 
@@ -110,39 +110,39 @@ public static class SubmitInnovation
             // Rule 7: ProductDescription provided
             if (string.IsNullOrWhiteSpace(innovation.Product.ProductDescription))
             {
-                validationErrors.Add("ProductDescription", new List<string> { "Product description is required" });
+                validationErrors.Add("product.ProductDescription", new List<string> { "Product description is required" });
             }
 
             // Rule 8: TechnologyDescription provided
             if (string.IsNullOrWhiteSpace(innovation.Product.TechnologyDescription))
             {
-                validationErrors.Add("TechnologyDescription", new List<string> { "Technology description is required" });
+                validationErrors.Add("product.TechnologyDescription", new List<string> { "Technology description is required" });
             }
 
             // Rule 9: TargetBeneficiaries provided
             if (string.IsNullOrWhiteSpace(innovation.Product.TargetBeneficiaries))
             {
-                validationErrors.Add("TargetBeneficiaries", new List<string> { "Target beneficiaries are required" });
+                validationErrors.Add("product.TargetBeneficiaries", new List<string> { "Target beneficiaries are required" });
             }
 
             // Rule 10: RelevantMarketSize > 0
             if (!innovation.Market.RelevantMarketSize.HasValue || innovation.Market.RelevantMarketSize.Value <= 0)
             {
-                validationErrors.Add("RelevantMarketSize",
+                validationErrors.Add("market.RelevantMarketSize",
                     new List<string> { "Relevant market size must be greater than zero" });
             }
 
             // Rule 11: PotentialMarketSize > 0
             if (!innovation.Market.PotentialMarketSize.HasValue || innovation.Market.PotentialMarketSize.Value <= 0)
             {
-                validationErrors.Add("PotentialMarketSize",
+                validationErrors.Add("market.PotentialMarketSize",
                     new List<string> { "Potential market size must be greater than zero" });
             }
 
-            // Rule 12: TargetIndustries count ≥ 1
+            // Rule 12: TargetIndustries count ≥ 1 (root-level association; logically Market, per FR-010/data-model.md)
             if (innovation.TargetIndustries == null || !innovation.TargetIndustries.Any())
             {
-                validationErrors.Add("TargetIndustries",
+                validationErrors.Add("market.TargetIndustries",
                     new List<string> { "At least one target industry is required" });
             }
 
@@ -150,7 +150,7 @@ public static class SubmitInnovation
             if (string.IsNullOrWhiteSpace(innovation.CollaborationRequirement.PartnersNeeded) ||
                 innovation.CollaborationRequirement.PartnersNeeded.Split(',', StringSplitOptions.RemoveEmptyEntries).Length == 0)
             {
-                validationErrors.Add("PartnersNeeded",
+                validationErrors.Add("collaborationRequirement.PartnersNeeded",
                     new List<string> { "At least one partner type is required (RD, Manufacturing, SalesMarketing, or Investor)" });
             }
 

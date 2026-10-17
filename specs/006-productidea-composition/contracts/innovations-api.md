@@ -95,7 +95,7 @@ Query params unchanged: `industryId`, `researchCategory`, `page`, `pageSize`.
 
 **Response on success (200)**: unchanged — `{ "innovationId": "guid", "status": "Published", "submittedAt": "ISO 8601" }`.
 
-**Response on validation failure (400)**: unchanged `ValidationProblem` shape — `errors` dictionary keyed by bare field name (`"Title"`, `"ResearchBackground"`, `"ProductDescription"`, `"TechnologyDescription"`, `"TargetBeneficiaries"`, `"RelevantMarketSize"`, `"PotentialMarketSize"`, `"TargetIndustries"`, `"PartnersNeeded"`), each with a string array of messages. **Note**: keys are not section-qualified (e.g. not `"ideaSummary.title"`) — FR-008 requires the section be *identifiable*, which the constitution-mapping table above satisfies implicitly (each key maps 1:1 to exactly one section), but a client cannot derive the section from the key string alone without that mapping table. Tracked as an open item, not re-litigated in this plan (see `tasks.md` for optional follow-up).
+**Response on validation failure (400)**: unchanged `ValidationProblem` shape — `errors` dictionary keyed by section-qualified field name (`"ideaSummary.Title"`, `"ideaSummary.ResearchBackground"`, `"product.ProductDescription"`, `"product.TechnologyDescription"`, `"product.TargetBeneficiaries"`, `"market.RelevantMarketSize"`, `"market.PotentialMarketSize"`, `"market.TargetIndustries"`, `"collaborationRequirement.PartnersNeeded"`), each with a string array of messages. Section is derivable directly from the key (FR-008).
 
 **Decision gate**: the 200-vs-400 branch is `!innovation.IsReadyForSubmission()`, not `validationErrors.Any()` — the two are required to always agree (enforced by `SubmitInnovation_PlaceholderTitleOnly_Returns400AndMatchesIsReadyForSubmission`).
 
