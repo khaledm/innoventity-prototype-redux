@@ -132,22 +132,22 @@ Web app per plan.md: `src/Innoventity.API/` (backend), `src/Innoventity.Client/s
 
 **Independent Test**: Run existing client unit tests and E2E journeys against the updated client; verify they pass without reducing coverage or removing assertions.
 
-**Status**: NOT STARTED. The backend now returns a nested payload shape (Phase 3); the Angular client still expects the old flat shape. This is real, scoped, pending work — confirmed by inspection: `innovation.model.ts` declares `InnovationDetail`/`InnovationListItem` as flat interfaces, and exactly two components consume innovation fields directly.
+**Status**: DONE. The backend returns a nested payload shape (Phase 3); the Angular client model, templates, and specs now consume it.
 
 ### Tests for User Story 4
 
-- [ ] T033 [P] [US4] Update `innovations.service.spec.ts` fixtures/mocks to the nested response shape in `src/Innoventity.Client/src/app/core/services/innovations.service.spec.ts`
-- [ ] T034 [P] [US4] Update `innovation-detail.component.spec.ts` fixtures to nested shape and confirm existing assertions still hold in `src/Innoventity.Client/src/app/features/innovations/innovation-detail/innovation-detail.component.spec.ts`
-- [ ] T035 [P] [US4] Update `innovations-list.component.spec.ts` fixtures to nested shape in `src/Innoventity.Client/src/app/features/innovations/innovations-list/innovations-list.component.spec.ts`
+- [X] T033 [P] [US4] Update `innovations.service.spec.ts` fixtures/mocks to the nested response shape in `src/Innoventity.Client/src/app/core/services/innovations.service.spec.ts`
+- [X] T034 [P] [US4] Update `innovation-detail.component.spec.ts` fixtures to nested shape and confirm existing assertions still hold in `src/Innoventity.Client/src/app/features/innovations/innovation-detail/innovation-detail.component.spec.ts`
+- [X] T035 [P] [US4] Update `innovations-list.component.spec.ts` fixtures to nested shape in `src/Innoventity.Client/src/app/features/innovations/innovations-list/innovations-list.component.spec.ts`
 
 ### Implementation for User Story 4
 
-- [ ] T036 [US4] Update `InnovationDetail` and `InnovationListItem` interfaces to nest `ideaSummary`/`product`/`market`/`collaborationRequirement` per contracts/innovations-api.md in `src/Innoventity.Client/src/app/core/models/innovation.model.ts` (depends on T018, T020 — must match the actual API shape)
-- [ ] T037 [US4] Fix all now-broken field accesses (`innovation.title` → `innovation.ideaSummary.title`, etc.) surfaced by the TypeScript compiler in `src/Innoventity.Client/src/app/features/innovations/innovation-detail/innovation-detail.component.ts` (depends on T036)
-- [ ] T038 [US4] Fix all now-broken field accesses in the list view in `src/Innoventity.Client/src/app/features/innovations/innovations-list/innovations-list.component.ts` (depends on T036)
-- [ ] T039 [US4] Confirm `innovations.service.ts` requires no logic changes (pass-through typed HTTP calls only) — verify via `npm run build` in `src/Innoventity.Client/src/app/core/services/innovations.service.ts` (depends on T036)
+- [X] T036 [US4] Update `InnovationDetail` and `InnovationListItem` interfaces to nest `ideaSummary`/`product`/`market`/`collaborationRequirement` per contracts/innovations-api.md in `src/Innoventity.Client/src/app/core/models/innovation.model.ts` (depends on T018, T020 — must match the actual API shape)
+- [X] T037 [US4] Fix all now-broken field accesses (`innovation.title` → `innovation.ideaSummary.title`, etc.) in `src/Innoventity.Client/src/app/features/innovations/innovation-detail/innovation-detail.component.html` — the accesses live in the template, not the thin `.component.ts` (depends on T036)
+- [X] T038 [US4] Fix all now-broken field accesses in the list view in `src/Innoventity.Client/src/app/features/innovations/innovations-list/innovations-list.component.html` (depends on T036)
+- [X] T039 [US4] Confirm `innovations.service.ts` requires no logic changes (pass-through typed HTTP calls only) — verified via `npm run build` in `src/Innoventity.Client/src/app/core/services/innovations.service.ts` (depends on T036)
 
-**Checkpoint**: User Story 4 will be verified via `npm test` (all three spec files green, no reduced assertion count) and `npm run e2e` (existing journeys touching innovation screens still pass) — not yet run, pending T033-T039.
+**Checkpoint**: User Story 4 verified — `npm test` passes (9 suites, 87/87 tests, no reduced assertion count) and `npm run build` succeeds with zero compile errors.
 
 ---
 
@@ -156,8 +156,8 @@ Web app per plan.md: `src/Innoventity.API/` (backend), `src/Innoventity.Client/s
 **Purpose**: Improvements spanning multiple user stories; spec.md Success Criteria not yet explicitly checkpointed.
 
 - [x] T040 [P] Run `dotnet stryker` from `src/Innoventity.API/` to confirm mutation score ≥77.5% (floor >70%) on the owned-entity/`Innovation` completeness methods per SC-005 — `stryker-config.json`'s `mutate` list now includes `Innovation.cs`/`IdeaSummary.cs`/`Product.cs`/`Market.cs`/`CollaborationRequirement.cs` (previously scoped only to Auth/Bids from an earlier feature)
-- [ ] T041 Run full `quickstart.md` validation end-to-end (backend + frontend sections) once Phase 6 completes
-- [ ] T042 [P] Update `CLAUDE.md`'s active-feature pointer to reference this `tasks.md` now that it exists (currently references only spec.md)
+- [X] T041 Run full `quickstart.md` validation end-to-end (backend + frontend sections) — `dotnet test` 278/278, `npm test` 87/87, `npm run build` clean, `npx playwright test journey-1` 3/3 against the live API
+- [X] T042 [P] Update `CLAUDE.md`'s active-feature pointer to reference this `tasks.md` now that it exists (currently references only spec.md)
 
 ---
 
@@ -167,11 +167,11 @@ Web app per plan.md: `src/Innoventity.API/` (backend), `src/Innoventity.Client/s
 
 - **Setup (Phase 1)**: No dependencies — DONE
 - **Foundational (Phase 2)**: Depends on Setup — BLOCKS all user stories — DONE
-- **User Story 1 (Phase 3)**: Depends on Foundational — DONE except T013 (test gap), T021 (cleanup)
-- **User Story 2 (Phase 4)**: Depends on Foundational; reads owned entities from US1's endpoints but is independently testable via the `submit` endpoint alone — DONE except T029 (error-key follow-up)
+- **User Story 1 (Phase 3)**: Depends on Foundational — DONE
+- **User Story 2 (Phase 4)**: Depends on Foundational; reads owned entities from US1's endpoints but is independently testable via the `submit` endpoint alone — DONE
 - **User Story 3 (Phase 5)**: Depends on Foundational (specifically T007) — DONE
-- **User Story 4 (Phase 6)**: Depends on User Story 1's response shape being final (T018, T020) — NOT STARTED
-- **Polish (Phase 7)**: Depends on all desired user stories being complete
+- **User Story 4 (Phase 6)**: Depends on User Story 1's response shape being final (T018, T020) — DONE
+- **Polish (Phase 7)**: Depends on all desired user stories being complete — DONE
 
 ### User Story Dependencies
 
@@ -187,14 +187,14 @@ Web app per plan.md: `src/Innoventity.API/` (backend), `src/Innoventity.Client/s
 
 ---
 
-## Parallel Example: User Story 4 (remaining work)
+## Parallel Example: User Story 4 (as executed)
 
 ```bash
-# After T036 (model update) lands, these can proceed in parallel:
-Task: "Fix field accesses in innovation-detail.component.ts"
-Task: "Fix field accesses in innovations-list.component.ts"
+# After T036 (model update) landed, these ran in parallel:
+Task: "Fix field accesses in innovation-detail.component.html"
+Task: "Fix field accesses in innovations-list.component.html"
 
-# Spec updates can start in parallel with the above, then be finalized once compiler errors are resolved:
+# Spec fixture updates followed:
 Task: "Update innovations.service.spec.ts fixtures"
 Task: "Update innovation-detail.component.spec.ts fixtures"
 Task: "Update innovations-list.component.spec.ts fixtures"
@@ -206,19 +206,13 @@ Task: "Update innovations-list.component.spec.ts fixtures"
 
 ### Status Summary
 
-- **MVP (US1)**: ✅ DONE — backend nested composition shipped, tested, committed; `IsComplete()` coverage gap on `Product`/`Market`/`CollaborationRequirement` (originally tracked as T013 and flagged in code review) has since been closed — 268/268 tests passing
-- **US2 (submission gate)**: ✅ DONE — delegation to `IsReadyForSubmission()` verified via regression test
+- **MVP (US1)**: ✅ DONE — backend nested composition shipped, tested, committed
+- **US2 (submission gate)**: ✅ DONE — delegation to `IsReadyForSubmission()` verified via regression test; error keys section-qualified (T029)
 - **US3 (data preservation)**: ✅ DONE — migration verified as a no-op; zero data-loss warning
-- **US4 (client)**: ❌ NOT STARTED — next actionable increment
+- **US4 (client)**: ✅ DONE — model, templates, and specs updated to the nested shape; `npm test` 87/87, `npm run build` clean, E2E journey (`journey-1.spec.ts`) 3/3 against the live API
+- **Polish (Phase 7)**: ✅ DONE — T040 (Stryker: 77.5% combined on the five owned-entity/Innovation files), T041 (full quickstart validation), T042 (CLAUDE.md pointer)
 
-### Recommended Next Increment
-
-1. T036 (client model) → unblocks T037, T038 in parallel
-2. T037, T038 (component fixes) → unblocks T033-T035 (spec fixture updates, parallel)
-3. T039 (service sanity check) can run any time after T036
-4. Validate via `npm test` + `npm run e2e`
-5. T029 (error-key section-qualification) and T021 (dead-code cleanup) are independent, low-risk polish items that can be picked up whenever — not on the US4 critical path
-6. T040 (Stryker mutation testing) has two prerequisites now both met: (a) `Product.IsComplete()`/`Market.IsComplete()`/`CollaborationRequirement` all have direct unit coverage as of T011-T013, and (b) `stryker-config.json`'s `mutate` list now includes the five owned-entity/Innovation files (it previously only covered Auth/Bids).
+All 42 tasks complete. Backend: 278/278 `dotnet test`. Frontend: 87/87 `npm test`, clean `npm run build`, 3/3 Playwright E2E. Not yet merged to `Main`.
 
 ---
 
@@ -226,6 +220,5 @@ Task: "Update innovations-list.component.spec.ts fixtures"
 
 - [P] tasks = different files, no dependencies
 - [Story] label maps task to specific user story for traceability
-- [X] = implemented and test-verified as of this update. T002-T032 (Setup through US3) are committed on commits `4af0775`..`85ca4a3`..`37d0f35`. T011-T014's `IsComplete()` coverage additions (Product/Market/CollaborationRequirement units + Innovation-level isolation cases) and this plan/tasks artifact set are implemented and passing locally (278/278) but **not yet committed** — pending a commit per constitution Principle 8.
-- Remaining [ ] tasks are genuine, unstarted work — verified by direct inspection of the client codebase, not assumed
+- [X] = implemented and test-verified. T002-T032 (Setup through US3) committed on commits `4af0775`..`85ca4a3`..`37d0f35`; T029/T021 fixes and T040/T042 doc updates on `19830cb`/`a1f8683`/`2c4ecde`; T033-T039 (US4 client) and T041 (quickstart validation) implemented and verified in this session.
 - Commit after each task or logical group, per constitution Principle 8 (Conventional Commits)

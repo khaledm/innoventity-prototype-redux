@@ -37,11 +37,11 @@
         @for (innovation of innovations(); track innovation.innovationId) {
           <mat-card class="innovation-card">
             <mat-card-header>
-              <mat-card-title>{{ innovation.title }}</mat-card-title>
+              <mat-card-title>{{ innovation.ideaSummary.title }}</mat-card-title>
               <mat-card-subtitle>
                 <mat-chip-set>
-                  <mat-chip>{{ innovation.productType }}</mat-chip>
-                  <mat-chip highlighted>{{ innovation.researchCategory }}</mat-chip>
+                  <mat-chip>{{ innovation.ideaSummary.productType }}</mat-chip>
+                  <mat-chip highlighted>{{ innovation.ideaSummary.researchCategory }}</mat-chip>
                 </mat-chip-set>
               </mat-card-subtitle>
             </mat-card-header>

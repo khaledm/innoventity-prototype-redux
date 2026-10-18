@@ -25,20 +25,33 @@ describe('InnovationDetailComponent', () => {
       email: 'jane@example.com',
       actorType: 'IdeaGenerator'
     },
-    title: 'Advanced AI System',
-    productType: 'Software',
-    researchBackground: 'This innovation represents a breakthrough in artificial intelligence...',
-    researchCategory: 'Engineering',
-    iprStatus: 'Patent Pending',
-    productDescription: 'An advanced AI system for automated problem solving.',
-    productAdvantages: 'Faster processing, lower cost, higher accuracy.',
-    developmentPhase: 'Prototype',
-    developmentProcess: 'Agile',
-    targetMarket: 'Enterprise software market.',
-    targetCustomerBase: 'Large corporations',
-    targetCustomerType: 'B2B',
-    productKeywords: 'AI, machine learning, automation',
-    advantageKeywords: 'speed, accuracy, cost',
+    ideaSummary: {
+      title: 'Advanced AI System',
+      productType: 'Software',
+      researchBackground: 'This innovation represents a breakthrough in artificial intelligence...',
+      researchCategory: 'Engineering',
+      iprStatus: 'Patent Pending'
+    },
+    product: {
+      productDescription: 'An advanced AI system for automated problem solving.',
+      technologyDescription: 'Neural network inference pipeline.',
+      productAdvantages: 'Faster processing, lower cost, higher accuracy.',
+      developmentPhase: 'Prototype',
+      developmentProcess: 'Agile',
+      targetBeneficiaries: 'Enterprise operations teams',
+      productKeywords: 'AI, machine learning, automation',
+      advantageKeywords: 'speed, accuracy, cost'
+    },
+    market: {
+      targetMarket: 'Enterprise software market.',
+      targetCustomerBase: 'Large corporations',
+      targetCustomerType: 'B2B',
+      relevantMarketSize: 1000000,
+      potentialMarketSize: 5000000
+    },
+    collaborationRequirement: {
+      partnersNeeded: 'Manufacturing'
+    },
     status: 'Published',
     createdAt: '2024-01-01T00:00:00Z',
     submittedAt: '2024-01-15T00:00:00Z',
@@ -259,8 +272,8 @@ describe('InnovationDetailComponent', () => {
       const content = fixture.nativeElement.textContent;
 
       // Assert
-      expect(content).toContain(mockInnovation.title);
-      expect(content).toContain(mockInnovation.researchBackground);
+      expect(content).toContain(mockInnovation.ideaSummary.title);
+      expect(content).toContain(mockInnovation.ideaSummary.researchBackground);
       expect(component.innovation()).toEqual(mockInnovation);
     });
 
@@ -285,8 +298,8 @@ describe('InnovationDetailComponent', () => {
       const content = fixture.nativeElement.textContent;
 
       // Assert
-      expect(content).toContain(mockInnovation.iprStatus); // 'Patent Pending'
-      expect(component.innovation()?.iprStatus).toBe('Patent Pending');
+      expect(content).toContain(mockInnovation.ideaSummary.iprStatus); // 'Patent Pending'
+      expect(component.innovation()?.ideaSummary.iprStatus).toBe('Patent Pending');
     });
 
     it('should display iprStatus value in details', async () => {
@@ -311,14 +324,14 @@ describe('InnovationDetailComponent', () => {
 
       // Assert
       expect(content).toContain('Patent Pending');
-      expect(component.innovation()?.iprStatus).toBeTruthy();
+      expect(component.innovation()?.ideaSummary.iprStatus).toBeTruthy();
     });
 
     it('should not display IPR section when iprStatus is None', async () => {
       // Arrange
       const innovationWithoutIPR: InnovationDetail = {
         ...mockInnovation,
-        iprStatus: 'None'
+        ideaSummary: { ...mockInnovation.ideaSummary, iprStatus: 'None' }
       };
       mockActivatedRoute.snapshot.paramMap.get.mockReturnValue('test-id');
       mockInnovationsService.getInnovationById.mockResolvedValue({
@@ -340,7 +353,7 @@ describe('InnovationDetailComponent', () => {
 
       // Assert
       expect(iprSection).toBeNull();
-      expect(component.innovation()?.iprStatus).toBe('None');
+      expect(component.innovation()?.ideaSummary.iprStatus).toBe('None');
     });
   });
 
