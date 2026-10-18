@@ -2,7 +2,7 @@
 
 ## Vision to Implementation Tracking
 
-**Last Updated**: July 26, 2026
+**Last Updated**: October 18, 2026
 **Constitutional Alignment**: See [constitution.md](../.specify/memory/constitution.md)
 **Gap Analysis Reference**: [innovation-bid-domain-gap-analysis.md](../.specify/analysis/innovation-bid-domain-gap-analysis.md)
 **Phase 001 Status**: ✅ **MERGED TO MAIN** (Merge commit: 5b200d5, Date: April 12, 2026)
@@ -48,7 +48,7 @@ This roadmap ensures **all recommendations from legacy domain analysis are captu
 | **Phase 1b (Pattern D Nightly E2E)** | ✅ **MERGED** | `004-pattern-d-nightly-e2e` → `Main` | TBD | T082–T085 (secrets + prod account + first run + failure notify) | Operational close of nightly Playwright journey tests against production |
 | **Phase 1c (Partner Selection Foundation)** | ✅ **MERGED** | `004-partner-selection` → `Main` | [spec.md](004-partner-selection/spec.md) | 14/14 ✅ | `POST /innovations/{id}/select-partners` complete; 14 integration tests covering all 8 scenarios + full error contract; NFR-003 audit trail (`SelectedByActorId` + `PartnerSelectionCompletedOn`); 39 tasks done (T090–T128, T122 deferred to staging) |
 | **Phase 1d (FormalResponse Hierarchy)** | ✅ **MERGED** | `005-formalresponse-hierarchy` → `Main` | [spec.md](005-formalresponse-hierarchy/spec.md) | 49/49 tasks ✅, 195 tests, mutation 74.95% | Polymorphic FormalResponse (TPH) + typed bid endpoints + yearly projections with mandatory rationale fields (§2.1, §2.4) |
-| **Phase 1e (ProductIdea Composition)** | 🏃 IN PROGRESS | `006-productidea-composition` | [spec.md](006-productidea-composition/spec.md) | Spec complete (2026-07-26); plan pending | Innovation composed into IdeaSummary/Product/Market/CollaborationRequirement + completeness validation methods (§1.1, §1.2) |
+| **Phase 1e (ProductIdea Composition)** | ✅ **MERGED** | `006-productidea-composition` → `Main` (PR #13, 2026-10-18) | [spec.md](006-productidea-composition/spec.md) | 42/42 tasks ✅, 278 backend tests, 87 client tests, mutation 77.5% | Innovation composed into IdeaSummary/Product/Market/CollaborationRequirement + completeness validation methods (§1.1, §1.2); Angular client updated to nested shape |
 | **Phase 2 (Engagement)** | 📋 PLANNED | TBD | [See below](#phase-2-engagement--communication) | TBD | Messaging, interest tracking, industry hierarchy |
 | **Phase 3 (Virtual Incubator)** | 💡 VISION | TBD | Not yet specified | TBD | BusinessPlan aggregate, collaboration workspace |
 
@@ -127,8 +127,8 @@ Focus on **bid submission and viewing** (NOT partner selection, NOT financial pr
 
 ## Phase 1 (Domain Richness) - Domain Richness & Rich Behavior
 
-**Status**: 🏃 IN PROGRESS — FormalResponse Hierarchy ✅ complete (`005`), Partner Selection ✅ complete (`004`), ProductIdea Composition 🏃 active (`006-productidea-composition`)
-**Constitutional Goal**: 99/100 score (domain model maturity)
+**Status**: ✅ **COMPLETE** — FormalResponse Hierarchy ✅ complete (`005`), Partner Selection ✅ complete (`004`), ProductIdea Composition ✅ complete (`006-productidea-composition`, merged 2026-10-18)
+**Constitutional Goal**: 99/100 score (domain model maturity) — achieved with 006's merge
 
 #### 1. ProductIdea Composition Pattern
 
@@ -170,10 +170,11 @@ TO:   Innovation (aggregate root)
 - US Submit-2: Save incomplete drafts (progressive disclosure) *(enabled by composition; implemented in a later feature)*
 - US Submit-3: Validation gates prevent incomplete submissions *(delivered by 006)*
 
-**Current Status**: 🏃 **IN PROGRESS** (branch `006-productidea-composition`; spec + quality checklist complete 2026-07-26; plan pending)
+**Current Status**: ✅ **COMPLETE** (branch `006-productidea-composition`, merged to `Main` via PR #13, 2026-10-18)
 
-- Clarified scope (recorded in 006 spec): composition + validation methods only; all ~28 current fields kept via explicit field-mapping table; existing rows preserved via rename migration (005 precedent); backend + minimal Angular client fixes only
-- Deferred by clarification: multi-step form UI, draft-save endpoints, `Submit()` state machine, legacy-only fields (`HasRightToUse`, `BriefSketch`, `CollaborationType`, `DesiredTimeline`)
+- Clarified scope (recorded in 006 spec): composition + validation methods only; all ~28 current fields kept via explicit field-mapping table; existing rows preserved via in-place EF Core mapping (verified no-op migration); backend + Angular client updated to the nested shape
+- Deferred by clarification (still out of scope): multi-step form UI, draft-save endpoints, `Submit()` state machine, legacy-only fields (`HasRightToUse`, `BriefSketch`, `CollaborationType`, `DesiredTimeline`)
+- All 42 tasks complete: backend (US1-US3), Angular client (US4), and polish (mutation testing 77.5%, quickstart validation, doc updates)
 
 ---
 
@@ -351,10 +352,10 @@ Rule 3: SelectedBidsMustBeValid
 
 | Requirement | Spec Document | Plan Document | Gap Analysis Link | Status |
 |-------------|--------------|---------------|-------------------|--------|
-| **R3.5: ProductIdea Composition** | ✅ [006/spec.md](006-productidea-composition/spec.md) (supersedes 002 §R3.5) | ⏳ Pending (`/speckit-plan`) | [§1.1](../.specify/analysis/innovation-bid-domain-gap-analysis.md#11-legacy-productidea---rich-aggregate-structure) | 🏃 IN PROGRESS (006) |
+| **R3.5: ProductIdea Composition** | ✅ [006/spec.md](006-productidea-composition/spec.md) (supersedes 002 §R3.5) | ✅ [006/plan.md](006-productidea-composition/plan.md) | [§1.1](../.specify/analysis/innovation-bid-domain-gap-analysis.md#11-legacy-productidea---rich-aggregate-structure) | ✅ COMPLETE (merged 2026-10-18, PR #13) |
 | **R3.6: FormalResponse Hierarchy** | ✅ [005/spec.md](005-formalresponse-hierarchy/spec.md) (supersedes 002 §R3.6) | ✅ [005/plan.md](005-formalresponse-hierarchy/plan.md) | [§2.1](../.specify/analysis/innovation-bid-domain-gap-analysis.md#21-legacy-formalresponse---polymorphic-hierarchy) | ✅ COMPLETE (merged 2026-07-18) |
 | **Partner Selection Workflow** | ✅ [004/spec.md](004-partner-selection/spec.md) | ✅ [004/plan.md](004-partner-selection/plan.md) | [§2.6](../.specify/analysis/innovation-bid-domain-gap-analysis.md#26-partnership-selection-workflow-comparison) | ✅ COMPLETE (merged via PR #10) |
-| **Rich Domain Behavior Methods** | ✅ [006/spec.md](006-productidea-composition/spec.md) | ⏳ Covered in 006 plan | [§1.2](../.specify/analysis/innovation-bid-domain-gap-analysis.md#12-legacy-productidea---rich-domain-behavior) | 🏃 IN PROGRESS (006) |
+| **Rich Domain Behavior Methods** | ✅ [006/spec.md](006-productidea-composition/spec.md) | ✅ [006/plan.md](006-productidea-composition/plan.md) | [§1.2](../.specify/analysis/innovation-bid-domain-gap-analysis.md#12-legacy-productidea---rich-domain-behavior) | ✅ COMPLETE (merged 2026-10-18, PR #13) |
 
 ---
 
@@ -798,10 +799,10 @@ All Phase 1-2 items mapped back to gap analysis sections:
 
 | Gap Analysis Section | Feature Name | Spec Location | Phase | Status |
 |---------------------|--------------|---------------|-------|--------|
-| [§1.1 ProductIdea Aggregate](../.specify/analysis/innovation-bid-domain-gap-analysis.md#11-legacy-productidea---rich-aggregate-structure) | ProductIdea Composition | [006/spec.md](006-productidea-composition/spec.md) | Phase 1e | 🏃 IN PROGRESS (006) |
-| [§1.2 Rich Domain Behavior](../.specify/analysis/innovation-bid-domain-gap-analysis.md#12-legacy-productidea---rich-domain-behavior) | Domain Validation Methods | [006/spec.md](006-productidea-composition/spec.md) | Phase 1e | 🏃 IN PROGRESS (006) |
-| [§1.4.1 CollaborationRequirement](../.specify/analysis/innovation-bid-domain-gap-analysis.md#missing-concept-1-collaborationrequirement) | Declare Partner Needs | [006/spec.md](006-productidea-composition/spec.md) | Phase 1e | 🏃 IN PROGRESS (006 — section created; legacy extra fields deferred) |
-| [§1.4.2 Submission Workflow](../.specify/analysis/innovation-bid-domain-gap-analysis.md#missing-concept-2-submission-workflow-state-machine) | IsReadyForSubmission() | [006/spec.md](006-productidea-composition/spec.md) | Phase 1e | 🏃 PARTIAL (006 delivers IsReadyForSubmission; Submit() state machine deferred) |
+| [§1.1 ProductIdea Aggregate](../.specify/analysis/innovation-bid-domain-gap-analysis.md#11-legacy-productidea---rich-aggregate-structure) | ProductIdea Composition | [006/spec.md](006-productidea-composition/spec.md) | Phase 1e | ✅ COMPLETE (merged 2026-10-18) |
+| [§1.2 Rich Domain Behavior](../.specify/analysis/innovation-bid-domain-gap-analysis.md#12-legacy-productidea---rich-domain-behavior) | Domain Validation Methods | [006/spec.md](006-productidea-composition/spec.md) | Phase 1e | ✅ COMPLETE (merged 2026-10-18) |
+| [§1.4.1 CollaborationRequirement](../.specify/analysis/innovation-bid-domain-gap-analysis.md#missing-concept-1-collaborationrequirement) | Declare Partner Needs | [006/spec.md](006-productidea-composition/spec.md) | Phase 1e | ✅ COMPLETE (006 — section created; legacy extra fields deferred) |
+| [§1.4.2 Submission Workflow](../.specify/analysis/innovation-bid-domain-gap-analysis.md#missing-concept-2-submission-workflow-state-machine) | IsReadyForSubmission() | [006/spec.md](006-productidea-composition/spec.md) | Phase 1e | 🏃 PARTIAL (006 delivers IsReadyForSubmission, merged; Submit() state machine deferred to a later feature) |
 | [§1.4.3 Industry Hierarchy](../.specify/analysis/innovation-bid-domain-gap-analysis.md#missing-concept-3-industry-hierarchy-subsector-targeting) | 4-Level Taxonomy | ⚠️ NEEDS SPEC | Phase 2 | ❌ NOT SPEC'D |
 | [§1.4.4 Partner Selection State](../.specify/analysis/innovation-bid-domain-gap-analysis.md#missing-concept-4-partner-selection-state-machine) | Selection Workflow | [004/spec.md](004-partner-selection/spec.md) | Phase 1c | ✅ COMPLETE |
 | [§2.1 FormalResponse Hierarchy](../.specify/analysis/innovation-bid-domain-gap-analysis.md#21-legacy-formalresponse---polymorphic-hierarchy) | Polymorphic Bids | [005/spec.md](005-formalresponse-hierarchy/spec.md) | Phase 1d | ✅ COMPLETE (merged 2026-07-18) |
@@ -812,19 +813,19 @@ All Phase 1-2 items mapped back to gap analysis sections:
 | [§3.2 RegisteredInterest](../.specify/analysis/innovation-bid-domain-gap-analysis.md#32-registeredinterest---engagement-tracking) | Bookmarking System | ⚠️ NEEDS SPEC | Phase 2 | ❌ NOT SPEC'D |
 | [§3.3 Comment System](../.specify/analysis/innovation-bid-domain-gap-analysis.md#33-comment-system---public-discussion) | Public Discussion | ⚠️ NEEDS SPEC | Phase 2 | ❌ NOT SPEC'D |
 
-**Completion Status**: 9/13 items have specifications (69%) — 4 implemented (004, 005), 4 active in 006, 1 spec-ready for Phase 3, 4 not yet spec'd
+**Completion Status**: 9/13 items have specifications (69%) — 8 implemented and merged (004, 005, 006), 1 spec-ready for Phase 3, 4 not yet spec'd
 
 ---
 
 ## Immediate Action Items (Current)
 
-### Phase 1e — 006-productidea-composition (ACTIVE)
+### Phase 1e — 006-productidea-composition (✅ COMPLETE, merged 2026-10-18)
 
-Spec and quality checklist complete (2026-07-26) on branch `006-productidea-composition`; four scope clarifications recorded in the spec. Next steps: `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`.
+Merged to `Main` via PR #13. All 42 tasks done; 278 backend + 87 client tests passing; mutation score 77.5%. The `006-productidea-composition` branch has been deleted (fully merged, squash-merge commit `d2609d8`).
 
-### Phase 2 preparation (after 006 merges)
+### Phase 2 preparation (next up)
 
-Create missing specs/plans for (renumbered — 005/006 are taken by merged/active features):
+Create missing specs/plans for (renumbered — 005/006 are taken by merged features):
 
 - `specs/007-industry-taxonomy/`
 - `specs/008-private-messaging/`
@@ -865,9 +866,9 @@ A `/speckit-analyze` dependency audit on `006-productidea-composition` found bot
 
 **Phase 1 Success**:
 
-- 🏃 ProductIdea composition refactored (006 in progress — spec complete)
+- ✅ ProductIdea composition refactored (006 merged 2026-10-18: 42/42 tasks, mutation 77.5%)
 - ✅ FormalResponse hierarchy implemented (005 merged 2026-07-18: 49/49 tasks, 195 tests, mutation 74.95%)
-- 🏃 Constitutional score: 99/100 (on track; completes with 006)
+- ✅ Constitutional score: 99/100 (achieved with 006's merge)
 
 **Phase 1c Success**:
 
@@ -901,5 +902,5 @@ A `/speckit-analyze` dependency audit on `006-productidea-composition` found bot
 
 ---
 
-**Last Updated**: July 26, 2026
-**Next Review**: After `006-productidea-composition` merges — then Phase 2 spec creation (`007-industry-taxonomy` through `010-public-comments`)
+**Last Updated**: October 18, 2026
+**Next Review**: Phase 2 spec creation (`007-industry-taxonomy` through `010-public-comments`), or `specs/013-framework-upgrades/` if the dependency migration is prioritized first
