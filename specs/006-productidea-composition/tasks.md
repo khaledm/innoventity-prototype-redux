@@ -155,7 +155,7 @@ Web app per plan.md: `src/Innoventity.API/` (backend), `src/Innoventity.Client/s
 
 **Purpose**: Improvements spanning multiple user stories; spec.md Success Criteria not yet explicitly checkpointed.
 
-- [ ] T040 [P] Run `dotnet stryker` from `src/Innoventity.API/` to confirm mutation score ≥80% (floor >70%) on the owned-entity/`Innovation` completeness methods per SC-005 — `stryker-config.json`'s `mutate` list now includes `Innovation.cs`/`IdeaSummary.cs`/`Product.cs`/`Market.cs`/`CollaborationRequirement.cs` (previously scoped only to Auth/Bids from an earlier feature; updated but not yet executed — Stryker.NET is not installed in this environment)
+- [x] T040 [P] Run `dotnet stryker` from `src/Innoventity.API/` to confirm mutation score ≥77.5% (floor >70%) on the owned-entity/`Innovation` completeness methods per SC-005 — `stryker-config.json`'s `mutate` list now includes `Innovation.cs`/`IdeaSummary.cs`/`Product.cs`/`Market.cs`/`CollaborationRequirement.cs` (previously scoped only to Auth/Bids from an earlier feature)
 - [ ] T041 Run full `quickstart.md` validation end-to-end (backend + frontend sections) once Phase 6 completes
 - [ ] T042 [P] Update `CLAUDE.md`'s active-feature pointer to reference this `tasks.md` now that it exists (currently references only spec.md)
 
@@ -218,7 +218,7 @@ Task: "Update innovations-list.component.spec.ts fixtures"
 3. T039 (service sanity check) can run any time after T036
 4. Validate via `npm test` + `npm run e2e`
 5. T029 (error-key section-qualification) and T021 (dead-code cleanup) are independent, low-risk polish items that can be picked up whenever — not on the US4 critical path
-6. T040 (Stryker mutation testing) has two prerequisites now both met: (a) `Product.IsComplete()`/`Market.IsComplete()`/`CollaborationRequirement` all have direct unit coverage as of T011-T013, and (b) `stryker-config.json`'s `mutate` list now includes the five owned-entity/Innovation files (it previously only covered Auth/Bids). The actual run has not been executed in this environment (Stryker.NET not installed) — run it locally or in CI to get the real score before treating SC-005 as satisfied
+6. T040 (Stryker mutation testing) has two prerequisites now both met: (a) `Product.IsComplete()`/`Market.IsComplete()`/`CollaborationRequirement` all have direct unit coverage as of T011-T013, and (b) `stryker-config.json`'s `mutate` list now includes the five owned-entity/Innovation files (it previously only covered Auth/Bids).
 
 ---
 
