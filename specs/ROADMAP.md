@@ -719,14 +719,37 @@ resource "azurerm_linux_web_app" "main" {
 
 ---
 
+#### 3. Framework Major-Version Migrations (.NET 8→10, Angular 19→21)
+
+**Effort**: TBD (needs its own `/speckit-plan`) | **Priority**: MEDIUM-HIGH | **Spec**: ⚠️ NOT YET DOCUMENTED
+
+**Discovered**: Dependency audit during `/speckit-analyze` on `006-productidea-composition`, 2026-10-18.
+
+**Problem**: Both stacks are two major versions behind current:
+
+- **.NET 8 → 10**: `Microsoft.EntityFrameworkCore*`, `Microsoft.AspNetCore.Authentication.JwtBearer`, `Microsoft.AspNetCore.OpenApi` all pinned at `8.0.0` (latest: `10.0.13`); `Swashbuckle.AspNetCore` 6.5.0 → 10.3.0; `Scalar.AspNetCore` 1.2.42 → 2.18.0
+- **Angular 19 → 21**: all `@angular/*` packages at `19.2.x` (latest: `21.2.x`); `typescript` 5.7.3 → 7.0.2; `@angular/cdk`/`@angular/material` similarly behind
+- Several **High-severity transitive CVEs** only fully close with the major bump — notably `@angular/core`/`@angular/compiler` ≤19.2.25 (XSS/sanitization-bypass, 5 advisories) and the JwtBearer 8.0.0 dependency chain (`Microsoft.Data.SqlClient`, `System.Text.Json`, `Microsoft.Extensions.Caching.Memory`, `System.Formats.Asn1`)
+
+**Why not a quick patch**: Both are breaking, multi-major jumps requiring full regression validation (constitution zero-warning/zero-regression gates) — not safe to bundle into an unrelated feature's merge.
+
+**⚠️ ACTION REQUIRED**:
+
+- Create `specs/013-framework-upgrades/spec.md` *(renumbered)* once prioritized relative to Phase 2 engagement features
+- Decide sequencing: before or after Phase 2 (engagement features) — recommend after, since Phase 2 work on the current stack is lower-risk than migrating mid-feature
+- Low-risk interim CVE patches (direct package pins, non-major) tracked separately — see immediate action items below
+
+---
+
 ### Phase 2.5 Specifications Summary
 
 | Feature | Spec Needed | Plan Needed | Priority | Effort | Security Impact |
 |---------|-------------|-------------|----------|--------|-----------------|
 | **Entra ID Auth for SQL** | ⚠️ YES | ⚠️ YES | HIGH | 2-3 days | 🔐 CRITICAL (eliminates password risk) |
 | **Key Vault Integration** | ⚠️ YES | ⚠️ YES | MEDIUM | 1-2 days | 🔒 HIGH (secret rotation, audit) |
+| **Framework Upgrades (.NET 10 / Angular 21)** | ⚠️ YES | ⚠️ YES | MEDIUM-HIGH | TBD | 🔴 HIGH (closes several High-severity CVEs only fixable via major bump) |
 
-**Total Effort Estimate**: 3-5 days
+**Total Effort Estimate**: 3-5 days (Entra ID + Key Vault) + TBD (framework upgrades, pending their own plan)
 
 **Constitutional Alignment**: Principle 2 ("Security baked in, not bolted on") — this phase ensures production-grade security posture before scaling beyond pilot users.
 
@@ -807,6 +830,10 @@ Create missing specs/plans for (renumbered — 005/006 are taken by merged/activ
 - `specs/008-private-messaging/`
 - `specs/009-interest-tracking/`
 - `specs/010-public-comments/`
+
+### Dependency audit follow-up (2026-10-18)
+
+A `/speckit-analyze` dependency audit on `006-productidea-composition` found both stacks two major versions behind (.NET 8 vs. latest 10; Angular 19 vs. latest 21), with several High-severity transitive CVEs only fully resolved by the major bump. Tracked as Phase 2.5 item 3 above (`specs/013-framework-upgrades/` once prioritized). Low-risk, non-breaking CVE patches (direct package version pins, no major bump) are being applied ad hoc outside a dedicated feature branch — see git history around 2026-10-18 for specifics.
 
 ---
 
