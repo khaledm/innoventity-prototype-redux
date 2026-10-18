@@ -742,6 +742,37 @@ resource "azurerm_linux_web_app" "main" {
 
 ---
 
+#### 4. Health Check Endpoint Redesign (API + Web App)
+
+**Effort**: ~1 day | **Priority**: MEDIUM | **Spec**: ⚠️ NOT YET DOCUMENTED
+
+**Discovered**: `/speckit-analyze` review of the current `/health` endpoint, 2026-10-18.
+
+**Problem**: The current `/health` endpoint (`src/Innoventity.API/Features/Health/HealthCheck.cs`) is a single hand-rolled check combining DB connectivity + JWT config validation into one liveness/readiness-conflated response. Gaps against Azure/Microsoft best practice:
+
+- No liveness/readiness separation — Azure's platform health-check probe (which drives auto-heal and multi-instance load-balancer routing) should hit a fast, dependency-free liveness check, not one that also queries SQL. A transient DB blip today would cause a healthy process to be restarted.
+- Not using the standard `Microsoft.Extensions.Diagnostics.HealthChecks` framework (hand-written `Dictionary<string,string>` + manual try/catch instead of `AddHealthChecks()`/`AddDbContextCheck<T>()`).
+- `infrastructure/modules/app-service/main.tf`'s `site_config` does not set `health_check_path` — Azure App Service has no platform-level awareness of the app's health at all today; only the post-deploy Pester poll (`infrastructure/tests/pester/HealthCheck.Tests.ps1`) checks it, and only once, right after deploy.
+- The endpoint's JSON response can indicate *which* specific check failed (e.g. `"jwt_config": "Unhealthy"`) to any unauthenticated caller — minor config-fingerprinting exposure on a probe endpoint that's necessarily public.
+- The Angular Static Web App (frontend) has no health/availability signal at all — nothing detects a bad SPA deploy (e.g. a 404/500 on the root) without a human checking.
+
+**Target design**:
+
+- Split into `/health/live` (process up, no dependencies, tagged `live`) and `/health/ready` (DB + JWT config, tagged `ready`), both via `Microsoft.Extensions.Diagnostics.HealthChecks` + `AspNetCore.HealthChecks.SqlServer`.
+- Terraform: set `site_config.health_check_path = "/health/live"` on the App Service so Azure's own platform probe drives auto-heal/instance rotation from the lightweight check.
+- Pester: split `HealthCheck.Tests.ps1` into two `Describe` blocks — `/health/live` for the fast post-deploy smoke check, `/health/ready` as the deeper gate before slot-swap traffic cutover.
+- Response writer for `/health/ready` returns check *names* only (no exception detail) to unauthenticated callers; full detail logged server-side only.
+- Add an Application Insights availability (ping) test against both `/health/live` and the SWA root URL, ~5 minute cadence, to catch deploy regressions between CI runs — this is the standard pattern for a statically-hosted SPA with no server process to probe directly.
+
+**Breaking Changes**: Minimal — `/health` (current combined endpoint) would be replaced by `/health/live` + `/health/ready`; any external monitoring pointed at the old path needs updating alongside the Terraform/Pester changes in the same PR.
+
+**⚠️ ACTION REQUIRED**:
+
+- Create `specs/014-health-check-redesign/spec.md` *(renumbered)* once prioritized
+- Decide whether this ships standalone or bundled with the next infra-touching feature (it's small enough to not need its own dedicated phase slot)
+
+---
+
 ### Phase 2.5 Specifications Summary
 
 | Feature | Spec Needed | Plan Needed | Priority | Effort | Security Impact |
@@ -749,8 +780,9 @@ resource "azurerm_linux_web_app" "main" {
 | **Entra ID Auth for SQL** | ⚠️ YES | ⚠️ YES | HIGH | 2-3 days | 🔐 CRITICAL (eliminates password risk) |
 | **Key Vault Integration** | ⚠️ YES | ⚠️ YES | MEDIUM | 1-2 days | 🔒 HIGH (secret rotation, audit) |
 | **Framework Upgrades (.NET 10 / Angular 21)** | ⚠️ YES | ⚠️ YES | MEDIUM-HIGH | TBD | 🔴 HIGH (closes several High-severity CVEs only fixable via major bump) |
+| **Health Check Redesign (API + Web App)** | ⚠️ YES | ⚠️ YES | MEDIUM | ~1 day | 🟡 MEDIUM (liveness/readiness separation prevents false-positive auto-heal restarts) |
 
-**Total Effort Estimate**: 3-5 days (Entra ID + Key Vault) + TBD (framework upgrades, pending their own plan)
+**Total Effort Estimate**: 3-5 days (Entra ID + Key Vault) + ~1 day (health checks) + TBD (framework upgrades, pending their own plan)
 
 **Constitutional Alignment**: Principle 2 ("Security baked in, not bolted on") — this phase ensures production-grade security posture before scaling beyond pilot users.
 
