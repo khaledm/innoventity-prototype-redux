@@ -127,7 +127,7 @@ public class InnovationTests
     }
 
     [Fact]
-    public void Innovation_Should_NotBeMArketDetailsSectionComplete_When_RelevantMarketSizeIsZero()
+    public void Innovation_Should_NotBeMarketDetailsSectionComplete_When_RelevantMarketSizeIsZero()
     {
         var innovation = CreateValidInnovation();
         innovation.TargetIndustries.Add(new Industry("TECH-001") { Name = "Technology" });
