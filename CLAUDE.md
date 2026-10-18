@@ -1,13 +1,14 @@
 <!-- SPECKIT START -->
-Feature `006-productidea-composition` (ProductIdea Composition Pattern,
-Phase 1e) on branch `006-productidea-composition` is implementation-complete:
-all 42 tasks in `specs/006-productidea-composition/tasks.md` are done (backend
-US1-US3, Angular client US4, and Phase 7 polish/mutation-testing/doc tasks).
-Plan: `specs/006-productidea-composition/plan.md`. Not yet merged to `Main`.
+No active Speckit feature. `006-productidea-composition` (ProductIdea
+Composition Pattern, Phase 1e) is complete and merged into `Main` via PR #13
+(2026-10-18) — do not treat it as active work. `005-formalresponse-hierarchy`
+is likewise complete and merged. Phase 1 (Domain Richness) is now fully done.
 
-Feature `005-formalresponse-hierarchy` is complete and merged into `Main` — do
-not treat it as active work. For phase sequencing and cross-feature status, see
-`specs/ROADMAP.md`.
+Next candidates (none started yet): Phase 2 engagement features
+(`007-industry-taxonomy` through `010-public-comments`) or the framework
+migration tracked as `specs/013-framework-upgrades/` in `specs/ROADMAP.md`
+Phase 2.5 item 3. Run `/speckit-specify` to open whichever is prioritized next.
+For phase sequencing and cross-feature status, see `specs/ROADMAP.md`.
 <!-- SPECKIT END -->
 
 ## Quick Reference
