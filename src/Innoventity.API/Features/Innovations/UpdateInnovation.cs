@@ -66,24 +66,13 @@ public static class UpdateInnovation
             }
 
             // Partial update logic: Update only provided fields (null = no change)
-             
-            // if (request.Title != null)
-            //     innovation.IdeaSummary.Title = request.Title;
-
-            // if (request.ProductType != null)
-            //     innovation.IdeaSummary.ProductType = request.ProductType;
-
-            if (request.ResearchCategory != null)
+            if (request.ResearchCategory != null &&
+                !Enum.TryParse<ResearchCategory>(request.ResearchCategory, ignoreCase: true, out _))
             {
-                if (!Enum.TryParse<ResearchCategory>(request.ResearchCategory, ignoreCase: true, out var researchCategory))
+                return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
-                    return Results.ValidationProblem(new Dictionary<string, string[]>
-                    {
-                        ["researchCategory"] = new[] { "Must be one of: Management, Engineering, NaturalScience" }
-                    });
-                }
-
-                //innovation.ResearchCategory = researchCategory;
+                    ["researchCategory"] = new[] { "Must be one of: Management, Engineering, NaturalScience" }
+                });
             }
 
             innovation.IdeaSummary = new IdeaSummary()
@@ -122,57 +111,6 @@ public static class UpdateInnovation
              {
                 PartnersNeeded = request.PartnersNeeded != null ? (request.PartnersNeeded.Any() ? string.Join(",", request.PartnersNeeded) : null) : innovation.CollaborationRequirement?.PartnersNeeded
              };
-
-
-            // if (request.ResearchBackground != null)
-            //     innovation.ResearchBackground = request.ResearchBackground;
-
-            // if (request.HasIPR.HasValue)
-            //     innovation.IprStatus = request.HasIPR.Value ? "Patent Pending" : "None";
-
-            // if (request.ProductDescription != null)
-            //     innovation.ProductDescription = request.ProductDescription;
-
-            // if (request.TechnologyDescription != null)
-            //     innovation.TechnologyDescription = request.TechnologyDescription;
-
-            // if (request.ProductAdvantages != null)
-            //     innovation.ProductAdvantages = request.ProductAdvantages;
-
-            // if (request.DevelopmentPhase != null)
-            //     innovation.DevelopmentPhase = request.DevelopmentPhase;
-
-            // if (request.DevelopmentProcess != null)
-            //     innovation.DevelopmentProcess = request.DevelopmentProcess;
-
-            // if (request.TargetMarket != null)
-            //     innovation.TargetMarket = request.TargetMarket;
-
-            // if (request.TargetCustomerBase != null)
-            //     innovation.TargetCustomerBase = request.TargetCustomerBase;
-
-            // if (request.TargetBeneficiaries != null)
-            //     innovation.TargetBeneficiaries = request.TargetBeneficiaries;
-
-            // if (request.TargetCustomerType != null)
-            //     innovation.TargetCustomerType = request.TargetCustomerType;
-
-            // if (request.ProductKeywords != null)
-            //     innovation.ProductKeywords = request.ProductKeywords;
-
-            // if (request.AdvantageKeywords != null)
-            //     innovation.AdvantageKeywords = request.AdvantageKeywords;
-
-            // if (request.RelevantMarketSize.HasValue)
-            //     innovation.RelevantMarketSize = request.RelevantMarketSize;
-
-            // if (request.PotentialMarketSize.HasValue)
-            //     innovation.PotentialMarketSize = request.PotentialMarketSize;
-
-            // if (request.PartnersNeeded != null)
-            //     innovation.PartnersNeeded = request.PartnersNeeded.Any()
-            //         ? string.Join(",", request.PartnersNeeded)
-            //         : null;
 
             // Update target industries if provided
             if (request.TargetIndustryIds != null)

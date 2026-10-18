@@ -12,7 +12,7 @@ description: "Task list for ProductIdea Composition Pattern"
 
 **Tests**: Included — spec.md's Definition of Done and constitution Principle 5 (Tests Must Prove They Work) require test-first validation for this feature's completeness-rule and data-preservation guarantees.
 
-**Organization**: Tasks are grouped by user story (US1–US4, matching spec.md priorities). Backend tasks (US1–US3) are marked `[X]` — implemented, committed, and verified passing (268/268 `dotnet test`) as of this update. US4 (Angular client) is genuinely unstarted and marked `[ ]`.
+**Organization**: Tasks are grouped by user story (US1–US4, matching spec.md priorities). Backend tasks (US1–US3) are marked `[X]` — implemented, committed, and verified passing (278/278 `dotnet test`) as of this update. US4 (Angular client) is genuinely unstarted and marked `[ ]`.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -77,9 +77,9 @@ Web app per plan.md: `src/Innoventity.API/` (backend), `src/Innoventity.Client/s
 - [X] T018 [US1] Restructure `GetInnovation.cs` response into nested `ideaSummary`/`product`/`market`/`collaborationRequirement` objects, including previously-missing fields (`technologyDescription`, `targetBeneficiaries`, market sizes, `partnersNeeded`) in `src/Innoventity.API/Features/Innovations/GetInnovation.cs` (depends on T007)
 - [X] T019 [US1] Restructure `UpdateInnovation.cs` partial-update logic to reconstruct owned entities per-field with existing-value fallback, and nest `ideaSummary` in the response in `src/Innoventity.API/Features/Innovations/UpdateInnovation.cs` (depends on T007)
 - [X] T020 [US1] Restructure `ListInnovations.cs` list items to nest `ideaSummary` and derive `partnersNeeded` from `CollaborationRequirement` in `src/Innoventity.API/Features/Innovations/ListInnovations.cs` (depends on T007)
-- [ ] T021 [P] [US1] Remove dead commented-out flat-field update code and orphaned `ResearchCategory` parse block left over from the mechanical migration in `src/Innoventity.API/Features/Innovations/UpdateInnovation.cs` (code-quality follow-up identified in review; not spec-blocking)
+- [X] T021 [P] [US1] Remove dead commented-out flat-field update code and orphaned `ResearchCategory` parse block left over from the mechanical migration in `src/Innoventity.API/Features/Innovations/UpdateInnovation.cs`
 
-**Checkpoint**: User Story 1 verified independently — `dotnet test --filter "FullyQualifiedName~GetInnovationTests|FullyQualifiedName~ListInnovationsTests|FullyQualifiedName~UpdateInnovationTests|FullyQualifiedName~CreateInnovationTests|FullyQualifiedName~OwnedSections|FullyQualifiedName~InnovationTests"` passes; manual `GET /innovations/{id}` via Swagger confirms nested shape per SC-004. Full suite: 268/268 passing (was 241 before T011-T014's `IsComplete()` coverage gap closure).
+**Checkpoint**: User Story 1 verified independently — `dotnet test --filter "FullyQualifiedName~GetInnovationTests|FullyQualifiedName~ListInnovationsTests|FullyQualifiedName~UpdateInnovationTests|FullyQualifiedName~CreateInnovationTests|FullyQualifiedName~OwnedSections|FullyQualifiedName~InnovationTests"` passes; manual `GET /innovations/{id}` via Swagger confirms nested shape per SC-004. Full suite: 278/278 passing (was 241 before T011-T014's `IsComplete()` coverage gap closure).
 
 ---
 
@@ -116,7 +116,7 @@ Web app per plan.md: `src/Innoventity.API/` (backend), `src/Innoventity.Client/s
 ### Tests for User Story 3
 
 - [X] T030 [US3] Verify migration `ComposeInnovationSections` has empty `Up()`/`Down()` bodies (proving zero physical schema change) — validated by inspection during T008, re-confirmed in `src/Innoventity.API/Infrastructure/Persistence/Migrations/20260823142911_ComposeInnovationSections.cs`
-- [X] T031 [US3] Full regression suite run confirming zero data-shape regressions across Bids/formal-response/auth/discovery flows in `tests/Innoventity.API.Tests/` (`dotnet test` — 268/268 passing)
+- [X] T031 [US3] Full regression suite run confirming zero data-shape regressions across Bids/formal-response/auth/discovery flows in `tests/Innoventity.API.Tests/` (`dotnet test` — 278/278 passing)
 
 ### Implementation for User Story 3
 
@@ -226,6 +226,6 @@ Task: "Update innovations-list.component.spec.ts fixtures"
 
 - [P] tasks = different files, no dependencies
 - [Story] label maps task to specific user story for traceability
-- [X] = implemented and test-verified as of this update. T002-T032 (Setup through US3) are committed on commits `4af0775`..`85ca4a3`..`37d0f35`. T011-T014's `IsComplete()` coverage additions (Product/Market/CollaborationRequirement units + Innovation-level isolation cases) and this plan/tasks artifact set are implemented and passing locally (268/268) but **not yet committed** — pending a commit per constitution Principle 8.
+- [X] = implemented and test-verified as of this update. T002-T032 (Setup through US3) are committed on commits `4af0775`..`85ca4a3`..`37d0f35`. T011-T014's `IsComplete()` coverage additions (Product/Market/CollaborationRequirement units + Innovation-level isolation cases) and this plan/tasks artifact set are implemented and passing locally (278/278) but **not yet committed** — pending a commit per constitution Principle 8.
 - Remaining [ ] tasks are genuine, unstarted work — verified by direct inspection of the client codebase, not assumed
 - Commit after each task or logical group, per constitution Principle 8 (Conventional Commits)
