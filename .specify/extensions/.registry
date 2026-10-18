@@ -14,9 +14,22 @@
           "speckit.git.remote",
           "speckit.git.initialize",
           "speckit.git.commit"
+        ],
+        "claude": [
+          "speckit.git.feature",
+          "speckit.git.validate",
+          "speckit.git.remote",
+          "speckit.git.initialize",
+          "speckit.git.commit"
         ]
       },
-      "registered_skills": [],
+      "registered_skills": [
+        "speckit-git-feature",
+        "speckit-git-validate",
+        "speckit-git-remote",
+        "speckit-git-initialize",
+        "speckit-git-commit"
+      ],
       "installed_at": "2026-04-12T20:08:23.873387+00:00"
     },
     "blueprint": {
@@ -29,9 +42,16 @@
         "copilot": [
           "speckit.blueprint.generate",
           "speckit.blueprint.validate"
+        ],
+        "claude": [
+          "speckit.blueprint.generate",
+          "speckit.blueprint.validate"
         ]
       },
-      "registered_skills": [],
+      "registered_skills": [
+        "speckit-blueprint-generate",
+        "speckit-blueprint-validate"
+      ],
       "installed_at": "2026-05-04T09:37:33.023845+00:00"
     },
     "agent-context": {
@@ -54,7 +74,9 @@
           "speckit.agent-context.update"
         ]
       },
-      "registered_skills": [],
+      "registered_skills": [
+        "speckit-agent-context-update"
+      ],
       "installed_at": "2026-06-07T01:43:10.277498+00:00"
     }
   }

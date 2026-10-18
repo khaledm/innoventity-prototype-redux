@@ -19,20 +19,33 @@ describe('InnovationsService', () => {
       email: 'jane@example.com',
       actorType: 'IdeaGenerator'
     },
-    title: 'Test Innovation',
-    productType: 'Software',
-    researchBackground: 'Background info',
-    researchCategory: 'Engineering',
-    iprStatus: 'Patent Pending',
-    productDescription: 'A test product',
-    productAdvantages: 'Advantage 1',
-    developmentPhase: 'Prototype',
-    developmentProcess: 'Agile',
-    targetMarket: 'Enterprise',
-    targetCustomerBase: 'Large corps',
-    targetCustomerType: 'B2B',
-    productKeywords: 'AI, ML',
-    advantageKeywords: 'speed, accuracy',
+    ideaSummary: {
+      title: 'Test Innovation',
+      productType: 'Software',
+      researchBackground: 'Background info',
+      researchCategory: 'Engineering',
+      iprStatus: 'Patent Pending'
+    },
+    product: {
+      productDescription: 'A test product',
+      technologyDescription: 'A test technology',
+      productAdvantages: 'Advantage 1',
+      developmentPhase: 'Prototype',
+      developmentProcess: 'Agile',
+      targetBeneficiaries: 'Enterprise users',
+      productKeywords: 'AI, ML',
+      advantageKeywords: 'speed, accuracy'
+    },
+    market: {
+      targetMarket: 'Enterprise',
+      targetCustomerBase: 'Large corps',
+      targetCustomerType: 'B2B',
+      relevantMarketSize: 1000000,
+      potentialMarketSize: 5000000
+    },
+    collaborationRequirement: {
+      partnersNeeded: 'Manufacturing'
+    },
     status: 'Published',
     createdAt: '2024-01-01T00:00:00Z',
     submittedAt: '2024-01-15T00:00:00Z',
@@ -43,9 +56,11 @@ describe('InnovationsService', () => {
     items: [
       {
         innovationId: 'item-id-1',
-        title: 'Innovation One',
-        productType: 'Hardware',
-        researchCategory: 'Engineering',
+        ideaSummary: {
+          title: 'Innovation One',
+          productType: 'Hardware',
+          researchCategory: 'Engineering'
+        },
         status: 'Published',
         submittedAt: '2024-01-15T00:00:00Z',
         owner: { actorId: 'actor-1', firstName: 'Alice', lastName: 'Smith', displayName: 'Alice Smith' },

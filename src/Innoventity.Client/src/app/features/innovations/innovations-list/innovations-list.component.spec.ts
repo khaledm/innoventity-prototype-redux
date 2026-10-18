@@ -16,9 +16,7 @@ describe('InnovationsListComponent', () => {
     items: [
       {
         innovationId: 'inno-id-1',
-        title: 'Smart Sensor Array',
-        productType: 'Hardware',
-        researchCategory: 'Engineering',
+        ideaSummary: { title: 'Smart Sensor Array', productType: 'Hardware', researchCategory: 'Engineering' },
         status: 'Published',
         submittedAt: '2024-03-01T00:00:00Z',
         owner: { actorId: 'actor-1', firstName: 'Alice', lastName: 'Smith', displayName: 'Alice Smith' },
@@ -27,9 +25,7 @@ describe('InnovationsListComponent', () => {
       },
       {
         innovationId: 'inno-id-2',
-        title: 'AI Diagnostics Platform',
-        productType: 'Software',
-        researchCategory: 'Engineering',
+        ideaSummary: { title: 'AI Diagnostics Platform', productType: 'Software', researchCategory: 'Engineering' },
         status: 'Published',
         submittedAt: '2024-04-15T00:00:00Z',
         owner: { actorId: 'actor-2', firstName: 'Bob', lastName: 'Jones', displayName: 'Bob Jones' },

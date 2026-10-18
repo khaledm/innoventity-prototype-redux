@@ -1,10 +1,13 @@
 <!-- SPECKIT START -->
-No feature is currently in progress. Feature `005-formalresponse-hierarchy`
-is complete and merged into `Main` — do not treat it as active work.
+Feature `006-productidea-composition` (ProductIdea Composition Pattern,
+Phase 1e) on branch `006-productidea-composition` is implementation-complete:
+all 42 tasks in `specs/006-productidea-composition/tasks.md` are done (backend
+US1-US3, Angular client US4, and Phase 7 polish/mutation-testing/doc tasks).
+Plan: `specs/006-productidea-composition/plan.md`. Not yet merged to `Main`.
 
-For context on completed and upcoming work, see `specs/ROADMAP.md`. When a
-new feature is started (via `/speckit-specify` or `/speckit-plan`), this
-section will be regenerated to point at that feature's `plan.md`.
+Feature `005-formalresponse-hierarchy` is complete and merged into `Main` — do
+not treat it as active work. For phase sequencing and cross-feature status, see
+`specs/ROADMAP.md`.
 <!-- SPECKIT END -->
 
 ## Quick Reference

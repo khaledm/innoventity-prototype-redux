@@ -3,18 +3,8 @@ using Innoventity.API.Domain.Common;
 
 namespace Innoventity.API.Domain.Entities;
 
-/// <summary>
-/// Innovation entity for Phase 0 - View Innovation only (Spec §6 Test Data Requirements)
-/// Full innovation submission workflow deferred to Phase 1+
-/// Inherits identity-based equality from EntityOfGuid (R9.1)
-/// </summary>
 public class Innovation : EntityOfGuid
 {
-    // Id inherited from EntityOfGuid
-
-    /// <summary>
-    /// Parameterless constructor for EF Core
-    /// </summary>
     public Innovation() : base()
     {
     }
@@ -25,6 +15,12 @@ public class Innovation : EntityOfGuid
     public Innovation(Guid id) : base(id)
     {
     }
+
+    public IdeaSummary IdeaSummary { get; set; } = null!;
+
+    public Product Product { get; set; } = null!;
+
+    public Market Market { get; set; } = null!;
 
     /// <summary>
     /// Unique tracking token for innovation (Spec §R2.3)
@@ -37,127 +33,6 @@ public class Innovation : EntityOfGuid
     /// </summary>
     [Required]
     public Guid OwnerId { get; set; }
-
-    /// <summary>
-    /// Innovation title (Spec §R2.1)
-    /// </summary>
-    [Required]
-    [MaxLength(500)]
-    public required string Title { get; set; }
-
-    /// <summary>
-    /// Product type description (Spec §6)
-    /// </summary>
-    [Required]
-    [MaxLength(200)]
-    public required string ProductType { get; set; }
-
-    /// <summary>
-    /// Research background description (Spec §R2.1)
-    /// </summary>
-    [Required]
-    [MaxLength(5000)]
-    public required string ResearchBackground { get; set; }
-
-    /// <summary>
-    /// Research category classification (Spec §R3.3)
-    /// </summary>
-    [Required]
-    public ResearchCategory ResearchCategory { get; set; }
-
-    /// <summary>
-    /// IPR status declaration (Spec §Journey 1 step 3)
-    /// </summary>
-    [Required]
-    [MaxLength(500)]
-    public required string IprStatus { get; set; }
-
-    /// <summary>
-    /// Product description (Spec §6)
-    /// </summary>
-    [Required]
-    [MaxLength(5000)]
-    public required string ProductDescription { get; set; }
-
-    /// <summary>
-    /// Technology description (Spec §US3 R2.1)
-    /// </summary>
-    [Required]
-    [MaxLength(5000)]
-    public required string TechnologyDescription { get; set; }
-
-    /// <summary>
-    /// Product advantages (Spec §6)
-    /// </summary>
-    [Required]
-    [MaxLength(5000)]
-    public required string ProductAdvantages { get; set; }
-
-    /// <summary>
-    /// Current development phase (Spec §6)
-    /// </summary>
-    [Required]
-    [MaxLength(200)]
-    public required string DevelopmentPhase { get; set; }
-
-    /// <summary>
-    /// Development process description (Spec §6)
-    /// </summary>
-    [Required]
-    [MaxLength(5000)]
-    public required string DevelopmentProcess { get; set; }
-
-    /// <summary>
-    /// Target market description (Spec §6)
-    /// </summary>
-    [Required]
-    [MaxLength(5000)]
-    public required string TargetMarket { get; set; }
-
-    /// <summary>
-    /// Target customer base (Spec §6)
-    /// </summary>
-    [Required]
-    [MaxLength(2000)]
-    public required string TargetCustomerBase { get; set; }
-
-    /// <summary>
-    /// Target beneficiaries (Spec §US3 R2.1)
-    /// </summary>
-    [Required]
-    [MaxLength(2000)]
-    public required string TargetBeneficiaries { get; set; }
-
-    /// <summary>
-    /// Target customer type (Spec §6)
-    /// </summary>
-    [Required]
-    [MaxLength(100)]
-    public required string TargetCustomerType { get; set; }
-
-    /// <summary>
-    /// Relevant market size in USD (Spec §US3 R2.1)
-    /// </summary>
-    public decimal? RelevantMarketSize { get; set; }
-
-    /// <summary>
-    /// Potential market size in USD (Spec §US3 R2.1)
-    /// </summary>
-    public decimal? PotentialMarketSize { get; set; }
-
-    /// <summary>
-    /// Product keywords for discoverability (Spec §6)
-    /// </summary>
-    [Required]
-    [MaxLength(1000)]
-    public required string ProductKeywords { get; set; }
-
-    /// <summary>
-    /// Advantage keywords (Spec §6)
-    /// </summary>
-    [Required]
-    [MaxLength(1000)]
-    public required string AdvantageKeywords { get; set; }
 
     /// <summary>
     /// Innovation status (Spec §R3.1)
@@ -196,8 +71,7 @@ public class Innovation : EntityOfGuid
     /// Partners needed: RD, Manufacturing, SalesMarketing, Investor (Spec §US3 R2.1)
     /// Stored as comma-separated string
     /// </summary>
-    [MaxLength(500)]
-    public string? PartnersNeeded { get; set; }
+    public CollaborationRequirement CollaborationRequirement { get; set; } = null!;
 
     /// <summary>
     /// Timestamp when partner selection was completed (Spec 004 FR-007)
@@ -209,4 +83,17 @@ public class Innovation : EntityOfGuid
     /// Actor who completed partner selection (Spec 004 NFR-003 audit trail)
     /// </summary>
     public Guid? SelectedByActorId { get; set; }
+
+    public bool IsIdeaSummaryComplete() => IdeaSummary.IsComplete();
+
+    public bool IsProductDetailsComplete() => Product.IsComplete();
+
+    public bool IsMarketDetailsSectionComplete() =>
+        Market.IsComplete() && TargetIndustries.Count > 0;
+
+    public bool IsReadyForSubmission() =>
+        IsIdeaSummaryComplete() &&
+        IsProductDetailsComplete() &&
+        IsMarketDetailsSectionComplete() &&
+        !string.IsNullOrWhiteSpace(CollaborationRequirement.PartnersNeeded);
 }

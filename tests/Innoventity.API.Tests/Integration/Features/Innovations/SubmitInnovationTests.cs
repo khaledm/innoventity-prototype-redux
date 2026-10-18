@@ -135,25 +135,37 @@ public class SubmitInnovationTests : IDisposable
         {
             IdeaToken = Guid.NewGuid(),
             OwnerId = _ideaGeneratorId,
-            Title = "Quantum Battery Prototype",
-            ProductType = "Energy Storage Device",
-            ResearchBackground = "Lithium-air battery leveraging quantum tunneling for 10x energy density improvement through advanced material science.",
-            ResearchCategory = ResearchCategory.Engineering,
-            IprStatus = "Patent Pending",
-            ProductDescription = "Next-generation battery technology for electric vehicles enabling 1000-mile range.",
-            TechnologyDescription = "Quantum tunneling mechanism enables unprecedented energy density through advanced material science",
-            ProductAdvantages = "10x energy density, 50% faster charging time, 20-year operational lifespan",
-            DevelopmentPhase = "Prototype",
-            DevelopmentProcess = "Laboratory validation complete, seeking partners for commercial scale production",
-            TargetMarket = "Electric vehicle manufacturers, renewable energy storage systems",
-            TargetCustomerBase = "Automotive OEMs, grid-scale energy storage providers",
-            TargetBeneficiaries = "Electric vehicle manufacturers, renewable energy providers",
-            TargetCustomerType = "B2B",
-            ProductKeywords = "battery, energy storage, electric vehicle, quantum",
-            AdvantageKeywords = "energy density, fast charging, long lifespan",
-            RelevantMarketSize = 50000000000m,
-            PotentialMarketSize = 150000000000m,
-            PartnersNeeded = "RD,Manufacturing,SalesMarketing",
+            IdeaSummary = new IdeaSummary
+            {
+                Title = "Quantum Battery Prototype",
+                ProductType = "Energy Storage Device",
+                ResearchBackground = "Lithium-air battery leveraging quantum tunneling for 10x energy density improvement through advanced material science.",
+                ResearchCategory = ResearchCategory.Engineering,
+                IprStatus = "Patent Pending"
+            },
+            Product = new Product
+            {
+                ProductDescription = "Next-generation battery technology for electric vehicles enabling 1000-mile range.",
+                TechnologyDescription = "Quantum tunneling mechanism enables unprecedented energy density through advanced material science",
+                ProductAdvantages = "10x energy density, 50% faster charging time, 20-year operational lifespan",
+                DevelopmentPhase = "Prototype",
+                DevelopmentProcess = "Laboratory validation complete, seeking partners for commercial scale production",
+                TargetBeneficiaries = "Electric vehicle manufacturers, renewable energy providers",
+                ProductKeywords = "battery, energy storage, electric vehicle, quantum",
+                AdvantageKeywords = "energy density, fast charging, long lifespan"
+            },
+            Market = new Market
+            {
+                TargetMarket = "Electric vehicle manufacturers, renewable energy storage systems",
+                TargetCustomerBase = "Automotive OEMs, grid-scale energy storage providers",
+                TargetCustomerType = "B2B",
+                RelevantMarketSize = 50000000000m,
+                PotentialMarketSize = 150000000000m
+            },
+            CollaborationRequirement = new CollaborationRequirement
+            {
+                PartnersNeeded = "RD,Manufacturing,SalesMarketing"
+            },
             Status = InnovationStatus.Draft,
             CreatedAt = DateTimeOffset.UtcNow,
             SubmittedAt = null,
@@ -166,25 +178,37 @@ public class SubmitInnovationTests : IDisposable
         {
             IdeaToken = Guid.NewGuid(),
             OwnerId = _ideaGeneratorId,
-            Title = "Incomplete Innovation",
-            ProductType = "Test Product",
-            ResearchBackground = "Short", // < 50 characters
-            ResearchCategory = ResearchCategory.Management,
-            IprStatus = "None",
-            ProductDescription = string.Empty, // Missing
-            TechnologyDescription = string.Empty, // Missing
-            ProductAdvantages = "Some advantages",
-            DevelopmentPhase = "Early",
-            DevelopmentProcess = "In progress",
-            TargetMarket = "Unknown",
-            TargetCustomerBase = "TBD",
-            TargetBeneficiaries = string.Empty, // Missing
-            TargetCustomerType = "B2B",
-            ProductKeywords = "test",
-            AdvantageKeywords = "test",
-            RelevantMarketSize = null, // Missing
-            PotentialMarketSize = null, // Missing
-            PartnersNeeded = null, // Missing
+            IdeaSummary = new IdeaSummary
+            {
+                Title = "Incomplete Innovation",
+                ProductType = "Test Product",
+                ResearchBackground = "Short", // < 50 characters
+                ResearchCategory = ResearchCategory.Management,
+                IprStatus = "None"
+            },
+            Product = new Product
+            {
+                ProductDescription = string.Empty, // Missing
+                TechnologyDescription = string.Empty, // Missing
+                ProductAdvantages = "Some advantages",
+                DevelopmentPhase = "Early",
+                DevelopmentProcess = "In progress",
+                TargetBeneficiaries = string.Empty, // Missing
+                ProductKeywords = "test",
+                AdvantageKeywords = "test"
+            },
+            Market = new Market
+            {
+                TargetMarket = "Unknown",
+                TargetCustomerBase = "TBD",
+                TargetCustomerType = "B2B",
+                RelevantMarketSize = null, // Missing
+                PotentialMarketSize = null // Missing
+            },
+            CollaborationRequirement = new CollaborationRequirement
+            {
+                PartnersNeeded = null // Missing
+            },
             Status = InnovationStatus.Draft,
             CreatedAt = DateTimeOffset.UtcNow,
             SubmittedAt = null
@@ -197,25 +221,37 @@ public class SubmitInnovationTests : IDisposable
         {
             IdeaToken = Guid.NewGuid(),
             OwnerId = _ideaGeneratorId,
-            Title = "Already Published Innovation",
-            ProductType = "Published Product",
-            ResearchBackground = "This innovation has already been published and cannot be submitted again for publication in the system.",
-            ResearchCategory = ResearchCategory.NaturalScience,
-            IprStatus = "Patent Granted",
-            ProductDescription = "A product that is already published",
-            TechnologyDescription = "Technology description for published product",
-            ProductAdvantages = "Various advantages",
-            DevelopmentPhase = "Commercial",
-            DevelopmentProcess = "Production ready",
-            TargetMarket = "Global market",
-            TargetCustomerBase = "Enterprise customers",
-            TargetBeneficiaries = "Industry partners",
-            TargetCustomerType = "B2B",
-            ProductKeywords = "published",
-            AdvantageKeywords = "commercial",
-            RelevantMarketSize = 1000000000m,
-            PotentialMarketSize = 5000000000m,
-            PartnersNeeded = "SalesMarketing",
+            IdeaSummary = new IdeaSummary
+            {
+                Title = "Already Published Innovation",
+                ProductType = "Published Product",
+                ResearchBackground = "This innovation has already been published and cannot be submitted again for publication in the system.",
+                ResearchCategory = ResearchCategory.NaturalScience,
+                IprStatus = "Patent Granted"
+            },
+            Product = new Product
+            {
+                ProductDescription = "A product that is already published",
+                TechnologyDescription = "Technology description for published product",
+                ProductAdvantages = "Various advantages",
+                DevelopmentPhase = "Commercial",
+                DevelopmentProcess = "Production ready",
+                TargetBeneficiaries = "Industry partners",
+                ProductKeywords = "published",
+                AdvantageKeywords = "commercial"
+            },
+            Market = new Market
+            {
+                TargetMarket = "Global market",
+                TargetCustomerBase = "Enterprise customers",
+                TargetCustomerType = "B2B",
+                RelevantMarketSize = 1000000000m,
+                PotentialMarketSize = 5000000000m
+            },
+            CollaborationRequirement = new CollaborationRequirement
+            {
+                PartnersNeeded = "SalesMarketing"
+            },
             Status = InnovationStatus.Published, // Already published
             CreatedAt = DateTimeOffset.UtcNow.AddDays(-10),
             SubmittedAt = DateTimeOffset.UtcNow.AddDays(-5),
@@ -300,6 +336,76 @@ public class SubmitInnovationTests : IDisposable
         Assert.Contains("PotentialMarketSize", content); // Null
         Assert.Contains("TargetIndustries", content); // Empty collection
         Assert.Contains("PartnersNeeded", content); // Null
+    }
+
+    [Fact]
+    public async Task SubmitInnovation_PlaceholderTitleOnly_Returns400AndMatchesIsReadyForSubmission()
+    {
+        // Arrange: every rule satisfied except Title contains only "Untitled" (not "TODO").
+        // Regression guard for the IsIdeaSummaryComplete/IsComplete `&&` vs `||` bug: the
+        // endpoint's accept/reject decision must always agree with innovation.IsReadyForSubmission().
+        var placeholderTitleInnovationId = Guid.NewGuid();
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var electronicsIndustry = await context.Industries.FirstAsync(i => i.Id == "ELEC-001");
+
+            var innovation = new Innovation(placeholderTitleInnovationId)
+            {
+                IdeaToken = Guid.NewGuid(),
+                OwnerId = _ideaGeneratorId,
+                IdeaSummary = new IdeaSummary
+                {
+                    Title = "Untitled",
+                    ProductType = "Energy Storage Device",
+                    ResearchBackground = "Lithium-air battery leveraging quantum tunneling for 10x energy density improvement.",
+                    ResearchCategory = ResearchCategory.Engineering,
+                    IprStatus = "Patent Pending"
+                },
+                Product = new Product
+                {
+                    ProductDescription = "Next-generation battery technology.",
+                    TechnologyDescription = "Quantum tunneling mechanism for energy density.",
+                    ProductAdvantages = "10x energy density",
+                    DevelopmentPhase = "Prototype",
+                    DevelopmentProcess = "Laboratory validation complete",
+                    TargetBeneficiaries = "Electric vehicle manufacturers",
+                    ProductKeywords = "battery",
+                    AdvantageKeywords = "energy density"
+                },
+                Market = new Market
+                {
+                    TargetMarket = "Electric vehicle manufacturers",
+                    TargetCustomerBase = "Automotive OEMs",
+                    TargetCustomerType = "B2B",
+                    RelevantMarketSize = 50000000000m,
+                    PotentialMarketSize = 150000000000m
+                },
+                CollaborationRequirement = new CollaborationRequirement
+                {
+                    PartnersNeeded = "RD,Manufacturing"
+                },
+                Status = InnovationStatus.Draft,
+                CreatedAt = DateTimeOffset.UtcNow,
+                SubmittedAt = null,
+                TargetIndustries = new List<Industry> { electronicsIndustry }
+            };
+            context.Innovations.Add(innovation);
+            await context.SaveChangesAsync();
+
+            // Sanity check: the entity's own completeness method must reject this too.
+            Assert.False(innovation.IsReadyForSubmission());
+        }
+
+        var token = await GetAccessToken("test-generator@innoventity.dev", "IdeaGenerator");
+        var request = new HttpRequestMessage(HttpMethod.Patch, $"/innovations/{placeholderTitleInnovationId}/submit");
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Title", content);
     }
 
     [Fact]

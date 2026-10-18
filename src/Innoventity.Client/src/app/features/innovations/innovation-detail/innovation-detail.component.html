@@ -25,16 +25,16 @@
   @if (innovation() && !loading() && !error()) {
     <mat-card class="innovation-card">
       <mat-card-header>
-        <mat-card-title>{{ innovation()!.title }}</mat-card-title>
+        <mat-card-title>{{ innovation()!.ideaSummary.title }}</mat-card-title>
         <mat-card-subtitle>
           <mat-chip-set>
-            <mat-chip>{{ innovation()!.productType }}</mat-chip>
-            <mat-chip highlighted>{{ innovation()!.researchCategory }}</mat-chip>
+            <mat-chip>{{ innovation()!.ideaSummary.productType }}</mat-chip>
+            <mat-chip highlighted>{{ innovation()!.ideaSummary.researchCategory }}</mat-chip>
             <mat-chip color="primary">{{ innovation()!.status }}</mat-chip>
-            @if (innovation()!.iprStatus !== 'None') {
+            @if (innovation()!.ideaSummary.iprStatus !== 'None') {
               <mat-chip color="accent">
                 <mat-icon>verified</mat-icon>
-                {{ innovation()!.iprStatus }}
+                {{ innovation()!.ideaSummary.iprStatus }}
               </mat-chip>
             }
           </mat-chip-set>
@@ -70,31 +70,31 @@
 
           <section class="product-description">
             <h3>Product Description</h3>
-            <p>{{ innovation()!.productDescription }}</p>
+            <p>{{ innovation()!.product.productDescription }}</p>
           </section>
 
           <section class="research-background">
             <h3>Research Background</h3>
-            <p>{{ innovation()!.researchBackground }}</p>
+            <p>{{ innovation()!.ideaSummary.researchBackground }}</p>
           </section>
 
-          @if (innovation()!.productAdvantages) {
+          @if (innovation()!.product.productAdvantages) {
             <section class="product-advantages">
               <h3>Product Advantages</h3>
-              <p>{{ innovation()!.productAdvantages }}</p>
+              <p>{{ innovation()!.product.productAdvantages }}</p>
             </section>
           }
 
           <section class="development">
             <h3>Development</h3>
             <dl>
-              @if (innovation()!.developmentPhase) {
+              @if (innovation()!.product.developmentPhase) {
                 <dt>Phase</dt>
-                <dd>{{ innovation()!.developmentPhase }}</dd>
+                <dd>{{ innovation()!.product.developmentPhase }}</dd>
               }
-              @if (innovation()!.developmentProcess) {
+              @if (innovation()!.product.developmentProcess) {
                 <dt>Process</dt>
-                <dd>{{ innovation()!.developmentProcess }}</dd>
+                <dd>{{ innovation()!.product.developmentProcess }}</dd>
               }
             </dl>
           </section>
@@ -102,46 +102,46 @@
           <section class="market-info">
             <h3>Market Information</h3>
             <dl>
-              @if (innovation()!.targetMarket) {
+              @if (innovation()!.market.targetMarket) {
                 <dt>Target Market</dt>
-                <dd>{{ innovation()!.targetMarket }}</dd>
+                <dd>{{ innovation()!.market.targetMarket }}</dd>
               }
-              @if (innovation()!.targetCustomerBase) {
+              @if (innovation()!.market.targetCustomerBase) {
                 <dt>Customer Base</dt>
-                <dd>{{ innovation()!.targetCustomerBase }}</dd>
+                <dd>{{ innovation()!.market.targetCustomerBase }}</dd>
               }
-              @if (innovation()!.targetCustomerType) {
+              @if (innovation()!.market.targetCustomerType) {
                 <dt>Customer Type</dt>
-                <dd>{{ innovation()!.targetCustomerType }}</dd>
+                <dd>{{ innovation()!.market.targetCustomerType }}</dd>
               }
             </dl>
           </section>
 
-          @if (innovation()!.iprStatus !== 'None') {
+          @if (innovation()!.ideaSummary.iprStatus !== 'None') {
             <section class="ipr-status">
               <h3>Intellectual Property</h3>
-              <p>{{ innovation()!.iprStatus }}</p>
+              <p>{{ innovation()!.ideaSummary.iprStatus }}</p>
             </section>
           }
 
-          @if (innovation()!.productKeywords || innovation()!.advantageKeywords) {
+          @if (innovation()!.product.productKeywords || innovation()!.product.advantageKeywords) {
             <section class="keywords">
               <h3>Keywords</h3>
-              @if (innovation()!.productKeywords) {
+              @if (innovation()!.product.productKeywords) {
                 <div class="keyword-group">
                   <span class="keyword-label">Product:</span>
                   <mat-chip-set>
-                    @for (kw of innovation()!.productKeywords.split(','); track $index) {
+                    @for (kw of innovation()!.product.productKeywords.split(','); track $index) {
                       <mat-chip>{{ kw.trim() }}</mat-chip>
                     }
                   </mat-chip-set>
                 </div>
               }
-              @if (innovation()!.advantageKeywords) {
+              @if (innovation()!.product.advantageKeywords) {
                 <div class="keyword-group">
                   <span class="keyword-label">Advantages:</span>
                   <mat-chip-set>
-                    @for (kw of innovation()!.advantageKeywords.split(','); track $index) {
+                    @for (kw of innovation()!.product.advantageKeywords.split(','); track $index) {
                       <mat-chip>{{ kw.trim() }}</mat-chip>
                     }
                   </mat-chip-set>
@@ -160,7 +160,7 @@
               <dd>{{ innovation()!.ideaToken }}</dd>
 
               <dt>IPR Status</dt>
-              <dd>{{ innovation()!.iprStatus }}</dd>
+              <dd>{{ innovation()!.ideaSummary.iprStatus }}</dd>
 
               @if (innovation()!.submittedAt) {
                 <dt>Submitted</dt>

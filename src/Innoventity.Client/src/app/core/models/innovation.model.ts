@@ -19,25 +19,52 @@ export interface IndustryRef {
   name: string;
 }
 
-export interface InnovationDetail {
-  id: string;
-  ideaToken: string;
-  ownerId: string;
-  owner: OwnerDetail | null;
+export interface IdeaSummarySection {
   title: string;
   productType: string;
   researchBackground: string;
   researchCategory: string;
   iprStatus: string;
+}
+
+export interface ProductSection {
   productDescription: string;
+  technologyDescription: string;
   productAdvantages: string;
   developmentPhase: string;
   developmentProcess: string;
+  targetBeneficiaries: string;
+  productKeywords: string;
+  advantageKeywords: string;
+}
+
+export interface MarketSection {
   targetMarket: string;
   targetCustomerBase: string;
   targetCustomerType: string;
-  productKeywords: string;
-  advantageKeywords: string;
+  relevantMarketSize: number | null;
+  potentialMarketSize: number | null;
+}
+
+export interface CollaborationRequirementSection {
+  partnersNeeded: string | null;
+}
+
+export interface IdeaSummaryListItem {
+  title: string;
+  productType: string;
+  researchCategory: string;
+}
+
+export interface InnovationDetail {
+  id: string;
+  ideaToken: string;
+  ownerId: string;
+  owner: OwnerDetail | null;
+  ideaSummary: IdeaSummarySection;
+  product: ProductSection;
+  market: MarketSection;
+  collaborationRequirement: CollaborationRequirementSection;
   status: string;
   createdAt: string;
   submittedAt: string | null;
@@ -46,9 +73,7 @@ export interface InnovationDetail {
 
 export interface InnovationListItem {
   innovationId: string;
-  title: string;
-  productType: string;
-  researchCategory: string;
+  ideaSummary: IdeaSummaryListItem;
   status: string;
   submittedAt: string | null;
   owner: OwnerListItem;

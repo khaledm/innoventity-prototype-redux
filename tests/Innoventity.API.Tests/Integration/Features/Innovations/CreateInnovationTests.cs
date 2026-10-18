@@ -202,7 +202,7 @@ public class CreateInnovationTests : IDisposable
             .FirstOrDefaultAsync(i => i.Id == Guid.Parse(innovationId!));
 
         Assert.NotNull(savedInnovation);
-        Assert.Equal("Quantum Battery Prototype", savedInnovation.Title);
+        Assert.Equal("Quantum Battery Prototype", savedInnovation.IdeaSummary.Title);
         Assert.Equal(InnovationStatus.Draft, savedInnovation.Status);
         Assert.Equal(_ideaGeneratorId, savedInnovation.OwnerId);
         Assert.Equal(2, savedInnovation.TargetIndustries.Count);

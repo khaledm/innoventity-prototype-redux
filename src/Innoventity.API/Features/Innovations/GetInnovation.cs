@@ -1,6 +1,7 @@
 using Innoventity.API.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Innoventity.API.Domain.Entities;
 
 namespace Innoventity.API.Features.Innovations;
 
@@ -45,20 +46,37 @@ public static class GetInnovation
                     email = innovation.Owner.Email,
                     actorType = innovation.Owner.ActorType.ToString()
                 } : null,
-                title = innovation.Title,
-                productType = innovation.ProductType,
-                researchBackground = innovation.ResearchBackground,
-                researchCategory = innovation.ResearchCategory.ToString(),
-                iprStatus = innovation.IprStatus,
-                productDescription = innovation.ProductDescription,
-                productAdvantages = innovation.ProductAdvantages,
-                developmentPhase = innovation.DevelopmentPhase,
-                developmentProcess = innovation.DevelopmentProcess,
-                targetMarket = innovation.TargetMarket,
-                targetCustomerBase = innovation.TargetCustomerBase,
-                targetCustomerType = innovation.TargetCustomerType,
-                productKeywords = innovation.ProductKeywords,
-                advantageKeywords = innovation.AdvantageKeywords,
+                ideaSummary = new
+                {
+                    title = innovation.IdeaSummary.Title,
+                    productType = innovation.IdeaSummary.ProductType,
+                    researchBackground = innovation.IdeaSummary.ResearchBackground,
+                    researchCategory = innovation.IdeaSummary.ResearchCategory.ToString(),
+                    iprStatus = innovation.IdeaSummary.IprStatus
+                },
+                product = new
+                {
+                    productDescription = innovation.Product.ProductDescription,
+                    technologyDescription = innovation.Product.TechnologyDescription,
+                    productAdvantages = innovation.Product.ProductAdvantages,
+                    developmentPhase = innovation.Product.DevelopmentPhase,
+                    developmentProcess = innovation.Product.DevelopmentProcess,
+                    targetBeneficiaries = innovation.Product.TargetBeneficiaries,
+                    productKeywords = innovation.Product.ProductKeywords,
+                    advantageKeywords = innovation.Product.AdvantageKeywords
+                },
+                market = new
+                {
+                    targetMarket = innovation.Market.TargetMarket,
+                    targetCustomerBase = innovation.Market.TargetCustomerBase,
+                    targetCustomerType = innovation.Market.TargetCustomerType,
+                    relevantMarketSize = innovation.Market.RelevantMarketSize,
+                    potentialMarketSize = innovation.Market.PotentialMarketSize
+                },
+                collaborationRequirement = new
+                {
+                    partnersNeeded = innovation.CollaborationRequirement.PartnersNeeded
+                },
                 status = innovation.Status.ToString(),
                 createdAt = innovation.CreatedAt,
                 submittedAt = innovation.SubmittedAt,

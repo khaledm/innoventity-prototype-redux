@@ -95,24 +95,33 @@ public class ActorResolutionFilterTests : IDisposable
         db.Innovations.Add(new Innovation(_innovationId)
         {
             OwnerId = _ownerId,
-            Title = "Filter Test Innovation",
-            ProductType = "Test Product",
-            ResearchBackground = "Background for actor resolution filter tests — validates that revoked actors cannot reach endpoint handlers.",
-            ResearchCategory = ResearchCategory.Engineering,
-            IprStatus = "None",
-            ProductDescription = "Product description for filter test.",
-            TechnologyDescription = "Technology description for filter test.",
-            TargetBeneficiaries = "Test beneficiaries.",
-            ProductAdvantages = "Test advantages.",
-            AdvantageKeywords = "test, filter, security",
-            DevelopmentPhase = "Concept",
-            DevelopmentProcess = "Lab validation.",
-            TargetMarket = "Test market.",
-            TargetCustomerBase = "Test customers.",
-            TargetCustomerType = "B2B",
-            ProductKeywords = "test, security",
-            RelevantMarketSize = 1_000_000,
-            PotentialMarketSize = 5_000_000,
+            IdeaSummary = new IdeaSummary
+            {
+                Title = "Filter Test Innovation",
+                ProductType = "Test Product",
+                ResearchBackground = "Background for actor resolution filter tests — validates that revoked actors cannot reach endpoint handlers.",
+                ResearchCategory = ResearchCategory.Engineering,
+                IprStatus = "None"
+            },
+            Product = new Product
+            {
+                ProductDescription = "Product description for filter test.",
+                TechnologyDescription = "Technology description for filter test.",
+                TargetBeneficiaries = "Test beneficiaries.",
+                ProductAdvantages = "Test advantages.",
+                AdvantageKeywords = "test, filter, security",
+                DevelopmentPhase = "Concept",
+                DevelopmentProcess = "Lab validation.",
+                ProductKeywords = "test, security"
+            },
+            Market = new Market
+            {
+                TargetMarket = "Test market.",
+                TargetCustomerBase = "Test customers.",
+                TargetCustomerType = "B2B",
+                RelevantMarketSize = 1_000_000,
+                PotentialMarketSize = 5_000_000
+            },
             Status = InnovationStatus.Published,
             SubmittedAt = DateTimeOffset.UtcNow.AddDays(-1)
         });

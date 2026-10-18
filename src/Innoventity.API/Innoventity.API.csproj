@@ -28,4 +28,13 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Direct pins for transitive CVEs surfaced by dotnet's vulnerable-package scan
+         (via Microsoft.AspNetCore.Authentication.JwtBearer 8.0.0's dependency chain).
+         Patched within the net8.0-compatible version line; no API/behavior change. -->
+    <PackageReference Include="System.Text.Json" Version="8.0.6" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.3" />
+    <PackageReference Include="System.Formats.Asn1" Version="8.0.2" />
+  </ItemGroup>
+
 </Project>

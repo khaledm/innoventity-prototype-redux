@@ -66,73 +66,51 @@ public static class UpdateInnovation
             }
 
             // Partial update logic: Update only provided fields (null = no change)
-            if (request.Title != null)
-                innovation.Title = request.Title;
-
-            if (request.ProductType != null)
-                innovation.ProductType = request.ProductType;
-
-            if (request.ResearchCategory != null)
+            if (request.ResearchCategory != null &&
+                !Enum.TryParse<ResearchCategory>(request.ResearchCategory, ignoreCase: true, out _))
             {
-                if (!Enum.TryParse<ResearchCategory>(request.ResearchCategory, ignoreCase: true, out var researchCategory))
+                return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
-                    return Results.ValidationProblem(new Dictionary<string, string[]>
-                    {
-                        ["researchCategory"] = new[] { "Must be one of: Management, Engineering, NaturalScience" }
-                    });
-                }
-                innovation.ResearchCategory = researchCategory;
+                    ["researchCategory"] = new[] { "Must be one of: Management, Engineering, NaturalScience" }
+                });
             }
 
-            if (request.ResearchBackground != null)
-                innovation.ResearchBackground = request.ResearchBackground;
+            innovation.IdeaSummary = new IdeaSummary()
+             {
+                Title = request.Title ?? innovation.IdeaSummary.Title,
+                ProductType = request.ProductType ?? innovation.IdeaSummary.ProductType,
+                IprStatus = request.HasIPR.HasValue ? (request.HasIPR.Value ? "Patent Pending" : "None") : innovation.IdeaSummary.IprStatus,
+                ResearchCategory = request.ResearchCategory != null ? Enum.Parse<ResearchCategory>(request.ResearchCategory, ignoreCase: true) : innovation.IdeaSummary.ResearchCategory,
+                ResearchBackground = request.ResearchBackground ?? innovation.IdeaSummary.ResearchBackground
+                
+             };
 
-            if (request.HasIPR.HasValue)
-                innovation.IprStatus = request.HasIPR.Value ? "Patent Pending" : "None";
+             innovation.Product = new Product()
+             {
+                ProductDescription = request.ProductDescription ?? innovation.Product.ProductDescription,
+                TechnologyDescription = request.TechnologyDescription ?? innovation.Product.TechnologyDescription,
+                ProductAdvantages = request.ProductAdvantages ?? innovation.Product.ProductAdvantages,
+                DevelopmentPhase = request.DevelopmentPhase ?? innovation.Product.DevelopmentPhase,
+                DevelopmentProcess = request.DevelopmentProcess ?? innovation.Product.DevelopmentProcess,
+                TargetBeneficiaries = request.TargetBeneficiaries ?? innovation.Product.TargetBeneficiaries,
+                ProductKeywords = request.ProductKeywords ?? innovation.Product.ProductKeywords,
+                AdvantageKeywords = request.AdvantageKeywords ?? innovation.Product.AdvantageKeywords
+             };
 
-            if (request.ProductDescription != null)
-                innovation.ProductDescription = request.ProductDescription;
+             innovation.Market = new Market()
+             {
+                TargetMarket = request.TargetMarket ?? innovation.Market.TargetMarket,
+                TargetCustomerBase = request.TargetCustomerBase ?? innovation.Market.TargetCustomerBase,
+                
+                TargetCustomerType = request.TargetCustomerType ?? innovation.Market.TargetCustomerType,
+                RelevantMarketSize = request.RelevantMarketSize ?? innovation.Market.RelevantMarketSize,
+                PotentialMarketSize = request.PotentialMarketSize ?? innovation.Market.PotentialMarketSize
+             };
 
-            if (request.TechnologyDescription != null)
-                innovation.TechnologyDescription = request.TechnologyDescription;
-
-            if (request.ProductAdvantages != null)
-                innovation.ProductAdvantages = request.ProductAdvantages;
-
-            if (request.DevelopmentPhase != null)
-                innovation.DevelopmentPhase = request.DevelopmentPhase;
-
-            if (request.DevelopmentProcess != null)
-                innovation.DevelopmentProcess = request.DevelopmentProcess;
-
-            if (request.TargetMarket != null)
-                innovation.TargetMarket = request.TargetMarket;
-
-            if (request.TargetCustomerBase != null)
-                innovation.TargetCustomerBase = request.TargetCustomerBase;
-
-            if (request.TargetBeneficiaries != null)
-                innovation.TargetBeneficiaries = request.TargetBeneficiaries;
-
-            if (request.TargetCustomerType != null)
-                innovation.TargetCustomerType = request.TargetCustomerType;
-
-            if (request.ProductKeywords != null)
-                innovation.ProductKeywords = request.ProductKeywords;
-
-            if (request.AdvantageKeywords != null)
-                innovation.AdvantageKeywords = request.AdvantageKeywords;
-
-            if (request.RelevantMarketSize.HasValue)
-                innovation.RelevantMarketSize = request.RelevantMarketSize;
-
-            if (request.PotentialMarketSize.HasValue)
-                innovation.PotentialMarketSize = request.PotentialMarketSize;
-
-            if (request.PartnersNeeded != null)
-                innovation.PartnersNeeded = request.PartnersNeeded.Any()
-                    ? string.Join(",", request.PartnersNeeded)
-                    : null;
+             innovation.CollaborationRequirement = new CollaborationRequirement()
+             {
+                PartnersNeeded = request.PartnersNeeded != null ? (request.PartnersNeeded.Any() ? string.Join(",", request.PartnersNeeded) : null) : innovation.CollaborationRequirement?.PartnersNeeded
+             };
 
             // Update target industries if provided
             if (request.TargetIndustryIds != null)
@@ -161,9 +139,12 @@ public static class UpdateInnovation
             return Results.Ok(new
             {
                 innovationId = innovation.Id,
-                title = innovation.Title,
-                productType = innovation.ProductType,
-                researchCategory = innovation.ResearchCategory.ToString(),
+                ideaSummary = new
+                {
+                    title = innovation.IdeaSummary.Title,
+                    productType = innovation.IdeaSummary.ProductType,
+                    researchCategory = innovation.IdeaSummary.ResearchCategory.ToString()
+                },
                 status = innovation.Status.ToString(),
                 modifiedAt = DateTimeOffset.UtcNow, // Use current timestamp for response
                 ownerId = innovation.OwnerId
